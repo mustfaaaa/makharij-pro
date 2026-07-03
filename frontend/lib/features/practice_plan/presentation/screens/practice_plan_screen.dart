@@ -102,7 +102,10 @@ class _PlanTile extends StatelessWidget {
           if (!item.isCompleted)
             IconButton(
               icon: const Icon(Icons.play_circle_outline, color: AppColors.primary),
-              onPressed: () => context.push(RoutePaths.quran),
+              // Quran is a bottom-nav shell tab, not a standalone pushed
+              // route — go() re-enters the shell at that branch instead of
+              // stacking a second, conflicting Navigator for the same path.
+              onPressed: () => context.go(RoutePaths.quran),
             ),
         ],
       ),
