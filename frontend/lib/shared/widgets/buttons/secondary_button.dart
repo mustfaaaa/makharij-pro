@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_radii.dart';
@@ -27,7 +28,12 @@ class SecondaryButton extends StatelessWidget {
       borderRadius: AppRadii.mdRadius,
       child: InkWell(
         borderRadius: AppRadii.mdRadius,
-        onTap: onPressed,
+        onTap: onPressed == null
+            ? null
+            : () {
+                HapticFeedback.lightImpact();
+                onPressed!();
+              },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
           child: Row(

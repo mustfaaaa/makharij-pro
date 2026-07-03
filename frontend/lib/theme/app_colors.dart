@@ -13,12 +13,14 @@ abstract class AppColors {
   static const Color accentLight = Color(0xFFE8D48A);
   static const Color accentSurface = Color(0xFFF7EFD6);
 
-  // Neutrals
-  static const Color background = Color(0xFFFAF8F3);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceAlt = Color(0xFFF2F0E9);
-  static const Color border = Color(0xFFE4E1D6);
-  static const Color divider = Color(0xFFEDEBE1);
+  // Neutrals — warm cream / beige palette
+  static const Color background = Color(0xFFF6EFE1); // warm cream base
+  static const Color cream = Color(0xFFF1E7D3); // deeper beige for immersive/full screens
+  static const Color creamDark = Color(0xFFE8DBC2); // beige used behind cream for depth
+  static const Color surface = Color(0xFFFFFDF8); // near-white card, warmed slightly
+  static const Color surfaceAlt = Color(0xFFF0E9DA);
+  static const Color border = Color(0xFFE3D9C4);
+  static const Color divider = Color(0xFFEBE2D1);
 
   // Text
   static const Color textPrimary = Color(0xFF1C2321);

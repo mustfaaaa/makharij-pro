@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class PrimaryButton extends StatelessWidget {
   final String label;
@@ -32,7 +33,14 @@ class PrimaryButton extends StatelessWidget {
             ],
           );
 
-    final button = ElevatedButton(onPressed: isLoading ? null : onPressed, child: child);
+    final effectiveOnPressed = (isLoading || onPressed == null)
+        ? null
+        : () {
+            HapticFeedback.lightImpact();
+            onPressed!();
+          };
+
+    final button = ElevatedButton(onPressed: effectiveOnPressed, child: child);
     return fullWidth ? SizedBox(width: double.infinity, child: button) : button;
   }
 }

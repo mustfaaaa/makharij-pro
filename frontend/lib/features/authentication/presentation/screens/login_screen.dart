@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../routes/route_names.dart';
+import '../../../../shared/widgets/buttons/google_sign_in_button.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/inputs/custom_text_field.dart';
 import '../../../../theme/app_colors.dart';
@@ -17,12 +18,23 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscure = true;
   bool _loading = false;
+  bool _googleLoading = false;
 
   void _submit() async {
     setState(() => _loading = true);
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     setState(() => _loading = false);
+    context.go(RoutePaths.home);
+  }
+
+  // UI-only dummy. Later this calls Firebase Auth's Google sign-in and only
+  // navigates on success; the button + this method stay, the body swaps.
+  void _googleSignIn() async {
+    setState(() => _googleLoading = true);
+    await Future.delayed(const Duration(milliseconds: 1100));
+    if (!mounted) return;
+    setState(() => _googleLoading = false);
     context.go(RoutePaths.home);
   }
 
@@ -62,6 +74,10 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: AppSpacing.sm),
               PrimaryButton(label: 'Sign In', onPressed: _submit, isLoading: _loading),
               const SizedBox(height: AppSpacing.lg),
+              const _OrDivider(),
+              const SizedBox(height: AppSpacing.lg),
+              GoogleSignInButton(onPressed: _googleSignIn, isLoading: _googleLoading),
+              const SizedBox(height: AppSpacing.lg),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -76,6 +92,24 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(child: Divider(color: AppColors.border)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Text('or', style: Theme.of(context).textTheme.bodySmall),
+        ),
+        const Expanded(child: Divider(color: AppColors.border)),
+      ],
     );
   }
 }
