@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../dummy/dummy_notifications.dart';
+import '../../../../core/base_list_cubit.dart';
 import '../../../../models/notification_item.dart';
+import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
+import '../../../../shared/widgets/responsive_center.dart';
 import '../../../../shared/widgets/states/empty_state_widget.dart';
+import '../../../../shared/widgets/states/error_state_widget.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
+import '../bloc/notifications_cubit.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -25,16 +30,25 @@ class NotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
-      body: dummyNotifications.isEmpty
-          ? const EmptyStateWidget(icon: Icons.notifications_none_rounded, title: 'No notifications', message: 'You\'re all caught up.')
-          : ListView.separated(
+    return BlocProvider(
+      create: (_) => NotificationsCubit(),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Notifications')),
+        body: ResponsiveCenter(child: BlocBuilder<NotificationsCubit, ListState<NotificationItem>>(
+          builder: (context, state) {
+            if (state.status == ListStatus.loading) return const ShimmerListPlaceholder(itemCount: 4, itemHeight: 84);
+            if (state.status == ListStatus.error) {
+              return ErrorStateWidget(message: state.errorMessage ?? 'Could not load notifications.', onRetry: () => context.read<NotificationsCubit>().load());
+            }
+            if (state.items.isEmpty) {
+              return const EmptyStateWidget(icon: Icons.notifications_none_rounded, title: 'No notifications', message: 'You\'re all caught up.');
+            }
+            return ListView.separated(
               padding: const EdgeInsets.all(AppSpacing.screenPadding),
-              itemCount: dummyNotifications.length,
+              itemCount: state.items.length,
               separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
               itemBuilder: (context, i) {
-                final n = dummyNotifications[i];
+                final n = state.items[i];
                 return Container(
                   padding: const EdgeInsets.all(AppSpacing.cardPadding),
                   decoration: BoxDecoration(
@@ -69,7 +83,10 @@ class NotificationsScreen extends StatelessWidget {
                   ),
                 );
               },
-            ),
+            );
+          },
+        )),
+      ),
     );
   }
 }

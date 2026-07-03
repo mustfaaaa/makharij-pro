@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../dummy/dummy_ayahs.dart';
-import '../../../../dummy/dummy_surahs.dart';
 import '../../../../models/surah.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/app_icon_button.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../shared/widgets/loading/app_loading_indicator.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
@@ -20,26 +21,36 @@ class SurahDetailsScreen extends StatefulWidget {
 }
 
 class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
-  late bool _bookmarked;
+  Surah? _surah;
 
   @override
   void initState() {
     super.initState();
-    _bookmarked = surah.isBookmarked;
+    Services.surah.getSurahByNumber(widget.surahNumber).then((s) {
+      if (mounted) setState(() => _surah = s);
+    });
   }
 
-  Surah get surah => dummySurahs.firstWhere((s) => s.number == widget.surahNumber, orElse: () => dummySurahs.first);
+  void _toggleBookmark() async {
+    final updated = await Services.surah.toggleBookmark(widget.surahNumber);
+    if (mounted) setState(() => _surah = updated);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final surah = _surah;
+    if (surah == null) {
+      return const Scaffold(body: AppLoadingIndicator());
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(surah.nameEnglish),
         actions: [
           AppIconButton(
-            icon: _bookmarked ? Icons.bookmark : Icons.bookmark_outline,
-            iconColor: _bookmarked ? AppColors.accent : AppColors.textPrimary,
-            onPressed: () => setState(() => _bookmarked = !_bookmarked),
+            icon: surah.isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
+            iconColor: surah.isBookmarked ? AppColors.accent : AppColors.textPrimary,
+            onPressed: _toggleBookmark,
           ),
           const SizedBox(width: AppSpacing.sm),
         ],

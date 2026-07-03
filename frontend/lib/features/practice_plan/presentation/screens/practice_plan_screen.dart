@@ -1,30 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../dummy/dummy_practice_plan.dart';
+import '../../../../core/base_list_cubit.dart';
 import '../../../../models/practice_plan_item.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
+import '../../../../shared/widgets/responsive_center.dart';
 import '../../../../shared/widgets/states/empty_state_widget.dart';
+import '../../../../shared/widgets/states/error_state_widget.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
+import '../bloc/practice_plan_cubit.dart';
 
 class PracticePlanScreen extends StatelessWidget {
   const PracticePlanScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final pending = dummyPracticePlan.where((p) => !p.isCompleted).toList();
-    final completed = dummyPracticePlan.where((p) => p.isCompleted).toList();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Practice Plan')),
-      body: dummyPracticePlan.isEmpty
-          ? const EmptyStateWidget(
-              icon: Icons.checklist_rounded,
-              title: 'No practice plan yet',
-              message: 'Complete a recitation session to get a personalized plan.',
-            )
-          : ListView(
+    return BlocProvider(
+      create: (_) => PracticePlanCubit(),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Practice Plan')),
+        body: ResponsiveCenter(child: BlocBuilder<PracticePlanCubit, ListState<PracticePlanItem>>(
+          builder: (context, state) {
+            if (state.status == ListStatus.loading) return const ShimmerListPlaceholder(itemCount: 4);
+            if (state.status == ListStatus.error) {
+              return ErrorStateWidget(message: state.errorMessage ?? 'Could not load your plan.', onRetry: () => context.read<PracticePlanCubit>().load());
+            }
+            if (state.items.isEmpty) {
+              return const EmptyStateWidget(
+                icon: Icons.checklist_rounded,
+                title: 'No practice plan yet',
+                message: 'Complete a recitation session to get a personalized plan.',
+              );
+            }
+            final pending = state.items.where((p) => !p.isCompleted).toList();
+            final completed = state.items.where((p) => p.isCompleted).toList();
+            return ListView(
               padding: const EdgeInsets.all(AppSpacing.screenPadding),
               children: [
                 Text('Based on your recent sessions, focus on these areas:', style: Theme.of(context).textTheme.bodyMedium),
@@ -37,7 +50,10 @@ class PracticePlanScreen extends StatelessWidget {
                   ...completed.map((item) => _PlanTile(item: item)),
                 ],
               ],
-            ),
+            );
+          },
+        )),
+      ),
     );
   }
 }

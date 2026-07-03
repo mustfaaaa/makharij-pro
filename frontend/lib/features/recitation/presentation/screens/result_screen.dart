@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../dummy/dummy_ayahs.dart';
-import '../../../../dummy/dummy_sessions.dart';
-import '../../../../models/session_result.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/buttons/outlined_app_button.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
@@ -11,18 +10,23 @@ import '../../../../shared/widgets/score_badge.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
+import '../bloc/recitation_cubit.dart';
 
 class ResultScreen extends StatelessWidget {
   final int surahNumber;
   const ResultScreen({super.key, required this.surahNumber});
 
-  SessionResult get _session => dummySessions.firstWhere((s) => s.surahNumber == surahNumber, orElse: () => dummySessions.first);
-
   @override
   Widget build(BuildContext context) {
-    final session = _session;
-    final color = scoreColor(session.accuracyScore);
-    final errorWordSet = {for (final e in session.errors) e.word};
+    final result = context.watch<RecitationCubit>().state.result;
+    if (result == null) {
+      // Guards against a direct deep-link to this route without going
+      // through the Listening -> Processing flow first.
+      return const Scaffold(body: Center(child: Text('No result available for this session.')));
+    }
+
+    final color = scoreColor(result.accuracyScore);
+    final errorWordSet = {for (final e in result.errors) e.word};
 
     return Scaffold(
       appBar: AppBar(title: const Text('Result'), automaticallyImplyLeading: false),
@@ -41,7 +45,17 @@ class ResultScreen extends StatelessWidget {
                           height: 140,
                           decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.1), border: Border.all(color: color, width: 4)),
                           alignment: Alignment.center,
-                          child: Text('${session.accuracyScore.toStringAsFixed(0)}%', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: color)),
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          child: FittedBox(
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: result.accuracyScore),
+                              duration: const Duration(milliseconds: 900),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, child) {
+                                return Text('${value.toStringAsFixed(0)}%', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: color));
+                              },
+                            ),
+                          ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Text('Tajweed Accuracy Score', style: Theme.of(context).textTheme.bodyMedium),
@@ -49,7 +63,10 @@ class ResultScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
-                  Text('${session.errors.length} words need attention', style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    result.errors.isEmpty ? 'No errors detected — excellent recitation!' : '${result.errors.length} words need attention',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.cardPadding),
@@ -86,7 +103,7 @@ class ResultScreen extends StatelessWidget {
                   PrimaryButton(
                     label: 'View Detailed Feedback',
                     icon: Icons.analytics_outlined,
-                    onPressed: () => context.push(RoutePaths.detailedFeedbackPath(session.id)),
+                    onPressed: () => context.push(RoutePaths.detailedFeedbackPath(result.id)),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Row(
@@ -94,14 +111,20 @@ class ResultScreen extends StatelessWidget {
                       Expanded(
                         child: OutlinedAppButton(
                           label: 'Practice Again',
-                          onPressed: () => context.pushReplacement(RoutePaths.recitationPath(surahNumber)),
+                          onPressed: () {
+                            context.read<RecitationCubit>().beginSession(surahNumber);
+                            context.pushReplacement(RoutePaths.recitationPath(surahNumber));
+                          },
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: OutlinedAppButton(
                           label: 'Done',
-                          onPressed: () => context.go(RoutePaths.home),
+                          onPressed: () {
+                            context.read<RecitationCubit>().reset();
+                            context.go(RoutePaths.home);
+                          },
                         ),
                       ),
                     ],

@@ -36,8 +36,13 @@ class ShimmerListPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // shrinkWrap + NeverScrollableScrollPhysics: sizes to its content instead
+    // of demanding a bounded height, so it's safe to nest inside another
+    // scrollable (e.g. shown as one item of an outer ListView while loading).
     return ListView.separated(
       padding: const EdgeInsets.all(AppSpacing.screenPadding),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: itemCount,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
       itemBuilder: (_, _) => ShimmerBox(height: itemHeight, borderRadius: AppRadii.mdRadius),

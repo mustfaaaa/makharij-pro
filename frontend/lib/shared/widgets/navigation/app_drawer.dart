@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../dummy/dummy_user.dart';
+import '../../../models/user_profile.dart';
 import '../../../routes/route_names.dart';
+import '../../../services/service_locator.dart';
 import '../../../theme/app_colors.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -18,20 +19,26 @@ class AppDrawer extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-              child: Row(
-                children: [
-                  const CircleAvatar(radius: 24, backgroundColor: AppColors.primarySurface, child: Icon(Icons.person, color: AppColors.primary)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(dummyUser.name, style: Theme.of(context).textTheme.titleSmall),
-                        Text(dummyUser.email, style: Theme.of(context).textTheme.bodySmall, overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
-                ],
+              child: FutureBuilder<UserProfile>(
+                future: Services.user.getCurrentUser(),
+                builder: (context, snapshot) {
+                  final user = snapshot.data;
+                  return Row(
+                    children: [
+                      const CircleAvatar(radius: 24, backgroundColor: AppColors.primarySurface, child: Icon(Icons.person, color: AppColors.primary)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(user?.name ?? '', style: Theme.of(context).textTheme.titleSmall),
+                            Text(user?.email ?? '', style: Theme.of(context).textTheme.bodySmall, overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
             const Divider(),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../../dummy/dummy_tajweed_rules.dart';
 import '../../../../models/tajweed_rule.dart';
+import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/app_icon_button.dart';
+import '../../../../shared/widgets/loading/app_loading_indicator.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
@@ -16,27 +17,35 @@ class RuleDetailsScreen extends StatefulWidget {
 }
 
 class _RuleDetailsScreenState extends State<RuleDetailsScreen> {
-  late bool _bookmarked;
-
-  TajweedRule get _rule => dummyTajweedRules.firstWhere((r) => r.id == widget.ruleId, orElse: () => dummyTajweedRules.first);
+  TajweedRule? _rule;
 
   @override
   void initState() {
     super.initState();
-    _bookmarked = _rule.isBookmarked;
+    Services.tajweedRule.getRuleById(widget.ruleId).then((r) {
+      if (mounted) setState(() => _rule = r);
+    });
+  }
+
+  void _toggleBookmark() async {
+    final updated = await Services.tajweedRule.toggleBookmark(widget.ruleId);
+    if (mounted) setState(() => _rule = updated);
   }
 
   @override
   Widget build(BuildContext context) {
     final rule = _rule;
+    if (rule == null) {
+      return const Scaffold(body: AppLoadingIndicator());
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(rule.title),
         actions: [
           AppIconButton(
-            icon: _bookmarked ? Icons.bookmark : Icons.bookmark_outline,
-            iconColor: _bookmarked ? AppColors.accent : AppColors.textPrimary,
-            onPressed: () => setState(() => _bookmarked = !_bookmarked),
+            icon: rule.isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
+            iconColor: rule.isBookmarked ? AppColors.accent : AppColors.textPrimary,
+            onPressed: _toggleBookmark,
           ),
           const SizedBox(width: AppSpacing.sm),
         ],

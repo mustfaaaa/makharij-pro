@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/feedback/app_dialogs.dart';
+import '../../../../shared/widgets/responsive_center.dart';
 import '../../../../shared/widgets/tiles/settings_tile.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
@@ -22,7 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
+      body: ResponsiveCenter(child: ListView(
         padding: const EdgeInsets.all(AppSpacing.screenPadding),
         children: [
           Text('Preferences', style: Theme.of(context).textTheme.titleMedium),
@@ -65,7 +66,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
         ],
-      ),
+      )),
     );
   }
 }

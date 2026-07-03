@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../dummy/dummy_surahs.dart';
-import '../../../../dummy/dummy_tajweed_rules.dart';
 import '../../../../models/surah.dart';
 import '../../../../models/tajweed_rule.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/cards/rule_card.dart';
 import '../../../../shared/widgets/cards/surah_card.dart';
 import '../../../../shared/widgets/inputs/app_search_bar.dart';
@@ -21,12 +20,25 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   String _query = '';
+  List<Surah> _allSurahs = [];
+  List<TajweedRule> _allRules = [];
+
+  @override
+  void initState() {
+    super.initState();
+    Services.surah.getSurahs().then((s) {
+      if (mounted) setState(() => _allSurahs = s);
+    });
+    Services.tajweedRule.getRules().then((r) {
+      if (mounted) setState(() => _allRules = r);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final q = _query.toLowerCase();
-    final List<Surah> surahResults = q.isEmpty ? [] : dummySurahs.where((s) => s.nameEnglish.toLowerCase().contains(q)).toList();
-    final List<TajweedRule> ruleResults = q.isEmpty ? [] : dummyTajweedRules.where((r) => r.title.toLowerCase().contains(q)).toList();
+    final List<Surah> surahResults = q.isEmpty ? [] : _allSurahs.where((s) => s.nameEnglish.toLowerCase().contains(q)).toList();
+    final List<TajweedRule> ruleResults = q.isEmpty ? [] : _allRules.where((r) => r.title.toLowerCase().contains(q)).toList();
     final hasResults = surahResults.isNotEmpty || ruleResults.isNotEmpty;
 
     return Scaffold(

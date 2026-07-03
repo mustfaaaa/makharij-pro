@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../dummy/dummy_ayahs.dart';
@@ -9,6 +10,7 @@ import '../../../../shared/widgets/buttons/app_icon_button.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
+import '../bloc/recitation_cubit.dart';
 
 class ListeningScreen extends StatefulWidget {
   final int surahNumber;
@@ -72,7 +74,10 @@ class _ListeningScreenState extends State<ListeningScreen> with SingleTickerProv
                 size: 76,
                 background: Colors.white,
                 iconColor: AppColors.primary,
-                onPressed: () => context.pushReplacement(RoutePaths.processingPath(widget.surahNumber)),
+                onPressed: () {
+                  context.read<RecitationCubit>().stopAndProcess();
+                  context.pushReplacement(RoutePaths.processingPath(widget.surahNumber));
+                },
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
