@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../features/recitation/presentation/bloc/recitation_cubit.dart';
 import '../routes/app_router.dart';
+import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'cubit/theme_cubit.dart';
 
@@ -21,12 +22,14 @@ class MakharijProApp extends StatelessWidget {
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) {
+          // Drive the brightness-aware palette from the toggle, then build a
+          // single matching theme. Every widget re-reads AppColors on this
+          // rebuild, so the whole app flips light <-> dark.
+          AppColors.brightness = themeMode == ThemeMode.dark ? Brightness.dark : Brightness.light;
           return MaterialApp.router(
             title: 'MakharijPro AI',
             debugShowCheckedModeBanner: false,
-            themeMode: themeMode,
-            theme: AppTheme.light,
-            darkTheme: AppTheme.dark,
+            theme: AppTheme.build(),
             routerConfig: appRouter,
           );
         },

@@ -34,7 +34,7 @@ class SettingsTile extends StatelessWidget {
       ),
       title: Text(title, style: Theme.of(context).textTheme.bodyLarge),
       subtitle: subtitle != null ? Text(subtitle!, style: Theme.of(context).textTheme.bodySmall) : null,
-      trailing: trailing ?? (onTap != null ? const Icon(Icons.chevron_right, color: AppColors.textMuted) : null),
+      trailing: trailing ?? (onTap != null ? Icon(Icons.chevron_right, color: AppColors.textMuted) : null),
     );
   }
 }

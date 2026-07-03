@@ -33,7 +33,7 @@ class RuleCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(child: Text(rule.title, style: Theme.of(context).textTheme.titleSmall)),
-                    if (rule.isBookmarked) const Icon(Icons.bookmark, size: 16, color: AppColors.accent),
+                    if (rule.isBookmarked) Icon(Icons.bookmark, size: 16, color: AppColors.accent),
                   ],
                 ),
                 const SizedBox(height: 4),

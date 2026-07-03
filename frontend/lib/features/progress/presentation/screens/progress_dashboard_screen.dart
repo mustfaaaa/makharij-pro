@@ -108,7 +108,7 @@ class _ProgressDashboardView extends StatelessWidget {
                 decoration: BoxDecoration(color: AppColors.accentSurface, borderRadius: BorderRadius.circular(14)),
                 child: Row(
                   children: [
-                    const Icon(Icons.emoji_events_rounded, color: AppColors.accent),
+                    Icon(Icons.emoji_events_rounded, color: AppColors.accent),
                     const SizedBox(width: 12),
                     Expanded(child: Text('4 of 6 achievements unlocked', style: Theme.of(context).textTheme.bodyMedium)),
                   ],

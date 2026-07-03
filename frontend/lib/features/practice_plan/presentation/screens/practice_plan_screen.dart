@@ -90,7 +90,7 @@ class _PlanTile extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(20)),
-                      child: Text(item.focusArea, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                      child: Text(item.focusArea, style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
                     ),
                   ],
                 ),
@@ -101,7 +101,7 @@ class _PlanTile extends StatelessWidget {
           ),
           if (!item.isCompleted)
             IconButton(
-              icon: const Icon(Icons.play_circle_outline, color: AppColors.primary),
+              icon: Icon(Icons.play_circle_outline, color: AppColors.primary),
               // Quran is a bottom-nav shell tab, not a standalone pushed
               // route — go() re-enters the shell at that branch instead of
               // stacking a second, conflicting Navigator for the same path.

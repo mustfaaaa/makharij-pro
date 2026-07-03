@@ -19,11 +19,11 @@ class ProfileTile extends StatelessWidget {
         radius: 26,
         backgroundColor: AppColors.primarySurface,
         backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
-        child: avatarUrl == null ? const Icon(Icons.person, color: AppColors.primary) : null,
+        child: avatarUrl == null ? Icon(Icons.person, color: AppColors.primary) : null,
       ),
       title: Text(name, style: Theme.of(context).textTheme.titleMedium),
       subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
+      trailing: Icon(Icons.chevron_right, color: AppColors.textMuted),
     );
   }
 }

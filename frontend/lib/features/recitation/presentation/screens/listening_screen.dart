@@ -123,7 +123,7 @@ class _ListeningScreenState extends State<ListeningScreen> with TickerProviderSt
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
-            const Text('Tap to finish recitation', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            Text('Tap to finish recitation', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
             const SizedBox(height: AppSpacing.xl),
           ],
         ),

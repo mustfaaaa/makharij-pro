@@ -47,7 +47,7 @@ class AchievementCard extends StatelessWidget {
                 value: achievement.progress,
                 minHeight: 5,
                 backgroundColor: AppColors.border,
-                valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+                valueColor: AlwaysStoppedAnimation(AppColors.accent),
               ),
             ),
           ],

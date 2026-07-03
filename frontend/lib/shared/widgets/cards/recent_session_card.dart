@@ -21,9 +21,9 @@ class RecentSessionCard extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: const BoxDecoration(color: AppColors.accentSurface, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: AppColors.accentSurface, shape: BoxShape.circle),
             alignment: Alignment.center,
-            child: const Icon(Icons.graphic_eq, size: 20, color: AppColors.accent),
+            child: Icon(Icons.graphic_eq, size: 20, color: AppColors.accent),
           ),
           const SizedBox(width: 14),
           Expanded(

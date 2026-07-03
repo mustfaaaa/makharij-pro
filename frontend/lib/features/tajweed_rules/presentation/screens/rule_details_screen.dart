@@ -4,6 +4,7 @@ import '../../../../models/tajweed_rule.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/app_icon_button.dart';
 import '../../../../shared/widgets/loading/app_loading_indicator.dart';
+import '../../../../shared/widgets/tajweed_color_guide.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
@@ -64,12 +65,16 @@ class _RuleDetailsScreenState extends State<RuleDetailsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: AppColors.accentSurface, borderRadius: BorderRadius.circular(20)),
-            child: Text(rule.category, style: const TextStyle(color: AppColors.textOnAccent, fontWeight: FontWeight.w600, fontSize: 12)),
+            child: Text(rule.category, style: TextStyle(color: AppColors.textOnAccent, fontWeight: FontWeight.w600, fontSize: 12)),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(rule.title, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: AppSpacing.sm),
           Text(rule.fullExplanation, style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6)),
+          const SizedBox(height: AppSpacing.xl),
+          Text('Tajweed Colour Guide', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.sm),
+          const TajweedColorGuide(),
         ],
       ),
     );

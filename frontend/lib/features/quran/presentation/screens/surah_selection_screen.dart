@@ -46,7 +46,7 @@ class _SurahSelectionViewState extends State<_SurahSelectionView> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Select a Surah'),
-          bottom: const TabBar(
+          bottom: TabBar(
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textMuted,
@@ -59,7 +59,7 @@ class _SurahSelectionViewState extends State<_SurahSelectionView> {
         ),
         body: BlocBuilder<SurahListCubit, ListState<Surah>>(
           builder: (context, state) {
-            if (state.status == ListStatus.loading) return const ShimmerListPlaceholder(itemCount: 6);
+            if (state.status == ListStatus.loading) return const ShimmerSurahList(itemCount: 7);
             if (state.status == ListStatus.error) {
               return ErrorStateWidget(
                 message: state.errorMessage ?? 'Could not load surahs.',
@@ -139,7 +139,7 @@ class _RecentTab extends StatelessWidget {
     return FutureBuilder<List<SessionResult>>(
       future: Services.session.getSessions(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const ShimmerListPlaceholder(itemCount: 4);
+        if (!snapshot.hasData) return const ShimmerSurahList(itemCount: 4);
         // Unique surahs in most-recent-first session order.
         final seen = <int>{};
         final recent = <Surah>[];

@@ -49,3 +49,56 @@ class ShimmerListPlaceholder extends StatelessWidget {
     );
   }
 }
+
+/// A content-aware skeleton shaped like a [SurahCard] (avatar circle, two
+/// text lines, trailing block) so the loading state previews the real layout
+/// instead of a plain bar.
+class SurahCardSkeleton extends StatelessWidget {
+  const SurahCardSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.mdRadius,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const ShimmerBox(width: 44, height: 44, borderRadius: BorderRadius.all(Radius.circular(22))),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                ShimmerBox(width: 120, height: 13),
+                SizedBox(height: 8),
+                ShimmerBox(width: 80, height: 11),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          const ShimmerBox(width: 52, height: 20, borderRadius: BorderRadius.all(Radius.circular(6))),
+        ],
+      ),
+    );
+  }
+}
+
+/// A list of [SurahCardSkeleton]s for surah-listing screens.
+class ShimmerSurahList extends StatelessWidget {
+  final int itemCount;
+  const ShimmerSurahList({super.key, this.itemCount = 6});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.all(AppSpacing.screenPadding),
+      itemCount: itemCount,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+      itemBuilder: (_, _) => const SurahCardSkeleton(),
+    );
+  }
+}

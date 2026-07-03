@@ -46,9 +46,9 @@ class _HomeDashboardView extends StatelessWidget {
       appBar: AppBar(
         title: const Text('MakharijPro AI'),
         actions: [
-          AppIconButton(icon: Icons.search, onPressed: () => context.push(RoutePaths.search)),
+          AppIconButton(icon: Icons.search, tooltip: 'Search', onPressed: () => context.push(RoutePaths.search)),
           const SizedBox(width: 8),
-          AppIconButton(icon: Icons.notifications_none_rounded, onPressed: () => context.push(RoutePaths.notifications)),
+          AppIconButton(icon: Icons.notifications_none_rounded, tooltip: 'Notifications', onPressed: () => context.push(RoutePaths.notifications)),
           const SizedBox(width: AppSpacing.sm),
         ],
       ),
@@ -99,7 +99,7 @@ class _HomeDashboardView extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.all(AppSpacing.cardPadding),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+                  gradient: LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: Row(

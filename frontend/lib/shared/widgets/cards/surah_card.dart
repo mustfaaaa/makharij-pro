@@ -20,7 +20,7 @@ class SurahCard extends StatelessWidget {
           Container(
             width: 44,
             height: 44,
-            decoration: const BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
             alignment: Alignment.center,
             child: Text(
               '${surah.number}',
@@ -45,7 +45,7 @@ class SurahCard extends StatelessWidget {
           Text(surah.nameArabic, style: AppTypography.arabicWord(fontSize: 20)),
           if (surah.isBookmarked) ...[
             const SizedBox(width: 6),
-            const Icon(Icons.bookmark, size: 16, color: AppColors.accent),
+            Icon(Icons.bookmark, size: 16, color: AppColors.accent),
           ],
         ],
       ),

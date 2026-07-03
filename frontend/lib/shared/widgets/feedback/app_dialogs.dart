@@ -44,7 +44,7 @@ class AppDialogs {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK', style: TextStyle(color: AppColors.primary)),
+            child: Text('OK', style: TextStyle(color: AppColors.primary)),
           ),
         ],
       ),
