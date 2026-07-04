@@ -9,7 +9,6 @@ import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/animated/staggered_fade_slide.dart';
 import '../../../../shared/widgets/cards/surah_card.dart';
-import '../../../../shared/widgets/inputs/app_search_bar.dart';
 import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
 import '../../../../shared/widgets/states/empty_state_widget.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
@@ -31,16 +30,24 @@ class SurahSelectionScreen extends StatelessWidget {
 
 class _SurahSelectionView extends StatefulWidget {
   const _SurahSelectionView();
-
   @override
   State<_SurahSelectionView> createState() => _SurahSelectionViewState();
 }
 
 class _SurahSelectionViewState extends State<_SurahSelectionView> {
-  String _query = '';
+  String _query      = '';
+  int    _filterIndex = 0; // 0=All, 1=Recent, 2=Favourites
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: BlocBuilder<SurahListCubit, ListState<Surah>>(
+          builder: (context, state) {
+            if (state.status == ListStatus.loading) {
+              return const ShimmerListPlaceholder(itemCount: 8);
+            }
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -66,70 +73,152 @@ class _SurahSelectionViewState extends State<_SurahSelectionView> {
                 onRetry: () => context.read<SurahListCubit>().load(),
               );
             }
+
             final all = state.items;
-            return TabBarView(
-              children: [
-                _AllTab(surahs: all, query: _query, onQuery: (v) => setState(() => _query = v)),
-                _RecentTab(all: all),
-                _FavouritesTab(favourites: all.where((s) => s.isBookmarked).toList()),
-              ],
-            );
+
+            return Column(children: [
+              // ── Header ─────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Row(children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Explore',
+                            style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800)),
+                        Text('${all.length} Surahs of the Holy Quran',
+                            style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text('${all.length} Surahs',
+                        style: const TextStyle(
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12)),
+                  ),
+                ]),
+              ),
+
+              // ── Search ──────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                child: TextField(
+                  onChanged: (v) => setState(() => _query = v),
+                  decoration: const InputDecoration(
+                    hintText: 'Search by name, meaning or number…',
+                    prefixIcon: Icon(Icons.search,
+                        color: AppColors.textSecondary),
+                  ),
+                ),
+              ),
+
+              // ── Filter tabs ─────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Row(children: [
+                  _FilterTab(
+                      label: 'All',
+                      isActive: _filterIndex == 0,
+                      onTap: () => setState(() => _filterIndex = 0)),
+                  const SizedBox(width: 24),
+                  _FilterTab(
+                      label: 'Recent',
+                      isActive: _filterIndex == 1,
+                      onTap: () => setState(() => _filterIndex = 1)),
+                  const SizedBox(width: 24),
+                  _FilterTab(
+                      label: 'Favourites',
+                      isActive: _filterIndex == 2,
+                      onTap: () => setState(() => _filterIndex = 2)),
+                ]),
+              ),
+              const SizedBox(height: 10),
+              const Divider(height: 1, color: AppColors.divider),
+
+              // ── List ────────────────────────────────────────────────
+              Expanded(child: _buildContent(context, all)),
+            ]);
           },
         ),
       ),
     );
   }
+
+  Widget _buildContent(BuildContext context, List<Surah> all) {
+    switch (_filterIndex) {
+      case 1:
+        return _RecentTab(all: all);
+      case 2:
+        final favs = all.where((s) => s.isBookmarked).toList();
+        return favs.isEmpty
+            ? const EmptyStateWidget(
+                icon: Icons.bookmark_border_rounded,
+                title: 'No favourites yet',
+                message:
+                    'Bookmark a surah from its details page to find it here.')
+            : _SurahList(surahs: favs);
+      default: // All tab with search
+        final q = _query.trim().toLowerCase();
+        final filtered = q.isEmpty
+            ? all
+            : all
+                .where((s) =>
+                    s.nameEnglish.toLowerCase().contains(q) ||
+                    s.meaning.toLowerCase().contains(q) ||
+                    s.nameArabic.contains(_query) ||
+                    s.number.toString() == _query.trim())
+                .toList();
+        return filtered.isEmpty
+            ? const EmptyStateWidget(
+                icon: Icons.search_off_rounded,
+                title: 'No surah found',
+                message: 'Try a different name or number.')
+            : _SurahList(surahs: filtered);
+    }
+  }
 }
 
-/// Shared list renderer with the staggered entrance.
+// ── Surah list renderer ───────────────────────────────────────────────────────
 class _SurahList extends StatelessWidget {
   final List<Surah> surahs;
   const _SurahList({required this.surahs});
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, AppSpacing.md, AppSpacing.screenPadding, AppSpacing.lg),
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screenPadding, 14,
+          AppSpacing.screenPadding, AppSpacing.lg),
       itemCount: surahs.length,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
       itemBuilder: (context, i) {
-        final surah = surahs[i];
+        final s = surahs[i];
         return StaggeredFadeSlide(
           index: i,
-          child: SurahCard(surah: surah, onTap: () => context.push(RoutePaths.surahDetailsPath(surah.number))),
+          child: SurahCard(
+              surah: s,
+              onTap: () =>
+                  context.push(RoutePaths.surahDetailsPath(s.number))),
         );
       },
     );
   }
 }
 
-class _AllTab extends StatelessWidget {
-  final List<Surah> surahs;
-  final String query;
-  final ValueChanged<String> onQuery;
-  const _AllTab({required this.surahs, required this.query, required this.onQuery});
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = surahs
-        .where((s) => s.nameEnglish.toLowerCase().contains(query.toLowerCase()) || s.number.toString() == query)
-        .toList();
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, AppSpacing.sm, AppSpacing.screenPadding, 0),
-          child: AppSearchBar(hint: 'Search surah name or number', onChanged: onQuery),
-        ),
-        Expanded(
-          child: filtered.isEmpty
-              ? const EmptyStateWidget(icon: Icons.search_off_rounded, title: 'No surah found', message: 'Try a different name or number.')
-              : _SurahList(surahs: filtered),
-        ),
-      ],
-    );
-  }
-}
-
+// ── Recent tab (uses session history — existing logic kept) ───────────────────
 class _RecentTab extends StatelessWidget {
   final List<Surah> all;
   const _RecentTab({required this.all});
@@ -139,6 +228,10 @@ class _RecentTab extends StatelessWidget {
     return FutureBuilder<List<SessionResult>>(
       future: Services.session.getSessions(),
       builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const ShimmerListPlaceholder(itemCount: 4);
+        }
+        final seen   = <int>{};
         if (!snapshot.hasData) return const ShimmerSurahList(itemCount: 4);
         // Unique surahs in most-recent-first session order.
         final seen = <int>{};
@@ -153,7 +246,8 @@ class _RecentTab extends StatelessWidget {
           return const EmptyStateWidget(
             icon: Icons.history_rounded,
             title: 'No recent recitations',
-            message: 'Surahs you recite will appear here for quick access.',
+            message:
+                'Surahs you recite will appear here for quick access.',
           );
         }
         return _SurahList(surahs: recent);
@@ -162,19 +256,38 @@ class _RecentTab extends StatelessWidget {
   }
 }
 
-class _FavouritesTab extends StatelessWidget {
-  final List<Surah> favourites;
-  const _FavouritesTab({required this.favourites});
+// ── Filter tab ────────────────────────────────────────────────────────────────
+class _FilterTab extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+  const _FilterTab(
+      {required this.label, required this.isActive, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    if (favourites.isEmpty) {
-      return const EmptyStateWidget(
-        icon: Icons.bookmark_border_rounded,
-        title: 'No favourites yet',
-        message: 'Bookmark a surah from its details page to find it here.',
-      );
-    }
-    return _SurahList(surahs: favourites);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text(label,
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight:
+                    isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary)),
+        const SizedBox(height: 6),
+        Container(
+          height: 2,
+          width: 32,
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.success : Colors.transparent,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ]),
+    );
   }
 }

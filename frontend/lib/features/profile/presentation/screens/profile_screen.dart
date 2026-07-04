@@ -32,6 +32,19 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.primary),
+        title: const Text('Profile',
+            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+        automaticallyImplyLeading: false,
+        actions: [
+          AppIconButton(icon: Icons.settings_outlined, iconColor: AppColors.primary, onPressed: () => context.push(RoutePaths.settings)),
+          const SizedBox(width: AppSpacing.sm),
+        ],
+      ),
+      body: ResponsiveCenter(child: FutureBuilder<UserProfile>(
       body: AsyncView<UserProfile>(
         future: Services.user.getCurrentUser(),
         errorMessage: 'Could not load your profile.',
@@ -179,6 +192,15 @@ class _ProfileHeader extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const CircleAvatar(radius: 44, backgroundColor: AppColors.primary, child: Icon(Icons.person, size: 44, color: Colors.white)),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(user.name, style: Theme.of(context).textTheme.headlineSmall),
+                    Text(user.email, style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: AppSpacing.sm),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(color: AppColors.accentSurface, borderRadius: BorderRadius.circular(20)),
+                      child: Text(_levelLabel(user.level), style: const TextStyle(color: AppColors.textOnAccent, fontWeight: FontWeight.w600, fontSize: 12)),
                     const Icon(Icons.workspace_premium_rounded, size: 14, color: Colors.white),
                     const SizedBox(width: 4),
                     Text(
