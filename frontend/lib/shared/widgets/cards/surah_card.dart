@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../models/surah.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_typography.dart';
@@ -16,7 +17,6 @@ class SurahCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -33,25 +33,11 @@ class SurahCard extends StatelessWidget {
               width: 44,
               height: 44,
               alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                  color: AppColors.primary, shape: BoxShape.circle),
+              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
               child: Text(
                 '${surah.number}',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
               ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
-            alignment: Alignment.center,
-            child: Text(
-              '${surah.number}',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.primary),
             ),
             const SizedBox(width: 14),
 
@@ -60,14 +46,11 @@ class SurahCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(surah.nameArabic,
-                      textDirection: TextDirection.rtl,
-                      style: AppTypography.arabicWord(fontSize: 19)),
+                  Text(surah.nameArabic, textDirection: TextDirection.rtl, style: AppTypography.arabicWord(fontSize: 19)),
                   const SizedBox(height: 3),
                   Text(
                     '${surah.nameEnglish} / ${surah.meaning}',
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 13),
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -79,41 +62,23 @@ class SurahCard extends StatelessWidget {
             // Right: practiced badge OR ayat count
             if (surah.lastScore != null)
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.success,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(20)),
                 child: Text(
                   'Practiced ${surah.lastScore!.round()}%',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700),
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
                 ),
               )
             else
               Text(
                 '${surah.ayahCount} Ayat',
-                style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
               ),
 
-            // Bookmark icon
             if (surah.isBookmarked) ...[
               const SizedBox(width: 6),
-              const Icon(Icons.bookmark_rounded,
-                  size: 16, color: AppColors.primary),
+              const Icon(Icons.bookmark_rounded, size: 16, color: AppColors.primary),
             ],
-          ),
-          const SizedBox(width: 8),
-          Text(surah.nameArabic, style: AppTypography.arabicWord(fontSize: 20)),
-          if (surah.isBookmarked) ...[
-            const SizedBox(width: 6),
-            Icon(Icons.bookmark, size: 16, color: AppColors.accent),
           ],
         ),
       ),
