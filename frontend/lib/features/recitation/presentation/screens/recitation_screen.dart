@@ -68,7 +68,7 @@ class _RecitationScreenState extends State<RecitationScreen> {
                 top: false,
                 child: Container(
                   padding: const EdgeInsets.all(AppSpacing.screenPadding),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.surface,
                     border: Border(top: BorderSide(color: AppColors.border)),
                   ),

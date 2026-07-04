@@ -20,7 +20,7 @@ class AboutScreen extends StatelessWidget {
                 Container(
                   width: 88,
                   height: 88,
-                  decoration: const BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
                   alignment: Alignment.center,
                   child: Text('م', style: AppTypography.arabicVerse(fontSize: 38, color: AppColors.primary)),
                 ),

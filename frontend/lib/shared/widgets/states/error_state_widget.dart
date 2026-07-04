@@ -29,7 +29,7 @@ class ErrorStateWidget extends StatelessWidget {
               height: 88,
               decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.08), shape: BoxShape.circle),
               alignment: Alignment.center,
-              child: const Icon(Icons.error_outline_rounded, size: 40, color: AppColors.error),
+              child: Icon(Icons.error_outline_rounded, size: 40, color: AppColors.error),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(title, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),

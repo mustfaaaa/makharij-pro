@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
 import '../dev/component_gallery_screen.dart';
@@ -69,8 +70,11 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const ForgotPasswordScreen()),
     ),
 
-    GoRoute(path: RoutePaths.devStyleGuide, name: RouteNames.devStyleGuide, builder: (c, s) => const StyleGuideScreen()),
-    GoRoute(path: RoutePaths.devComponents, name: RouteNames.devComponents, builder: (c, s) => const ComponentGalleryScreen()),
+    // Internal design-reference screens are only routable in debug builds.
+    if (kDebugMode) ...[
+      GoRoute(path: RoutePaths.devStyleGuide, name: RouteNames.devStyleGuide, builder: (c, s) => const StyleGuideScreen()),
+      GoRoute(path: RoutePaths.devComponents, name: RouteNames.devComponents, builder: (c, s) => const ComponentGalleryScreen()),
+    ],
 
     GoRoute(
       path: RoutePaths.surahDetails,

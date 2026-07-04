@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/cubit/theme_cubit.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/feedback/app_dialogs.dart';
 import '../../../../shared/widgets/responsive_center.dart';
@@ -17,10 +19,10 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notifications = true;
-  bool _darkMode = false;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeCubit>().state == ThemeMode.dark;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ResponsiveCenter(child: ListView(
@@ -36,7 +38,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SettingsTile(
             icon: Icons.dark_mode_outlined,
             title: 'Dark Mode',
-            trailing: Switch(value: _darkMode, onChanged: (v) => setState(() => _darkMode = v), activeThumbColor: AppColors.primary),
+            trailing: Switch(
+              value: isDark,
+              onChanged: (_) => context.read<ThemeCubit>().toggle(),
+              activeThumbColor: AppColors.primary,
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           Text('Account', style: Theme.of(context).textTheme.titleMedium),

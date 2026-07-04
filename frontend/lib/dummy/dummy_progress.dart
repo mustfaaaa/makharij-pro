@@ -15,3 +15,12 @@ final Map<String, double> dummyErrorTypeBreakdown = {
   'Shaddah': 18,
   'Madd': 26,
 };
+
+/// Per-rule mastery (0..100) for the profile radar chart.
+final Map<String, double> dummyTajweedMastery = {
+  'Makhraj': 82,
+  'Ghunnah': 68,
+  'Shaddah': 90,
+  'Madd': 74,
+  'Qalqalah': 79,
+};

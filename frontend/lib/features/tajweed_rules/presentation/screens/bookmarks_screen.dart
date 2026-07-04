@@ -5,6 +5,7 @@ import '../../../../models/surah.dart';
 import '../../../../models/tajweed_rule.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
+import '../../../../shared/widgets/async_view.dart';
 import '../../../../shared/widgets/cards/rule_card.dart';
 import '../../../../shared/widgets/cards/surah_card.dart';
 import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
@@ -38,11 +39,13 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Bookmarks')),
-      body: ResponsiveCenter(child: FutureBuilder<(List<Surah>, List<TajweedRule>)>(
+      body: ResponsiveCenter(child: AsyncView<(List<Surah>, List<TajweedRule>)>(
         future: _future,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return const ShimmerListPlaceholder(itemCount: 4);
-          final (surahs, rules) = snapshot.data!;
+        errorMessage: 'Could not load your bookmarks.',
+        onRetry: () => setState(() => _future = _load()),
+        loading: const ShimmerSurahList(itemCount: 4),
+        builder: (context, data) {
+          final (surahs, rules) = data;
           if (surahs.isEmpty && rules.isEmpty) {
             return const EmptyStateWidget(
               icon: Icons.bookmark_border_rounded,

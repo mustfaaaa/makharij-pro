@@ -33,7 +33,7 @@ class _ContactScreenState extends State<ContactScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
                 Icon(Icons.mail_outline, color: AppColors.primary, size: 18),
                 SizedBox(width: 8),

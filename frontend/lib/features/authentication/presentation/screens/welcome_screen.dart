@@ -23,7 +23,7 @@ class WelcomeScreen extends StatelessWidget {
               Container(
                 width: 120,
                 height: 120,
-                decoration: const BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
                 alignment: Alignment.center,
                 child: Text('م', style: AppTypography.arabicVerse(fontSize: 52, color: AppColors.primary)),
               ),
