@@ -77,7 +77,7 @@ class _ProfileBody extends StatelessWidget {
                   children: [
                     Expanded(child: ProgressCard(label: 'Sessions', value: '${user.totalSessions}', icon: Icons.graphic_eq_rounded)),
                     const SizedBox(width: AppSpacing.sm),
-                    Expanded(child: ProgressCard(label: 'Streak', value: '${user.currentStreak}d', icon: Icons.local_fire_department_rounded)),
+                    Expanded(child: ProgressCard(label: 'Streak', value: '${user.currentStreak}d', icon: Icons.local_fire_department_rounded, highlight: true)),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(child: ProgressCard(label: 'Accuracy', value: '${user.overallAccuracy.toStringAsFixed(0)}%', icon: Icons.percent_rounded)),
                   ],
@@ -137,7 +137,7 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -158,7 +158,7 @@ class _ProfileHeader extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.accentLight, width: 2),
                 ),
-                child: const CircleAvatar(
+                child: CircleAvatar(
                   radius: 38,
                   backgroundColor: Colors.white,
                   child: Icon(Icons.person, size: 40, color: AppColors.primary),

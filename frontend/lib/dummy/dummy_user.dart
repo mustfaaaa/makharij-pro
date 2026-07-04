@@ -9,4 +9,5 @@ final UserProfile dummyUser = UserProfile(
   totalSessions: 47,
   targetSurahs: const ['Al-Baqarah', 'Al-Kahf', 'Ya-Sin'],
   joinedAt: DateTime(2026, 2, 14),
+  hasanahCount: 84730,
 );

@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/cubit/theme_cubit.dart';
+import '../../../../app/cubit/verse_text_size_cubit.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/feedback/app_dialogs.dart';
+import '../../../../shared/widgets/pickers/verse_text_size_picker.dart';
 import '../../../../shared/widgets/responsive_center.dart';
 import '../../../../shared/widgets/tiles/settings_tile.dart';
 import '../../../../theme/app_colors.dart';
@@ -23,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeCubit>().state == ThemeMode.dark;
+    final verseSize = context.watch<VerseTextSizeCubit>().state;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ResponsiveCenter(child: ListView(
@@ -43,6 +46,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (_) => context.read<ThemeCubit>().toggle(),
               activeThumbColor: AppColors.primary,
             ),
+          ),
+          SettingsTile(
+            icon: Icons.format_size_rounded,
+            title: 'Verse Text Size',
+            subtitle: 'Applies to recitation screens',
+            trailing: Text(verseSize.label, style: TextStyle(color: AppColors.textSecondary)),
+            onTap: () => VerseTextSizePicker.show(context),
           ),
           const SizedBox(height: AppSpacing.lg),
           Text('Account', style: Theme.of(context).textTheme.titleMedium),

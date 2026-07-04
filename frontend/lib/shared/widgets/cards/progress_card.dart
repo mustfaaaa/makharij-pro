@@ -11,6 +11,7 @@ class ProgressCard extends StatelessWidget {
   final IconData icon;
   final String? trend;
   final bool trendUp;
+  final bool highlight;
 
   const ProgressCard({
     super.key,
@@ -19,6 +20,7 @@ class ProgressCard extends StatelessWidget {
     required this.icon,
     this.trend,
     this.trendUp = true,
+    this.highlight = false,
   });
 
   @override
@@ -42,7 +44,24 @@ class ProgressCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(value, style: Theme.of(context).textTheme.headlineSmall),
+          if (highlight)
+            Transform.translate(
+              offset: const Offset(-8, 0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.accent.withValues(alpha: 0.24), AppColors.accent.withValues(alpha: 0.0)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(value, style: Theme.of(context).textTheme.headlineSmall),
+              ),
+            )
+          else
+            Text(value, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 2),
           Text(label, style: Theme.of(context).textTheme.bodySmall),
         ],

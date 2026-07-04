@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../shared/widgets/illustrations/islamic_arch_header.dart';
 import '../../../../shared/widgets/inputs/custom_text_field.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
@@ -64,6 +65,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const IslamicArchHeader(),
+              const SizedBox(height: AppSpacing.lg),
               Text('Create your account', style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: AppSpacing.xs),
               Text('Start learning correct Tajweed today', style: Theme.of(context).textTheme.bodyMedium),

@@ -5,7 +5,9 @@ import '../features/recitation/presentation/bloc/recitation_cubit.dart';
 import '../routes/app_router.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
+import 'cubit/hasanah_cubit.dart';
 import 'cubit/theme_cubit.dart';
+import 'cubit/verse_text_size_cubit.dart';
 
 class MakharijProApp extends StatelessWidget {
   const MakharijProApp({super.key});
@@ -15,6 +17,8 @@ class MakharijProApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => ThemeCubit()),
+        BlocProvider(create: (_) => VerseTextSizeCubit()),
+        BlocProvider(create: (_) => HasanahCubit()),
         // App-level singleton: the recitation flow spans four pushed routes
         // (Recitation -> Listening -> Processing -> Result), so its state
         // machine must survive navigation between them.

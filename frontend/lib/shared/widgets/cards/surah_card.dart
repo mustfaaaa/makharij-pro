@@ -22,7 +22,7 @@ class SurahCard extends StatelessWidget {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: Offset(0, 3)),
           ],
         ),
@@ -33,7 +33,7 @@ class SurahCard extends StatelessWidget {
               width: 44,
               height: 44,
               alignment: Alignment.center,
-              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
               child: Text(
                 '${surah.number}',
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
@@ -50,7 +50,7 @@ class SurahCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     '${surah.nameEnglish} / ${surah.meaning}',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -72,12 +72,12 @@ class SurahCard extends StatelessWidget {
             else
               Text(
                 '${surah.ayahCount} Ayat',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
               ),
 
             if (surah.isBookmarked) ...[
               const SizedBox(width: 6),
-              const Icon(Icons.bookmark_rounded, size: 16, color: AppColors.primary),
+              Icon(Icons.bookmark_rounded, size: 16, color: AppColors.primary),
             ],
           ],
         ),

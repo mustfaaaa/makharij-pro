@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/feedback/app_snackbar.dart';
+import '../../../../shared/widgets/illustrations/islamic_arch_header.dart';
 import '../../../../shared/widgets/inputs/custom_text_field.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
@@ -52,6 +53,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const IslamicArchHeader(height: 140),
+              const SizedBox(height: AppSpacing.md),
               Container(
                 width: 72,
                 height: 72,

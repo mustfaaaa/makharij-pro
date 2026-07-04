@@ -56,9 +56,32 @@ class DummySessionService implements SessionService {
       accuracyScore: score,
       duration: Duration(minutes: 1 + _random.nextInt(6), seconds: _random.nextInt(60)),
       errors: errors,
+      hasanahEarned: _lettersRecited * 10,
     );
     _sessions.insert(0, result);
     return result;
+  }
+
+  /// Total Arabic letters across the (dummy) recited passage, diacritics
+  /// excluded — ten hasanah per letter, per the hadith (Tirmidhi 2910).
+  static final int _lettersRecited = dummyFatihahAyahs.fold<int>(
+    0,
+    (sum, ayah) => sum + _countArabicLetters(ayah.arabicText),
+  );
+
+  static int _countArabicLetters(String text) {
+    // Strip Arabic combining diacritics (harakat) so only base letters are
+    // counted: U+0610-061A, U+064B-065F, U+0670, U+06D6-06ED, plus spaces.
+    final buffer = StringBuffer();
+    for (final code in text.runes) {
+      final isDiacritic = (code >= 0x0610 && code <= 0x061A) ||
+          (code >= 0x064B && code <= 0x065F) ||
+          code == 0x0670 ||
+          (code >= 0x06D6 && code <= 0x06ED) ||
+          code == 0x0020;
+      if (!isDiacritic) buffer.writeCharCode(code);
+    }
+    return buffer.length;
   }
 
   String _explanationFor(TajweedErrorType type) {

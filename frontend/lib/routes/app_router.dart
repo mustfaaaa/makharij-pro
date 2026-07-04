@@ -193,8 +193,12 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const ContactScreen()),
     ),
 
-    StatefulShellRoute.indexedStack(
+    StatefulShellRoute(
       builder: (context, state, navigationShell) => AppShell(navigationShell: navigationShell),
+      navigatorContainerBuilder: (context, navigationShell, children) => AnimatedBranchContainer(
+        currentIndex: navigationShell.currentIndex,
+        children: children,
+      ),
       branches: [
         StatefulShellBranch(routes: [
           GoRoute(path: RoutePaths.home, name: RouteNames.home, builder: (c, s) => const HomeDashboardScreen()),

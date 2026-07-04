@@ -41,8 +41,8 @@ class _ProgressDashboardView extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.primary),
-        title: const Text('Progress', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+        iconTheme: IconThemeData(color: AppColors.primary),
+        title: Text('Progress', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
         automaticallyImplyLeading: false,
       ),
       body: ResponsiveCenter(
@@ -100,13 +100,13 @@ class _ProgressDashboardView extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 // Accuracy breakdown
-                const Text('Tajweed Breakdown',
+                Text('Tajweed Breakdown',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: AppTheme.cardDecoration(),
-                  child: const Column(children: [
+                  child: Column(children: [
                     _AccuracyRow(label: 'Makhraj', percent: 0.82, color: AppColors.primary),
                     SizedBox(height: 14),
                     _AccuracyRow(label: 'Ghunnah', percent: 0.70, color: Color(0xFF5B8DEF)),
@@ -176,7 +176,7 @@ class _ProgressDashboardView extends StatelessWidget {
                     border: Border.all(color: AppColors.primary.withValues(alpha: 0.20)),
                   ),
                   child: Row(children: [
-                    const Icon(Icons.emoji_events_rounded, color: AppColors.primary),
+                    Icon(Icons.emoji_events_rounded, color: AppColors.primary),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text('4 of 6 achievements unlocked', style: Theme.of(context).textTheme.bodyMedium),
@@ -225,16 +225,16 @@ class _StatCard extends StatelessWidget {
             Icon(icon, color: iconColor, size: 20),
             if (trend != null)
               Row(children: [
-                const Icon(Icons.trending_up_rounded, size: 12, color: AppColors.success),
+                Icon(Icons.trending_up_rounded, size: 12, color: AppColors.success),
                 const SizedBox(width: 2),
-                Text(trend!, style: const TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.w600)),
+                Text(trend!, style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.w600)),
               ]),
           ],
         ),
         const SizedBox(height: 10),
-        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ]),
     );
   }
@@ -251,7 +251,7 @@ class _AccuracyRow extends StatelessWidget {
     return Row(children: [
       SizedBox(
         width: 72,
-        child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
       ),
       Expanded(
         child: ClipRRect(

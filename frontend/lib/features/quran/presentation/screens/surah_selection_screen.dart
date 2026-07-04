@@ -66,10 +66,10 @@ class _SurahSelectionViewState extends State<_SurahSelectionView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Explore',
+                        Text('Explore',
                             style: TextStyle(color: AppColors.primary, fontSize: 22, fontWeight: FontWeight.w800)),
                         Text('${all.length} Surahs of the Holy Quran',
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                       ],
                     ),
                   ),
@@ -80,7 +80,7 @@ class _SurahSelectionViewState extends State<_SurahSelectionView> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text('${all.length} Surahs',
-                        style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700, fontSize: 12)),
+                        style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700, fontSize: 12)),
                   ),
                 ]),
               ),
@@ -90,7 +90,7 @@ class _SurahSelectionViewState extends State<_SurahSelectionView> {
                 padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                 child: TextField(
                   onChanged: (v) => setState(() => _query = v),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Search by name, meaning or number…',
                     prefixIcon: Icon(Icons.search, color: AppColors.textSecondary),
                   ),
@@ -109,7 +109,7 @@ class _SurahSelectionViewState extends State<_SurahSelectionView> {
                 ]),
               ),
               const SizedBox(height: 10),
-              const Divider(height: 1, color: AppColors.divider),
+              Divider(height: 1, color: AppColors.divider),
 
               // List
               Expanded(child: _buildContent(context, all)),

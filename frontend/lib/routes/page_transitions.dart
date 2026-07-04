@@ -17,3 +17,37 @@ CustomTransitionPage<void> fadeSlidePage({required LocalKey key, required Widget
     },
   );
 }
+
+/// Custom container for [StatefulShellRoute] branch Navigators that
+/// crossfades between bottom-nav tabs (a Material "fade through" motion —
+/// fade + gentle scale) instead of the default [IndexedStack]'s instant cut.
+/// All branch Navigators stay mounted throughout, exactly like
+/// [IndexedStack], so each tab's navigation state is preserved.
+class AnimatedBranchContainer extends StatelessWidget {
+  final int currentIndex;
+  final List<Widget> children;
+  const AnimatedBranchContainer({super.key, required this.currentIndex, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        for (int i = 0; i < children.length; i++)
+          AnimatedScale(
+            scale: i == currentIndex ? 1 : 1.04,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            child: AnimatedOpacity(
+              opacity: i == currentIndex ? 1 : 0,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              child: IgnorePointer(
+                ignoring: i != currentIndex,
+                child: TickerMode(enabled: i == currentIndex, child: children[i]),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}

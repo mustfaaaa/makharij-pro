@@ -5,7 +5,7 @@ import '../shared/widgets/navigation/app_bottom_nav.dart';
 
 /// Wraps the four bottom-nav tabs (Home, Quran, Progress, Profile) in a
 /// single scaffold with a persistent [AppBottomNav], as required by
-/// [StatefulShellRoute.indexedStack].
+/// [StatefulShellRoute].
 class AppShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 

@@ -5,6 +5,7 @@ import '../../../../core/utils/validators.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/buttons/google_sign_in_button.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../shared/widgets/illustrations/islamic_arch_header.dart';
 import '../../../../shared/widgets/inputs/custom_text_field.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
@@ -71,6 +72,8 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const IslamicArchHeader(),
+              const SizedBox(height: AppSpacing.lg),
               Text('Welcome back', style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: AppSpacing.xs),
               Text('Sign in to continue your Tajweed journey', style: Theme.of(context).textTheme.bodyMedium),

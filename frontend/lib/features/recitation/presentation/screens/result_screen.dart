@@ -2,19 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/cubit/hasanah_cubit.dart';
 import '../../../../dummy/dummy_ayahs.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/buttons/outlined_app_button.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../shared/widgets/hasanah/hasanah_earned_banner.dart';
 import '../../../../shared/widgets/score_badge.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
 import '../bloc/recitation_cubit.dart';
 
-class ResultScreen extends StatelessWidget {
+class ResultScreen extends StatefulWidget {
   final int surahNumber;
   const ResultScreen({super.key, required this.surahNumber});
+
+  @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+  bool _hasanahCredited = false;
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +32,13 @@ class ResultScreen extends StatelessWidget {
       // Guards against a direct deep-link to this route without going
       // through the Listening -> Processing flow first.
       return const Scaffold(body: Center(child: Text('No result available for this session.')));
+    }
+
+    if (!_hasanahCredited) {
+      _hasanahCredited = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.read<HasanahCubit>().addHasanah(result.hasanahEarned);
+      });
     }
 
     final color = scoreColor(result.accuracyScore);
@@ -62,6 +78,8 @@ class ResultScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.lg),
+                  HasanahEarnedBanner(amount: result.hasanahEarned),
                   const SizedBox(height: AppSpacing.xl),
                   Text(
                     result.errors.isEmpty ? 'No errors detected — excellent recitation!' : '${result.errors.length} words need attention',
@@ -112,8 +130,8 @@ class ResultScreen extends StatelessWidget {
                         child: OutlinedAppButton(
                           label: 'Practice Again',
                           onPressed: () {
-                            context.read<RecitationCubit>().beginSession(surahNumber);
-                            context.pushReplacement(RoutePaths.recitationPath(surahNumber));
+                            context.read<RecitationCubit>().beginSession(widget.surahNumber);
+                            context.pushReplacement(RoutePaths.recitationPath(widget.surahNumber));
                           },
                         ),
                       ),

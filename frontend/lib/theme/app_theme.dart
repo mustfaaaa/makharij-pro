@@ -34,7 +34,7 @@ abstract class AppTheme {
         scrolledUnderElevation: 0.5,
         centerTitle: false,
         titleTextStyle: textTheme.titleLarge,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
       ),
       cardTheme: CardThemeData(
         color: AppColors.surface,
@@ -42,7 +42,7 @@ abstract class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadii.mdRadius,
-          side: const BorderSide(color: AppColors.border, width: 1),
+          side: BorderSide(color: AppColors.border, width: 1),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -61,7 +61,7 @@ abstract class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
-          side: const BorderSide(color: AppColors.primary, width: 1.5),
+          side: BorderSide(color: AppColors.primary, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(borderRadius: AppRadii.mdRadius),
@@ -80,12 +80,12 @@ abstract class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
         hintStyle: textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
         labelStyle: textTheme.bodyMedium,
-        border: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: const BorderSide(color: AppColors.border)),
-        enabledBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: const BorderSide(color: AppColors.border)),
-        focusedBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: const BorderSide(color: AppColors.primary, width: 1.6)),
-        errorBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: const BorderSide(color: AppColors.error)),
-        focusedErrorBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: const BorderSide(color: AppColors.error, width: 1.6)),
-        errorStyle: const TextStyle(color: AppColors.error, fontSize: 12),
+        border: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.border)),
+        enabledBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.border)),
+        focusedBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.primary, width: 1.6)),
+        errorBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.error)),
+        focusedErrorBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.error, width: 1.6)),
+        errorStyle: TextStyle(color: AppColors.error, fontSize: 12),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.primarySurface,
@@ -94,7 +94,7 @@ abstract class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: AppRadii.pillRadius),
         side: BorderSide.none,
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
+      bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.lg)),
@@ -127,7 +127,7 @@ abstract class AppTheme {
           return IconThemeData(color: selected ? AppColors.primary : AppColors.textMuted);
         }),
       ),
-      dividerTheme: const DividerThemeData(color: AppColors.divider, thickness: 1, space: 1),
+      dividerTheme: DividerThemeData(color: AppColors.divider, thickness: 1, space: 1),
     );
   }
 
@@ -137,7 +137,7 @@ abstract class AppTheme {
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(color: AppColors.border),
-      boxShadow: const [
+      boxShadow: [
         BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: Offset(0, 4)),
       ],
     );

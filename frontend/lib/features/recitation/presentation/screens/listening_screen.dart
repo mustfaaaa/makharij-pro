@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/cubit/verse_text_size_cubit.dart';
 import '../../../../dummy/dummy_ayahs.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/buttons/app_icon_button.dart';
@@ -148,10 +149,11 @@ class _IlluminatedWord extends StatelessWidget {
     // Dim ink -> green as the sweep lands -> settled gold once passed.
     final color = Color.lerp(AppColors.textMuted, passed ? AppColors.accent : AppColors.primary, t)!;
     final glow = (t * (1 - (lit - 1).clamp(0.0, 1.0))).clamp(0.0, 1.0);
+    final scale = context.watch<VerseTextSizeCubit>().state.scale;
 
     return Text(
       word,
-      style: AppTypography.arabicVerse(fontSize: 28, color: color).copyWith(
+      style: AppTypography.arabicVerse(fontSize: 28 * scale, color: color).copyWith(
         shadows: glow > 0.05
             ? [Shadow(color: AppColors.accent.withValues(alpha: glow * 0.55), blurRadius: 14 * glow)]
             : null,
