@@ -31,10 +31,14 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.primary),
+        title: const Text('Profile',
+            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
         automaticallyImplyLeading: false,
         actions: [
-          AppIconButton(icon: Icons.settings_outlined, onPressed: () => context.push(RoutePaths.settings)),
+          AppIconButton(icon: Icons.settings_outlined, iconColor: AppColors.primary, onPressed: () => context.push(RoutePaths.settings)),
           const SizedBox(width: AppSpacing.sm),
         ],
       ),
@@ -49,7 +53,7 @@ class ProfileScreen extends StatelessWidget {
               Center(
                 child: Column(
                   children: [
-                    const CircleAvatar(radius: 44, backgroundColor: AppColors.primarySurface, child: Icon(Icons.person, size: 44, color: AppColors.primary)),
+                    const CircleAvatar(radius: 44, backgroundColor: AppColors.primary, child: Icon(Icons.person, size: 44, color: Colors.white)),
                     const SizedBox(height: AppSpacing.sm),
                     Text(user.name, style: Theme.of(context).textTheme.headlineSmall),
                     Text(user.email, style: Theme.of(context).textTheme.bodySmall),

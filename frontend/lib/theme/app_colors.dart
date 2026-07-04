@@ -1,52 +1,56 @@
 import 'package:flutter/material.dart';
 
-/// Central color palette. Calm, minimal, Islamic-modern: green primary,
-/// gold accent, off-white surfaces.
+/// Central colour palette — gold/cream Islamic-modern theme.
 abstract class AppColors {
-  // Brand
-  static const Color primary = Color(0xFF1F6E4E);
-  static const Color primaryDark = Color(0xFF15503A);
-  static const Color primaryLight = Color(0xFF3E9370);
-  static const Color primarySurface = Color(0xFFE6F0EA);
+  // ── Brand: Muted Gold ─────────────────────────────────────────────────────
+  static const Color primary        = Color(0xFFC2A366); // main gold
+  static const Color primaryDark    = Color(0xFFB08F4F); // deeper gold
+  static const Color primaryLight   = Color(0xFFD4B87A); // lighter gold
+  static const Color primarySurface = Color(0xFFF7EDD6); // very light gold wash
 
-  static const Color accent = Color(0xFFC9A227);
-  static const Color accentLight = Color(0xFFE8D48A);
+  static const Color accent        = Color(0xFFC9A227); // warm amber accent
+  static const Color accentLight   = Color(0xFFE8D48A);
   static const Color accentSurface = Color(0xFFF7EFD6);
 
-  // Neutrals — warm cream / beige palette
-  static const Color background = Color(0xFFF6EFE1); // warm cream base
-  static const Color cream = Color(0xFFF1E7D3); // deeper beige for immersive/full screens
-  static const Color creamDark = Color(0xFFE8DBC2); // beige used behind cream for depth
-  static const Color surface = Color(0xFFFFFDF8); // near-white card, warmed slightly
-  static const Color surfaceAlt = Color(0xFFF0E9DA);
-  static const Color border = Color(0xFFE3D9C4);
-  static const Color divider = Color(0xFFEBE2D1);
+  // ── Neutrals: warm cream/parchment ────────────────────────────────────────
+  static const Color background  = Color(0xFFFBF8F3); // warm cream base
+  static const Color cream       = Color(0xFFF5F0E8); // deeper cream
+  static const Color creamDark   = Color(0xFFEDE5D5);
+  static const Color surface     = Color(0xFFFFFFFF); // white card
+  static const Color surfaceAlt  = Color(0xFFF7F3EC);
+  static const Color border      = Color(0xFFEDE8DE);
+  static const Color divider     = Color(0xFFEDE8DE);
 
-  // Text
-  static const Color textPrimary = Color(0xFF1C2321);
-  static const Color textSecondary = Color(0xFF5B6360);
-  static const Color textMuted = Color(0xFF8A9088);
+  // ── Text ─────────────────────────────────────────────────────────────────
+  static const Color textPrimary   = Color(0xFF2D2A26);
+  static const Color textSecondary = Color(0xFF8A8378);
+  static const Color textMuted     = Color(0xFFADA89F);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
-  static const Color textOnAccent = Color(0xFF1C2321);
+  static const Color textOnAccent  = Color(0xFF2D2A26);
 
-  // Semantic
-  static const Color success = Color(0xFF2E9B5C);
-  static const Color warning = Color(0xFFCE8A1B);
-  static const Color error = Color(0xFFC24444);
-  static const Color info = Color(0xFF3B7DBF);
+  // ── Semantic ──────────────────────────────────────────────────────────────
+  static const Color success      = Color(0xFF00875A);
+  static const Color successLight = Color(0xFFE6F4EF);
+  static const Color warning      = Color(0xFFCE8A1B);
+  static const Color error        = Color(0xFFD9383A);
+  static const Color errorLight   = Color(0xFFFCEAEA);
+  static const Color info         = Color(0xFF3B7DBF);
 
-  // Tajweed error highlight (used to mark mispronounced words)
-  static const Color errorHighlight = Color(0xFFE86A6A);
-  static const Color errorHighlightBg = Color(0xFFFBE7E7);
+  // ── Tajweed highlight ─────────────────────────────────────────────────────
+  static const Color errorHighlight   = Color(0xFFD9383A);
+  static const Color errorHighlightBg = Color(0xFFFCEAEA);
 
-  // Score bands
-  static const Color scoreExcellent = Color(0xFF2E9B5C);
-  static const Color scoreGood = Color(0xFF7CA83B);
-  static const Color scoreAverage = Color(0xFFCE8A1B);
-  static const Color scorePoor = Color(0xFFC24444);
+  // ── Score bands ───────────────────────────────────────────────────────────
+  static const Color scoreExcellent = Color(0xFF00875A);
+  static const Color scoreGood      = Color(0xFF7CA83B);
+  static const Color scoreAverage   = Color(0xFFCE8A1B);
+  static const Color scorePoor      = Color(0xFFD9383A);
 
-  // Dark theme (minimal, refined later)
-  static const Color darkBackground = Color(0xFF11150F);
-  static const Color darkSurface = Color(0xFF1A1F17);
-  static const Color darkTextPrimary = Color(0xFFEDEEE9);
+  // ── Dark (stub) ───────────────────────────────────────────────────────────
+  static const Color darkBackground  = Color(0xFF1A1610);
+  static const Color darkSurface     = Color(0xFF252018);
+  static const Color darkTextPrimary = Color(0xFFEDEBE5);
+
+  // ── Shadow ───────────────────────────────────────────────────────────────
+  static const Color cardShadow = Color(0x08000000);
 }

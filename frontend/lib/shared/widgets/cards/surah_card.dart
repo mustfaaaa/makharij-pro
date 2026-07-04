@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-
 import '../../../models/surah.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_typography.dart';
-import 'app_card.dart';
 
+/// Surah list card — gold number badge, Arabic name, practiced % badge or ayat count.
 class SurahCard extends StatelessWidget {
   final Surah surah;
   final VoidCallback? onTap;
@@ -13,41 +12,94 @@ class SurahCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
       onTap: onTap,
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: const BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
-            alignment: Alignment.center,
-            child: Text(
-              '${surah.number}',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.primary),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(surah.nameEnglish, style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 2),
-                Text(
-                  '${surah.meaning} · ${surah.ayahCount} Ayahs',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(surah.nameArabic, style: AppTypography.arabicWord(fontSize: 20)),
-          if (surah.isBookmarked) ...[
-            const SizedBox(width: 6),
-            const Icon(Icons.bookmark, size: 16, color: AppColors.accent),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: Offset(0, 3)),
           ],
-        ],
+        ),
+        child: Row(
+          children: [
+            // Gold number circle
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                  color: AppColors.primary, shape: BoxShape.circle),
+              child: Text(
+                '${surah.number}',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14),
+              ),
+            ),
+            const SizedBox(width: 14),
+
+            // Name + meaning
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(surah.nameArabic,
+                      textDirection: TextDirection.rtl,
+                      style: AppTypography.arabicWord(fontSize: 19)),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${surah.nameEnglish} / ${surah.meaning}',
+                    style: const TextStyle(
+                        color: AppColors.textSecondary, fontSize: 13),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+
+            // Right: practiced badge OR ayat count
+            if (surah.lastScore != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.success,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Practiced ${surah.lastScore!.round()}%',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700),
+                ),
+              )
+            else
+              Text(
+                '${surah.ayahCount} Ayat',
+                style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500),
+              ),
+
+            // Bookmark icon
+            if (surah.isBookmarked) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.bookmark_rounded,
+                  size: 16, color: AppColors.primary),
+            ],
+          ],
+        ),
       ),
     );
   }
