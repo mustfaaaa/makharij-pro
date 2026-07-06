@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -18,7 +20,9 @@ const _items = [
 ];
 
 /// Custom bottom navigation with a springy selected-icon bounce and a
-/// morphing pill behind the active tab.
+/// morphing pill behind the active tab. Floats as a frosted "liquid glass"
+/// pill over the extended body (see [AppShell]) rather than a flat, edge-to-
+/// edge bar.
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -27,30 +31,36 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 16, offset: Offset(0, -4))],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 66,
-          child: Row(
-            children: [
-              for (int i = 0; i < _items.length; i++)
-                Expanded(
-                  child: _NavButton(
-                    item: _items[i],
-                    selected: i == currentIndex,
-                    onTap: () {
-                      if (i != currentIndex) HapticFeedback.selectionClick();
-                      onTap(i);
-                    },
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(26),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppColors.glassSurface,
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(color: AppColors.glassBorder),
+              boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 20, offset: const Offset(0, 6))],
+            ),
+            child: Row(
+              children: [
+                for (int i = 0; i < _items.length; i++)
+                  Expanded(
+                    child: _NavButton(
+                      item: _items[i],
+                      selected: i == currentIndex,
+                      onTap: () {
+                        if (i != currentIndex) HapticFeedback.selectionClick();
+                        onTap(i);
+                      },
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

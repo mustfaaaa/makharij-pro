@@ -59,7 +59,12 @@ class _ProgressDashboardView extends StatelessWidget {
             }
             final sessions = state.items;
             return ListView(
-              padding: const EdgeInsets.all(AppSpacing.screenPadding),
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.screenPadding,
+                AppSpacing.screenPadding,
+                AppSpacing.screenPadding,
+                AppSpacing.bottomNavClearance + MediaQuery.of(context).padding.bottom,
+              ),
               children: [
                 // Quick stats
                 FutureBuilder<UserProfile>(

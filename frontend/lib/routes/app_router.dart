@@ -37,6 +37,7 @@ import 'app_shell.dart';
 import 'go_router_refresh_stream.dart';
 import 'page_transitions.dart';
 import 'route_names.dart';
+import 'theme_reactive.dart';
 
 // Routes reachable before/without being signed in. Splash is deliberately
 // excluded — it always plays out fully and decides the next route itself
@@ -71,32 +72,32 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: RoutePaths.splash,
       name: RouteNames.splash,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const SplashScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => SplashScreen())),
     ),
     GoRoute(
       path: RoutePaths.onboarding,
       name: RouteNames.onboarding,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const OnboardingScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => OnboardingScreen())),
     ),
     GoRoute(
       path: RoutePaths.welcome,
       name: RouteNames.welcome,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const WelcomeScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => WelcomeScreen())),
     ),
     GoRoute(
       path: RoutePaths.login,
       name: RouteNames.login,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const LoginScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => LoginScreen())),
     ),
     GoRoute(
       path: RoutePaths.register,
       name: RouteNames.register,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const RegisterScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => RegisterScreen())),
     ),
     GoRoute(
       path: RoutePaths.forgotPassword,
       name: RouteNames.forgotPassword,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const ForgotPasswordScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => ForgotPasswordScreen())),
     ),
 
     // Internal design-reference screens are only routable in debug builds.
@@ -110,7 +111,7 @@ final GoRouter appRouter = GoRouter(
       name: RouteNames.surahDetails,
       pageBuilder: (c, s) => fadeSlidePage(
         key: s.pageKey,
-        child: SurahDetailsScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!)),
+        child: ThemeReactive(builder: (_) => SurahDetailsScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!))),
       ),
     ),
     GoRoute(
@@ -118,7 +119,7 @@ final GoRouter appRouter = GoRouter(
       name: RouteNames.recitation,
       pageBuilder: (c, s) => fadeSlidePage(
         key: s.pageKey,
-        child: RecitationScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!)),
+        child: ThemeReactive(builder: (_) => RecitationScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!))),
       ),
     ),
     GoRoute(
@@ -126,7 +127,7 @@ final GoRouter appRouter = GoRouter(
       name: RouteNames.listening,
       pageBuilder: (c, s) => fadeSlidePage(
         key: s.pageKey,
-        child: ListeningScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!)),
+        child: ThemeReactive(builder: (_) => ListeningScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!))),
       ),
     ),
     GoRoute(
@@ -134,7 +135,7 @@ final GoRouter appRouter = GoRouter(
       name: RouteNames.processing,
       pageBuilder: (c, s) => fadeSlidePage(
         key: s.pageKey,
-        child: ProcessingScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!)),
+        child: ThemeReactive(builder: (_) => ProcessingScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!))),
       ),
     ),
     GoRoute(
@@ -142,7 +143,7 @@ final GoRouter appRouter = GoRouter(
       name: RouteNames.result,
       pageBuilder: (c, s) => fadeSlidePage(
         key: s.pageKey,
-        child: ResultScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!)),
+        child: ThemeReactive(builder: (_) => ResultScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!))),
       ),
     ),
     GoRoute(
@@ -150,76 +151,79 @@ final GoRouter appRouter = GoRouter(
       name: RouteNames.detailedFeedback,
       pageBuilder: (c, s) => fadeSlidePage(
         key: s.pageKey,
-        child: DetailedFeedbackScreen(sessionId: s.pathParameters['sessionId']!),
+        child: ThemeReactive(builder: (_) => DetailedFeedbackScreen(sessionId: s.pathParameters['sessionId']!)),
       ),
     ),
 
     GoRoute(
       path: RoutePaths.practicePlan,
       name: RouteNames.practicePlan,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const PracticePlanScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => PracticePlanScreen())),
     ),
     GoRoute(
       path: RoutePaths.statistics,
       name: RouteNames.statistics,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const StatisticsScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => StatisticsScreen())),
     ),
     GoRoute(
       path: RoutePaths.achievements,
       name: RouteNames.achievements,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const AchievementsScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => AchievementsScreen())),
     ),
 
     GoRoute(
       path: RoutePaths.tajweedRules,
       name: RouteNames.tajweedRules,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const TajweedRulesLibraryScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => TajweedRulesLibraryScreen())),
     ),
     GoRoute(
       path: RoutePaths.ruleDetails,
       name: RouteNames.ruleDetails,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: RuleDetailsScreen(ruleId: s.pathParameters['ruleId']!)),
+      pageBuilder: (c, s) => fadeSlidePage(
+        key: s.pageKey,
+        child: ThemeReactive(builder: (_) => RuleDetailsScreen(ruleId: s.pathParameters['ruleId']!)),
+      ),
     ),
     GoRoute(
       path: RoutePaths.bookmarks,
       name: RouteNames.bookmarks,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const BookmarksScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => BookmarksScreen())),
     ),
     GoRoute(
       path: RoutePaths.search,
       name: RouteNames.search,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const SearchScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => SearchScreen())),
     ),
     GoRoute(
       path: RoutePaths.notifications,
       name: RouteNames.notifications,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const NotificationsScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => NotificationsScreen())),
     ),
 
     GoRoute(
       path: RoutePaths.editProfile,
       name: RouteNames.editProfile,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const EditProfileScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => EditProfileScreen())),
     ),
     GoRoute(
       path: RoutePaths.settings,
       name: RouteNames.settings,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const SettingsScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => SettingsScreen())),
     ),
     GoRoute(
       path: RoutePaths.about,
       name: RouteNames.about,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const AboutScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => AboutScreen())),
     ),
     GoRoute(
       path: RoutePaths.helpFaq,
       name: RouteNames.helpFaq,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const HelpFaqScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => HelpFaqScreen())),
     ),
     GoRoute(
       path: RoutePaths.contact,
       name: RouteNames.contact,
-      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: const ContactScreen()),
+      pageBuilder: (c, s) => fadeSlidePage(key: s.pageKey, child: ThemeReactive(builder: (_) => ContactScreen())),
     ),
 
     StatefulShellRoute(
@@ -230,16 +234,32 @@ final GoRouter appRouter = GoRouter(
       ),
       branches: [
         StatefulShellBranch(routes: [
-          GoRoute(path: RoutePaths.home, name: RouteNames.home, builder: (c, s) => const HomeDashboardScreen()),
+          GoRoute(
+            path: RoutePaths.home,
+            name: RouteNames.home,
+            builder: (c, s) => ThemeReactive(builder: (_) => HomeDashboardScreen()),
+          ),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: RoutePaths.quran, name: RouteNames.quran, builder: (c, s) => const SurahSelectionScreen()),
+          GoRoute(
+            path: RoutePaths.quran,
+            name: RouteNames.quran,
+            builder: (c, s) => ThemeReactive(builder: (_) => SurahSelectionScreen()),
+          ),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: RoutePaths.progress, name: RouteNames.progress, builder: (c, s) => const ProgressDashboardScreen()),
+          GoRoute(
+            path: RoutePaths.progress,
+            name: RouteNames.progress,
+            builder: (c, s) => ThemeReactive(builder: (_) => ProgressDashboardScreen()),
+          ),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: RoutePaths.profile, name: RouteNames.profile, builder: (c, s) => const ProfileScreen()),
+          GoRoute(
+            path: RoutePaths.profile,
+            name: RouteNames.profile,
+            builder: (c, s) => ThemeReactive(builder: (_) => ProfileScreen()),
+          ),
         ]),
       ],
     ),

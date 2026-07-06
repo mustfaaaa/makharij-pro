@@ -9,4 +9,10 @@ abstract class AppSpacing {
 
   static const double screenPadding = 20;
   static const double cardPadding = 16;
+
+  /// Fixed clearance a scrollable screen needs above its content's natural
+  /// bottom padding so the floating frosted bottom nav (see [AppBottomNav])
+  /// never overlaps the last item. Add the device's bottom safe-area inset
+  /// on top of this per screen.
+  static const double bottomNavClearance = 90;
 }

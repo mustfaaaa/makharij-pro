@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -103,8 +105,25 @@ class _HomeDashboardView extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBodyBehindAppBar: true,
       drawer: const AppDrawer(),
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        // Frosted "liquid glass" bar — lets the scrolling content behind it
+        // (see extendBodyBehindAppBar) show through, blurred.
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.glassSurface,
+                border: Border(bottom: BorderSide(color: AppColors.glassBorder)),
+              ),
+            ),
+          ),
+        ),
         // ── Notification icon remains exactly as in original ──
         actions: [
           AppIconButton(
@@ -132,7 +151,12 @@ class _HomeDashboardView extends StatelessWidget {
           context.read<SessionsCubit>().load(),
         ]),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            kToolbarHeight + MediaQuery.of(context).padding.top + 16,
+            20,
+            AppSpacing.bottomNavClearance + MediaQuery.of(context).padding.bottom,
+          ),
           children: [
             // ── Header: greeting + avatar ───────────────────────────────
             FutureBuilder<UserProfile>(

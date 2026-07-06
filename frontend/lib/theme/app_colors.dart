@@ -63,4 +63,8 @@ abstract class AppColors {
 
   // ── Shadow ───────────────────────────────────────────────────────────────
   static Color get cardShadow => _d ? const Color(0x33000000) : const Color(0x08000000);
+
+  // ── Liquid glass (frosted bars) ──────────────────────────────────────────
+  static Color get glassSurface => _d ? const Color(0x992A2419) : const Color(0x99FFFFFF);
+  static Color get glassBorder => _d ? const Color(0x1FFFFFFF) : const Color(0xB3FFFFFF);
 }

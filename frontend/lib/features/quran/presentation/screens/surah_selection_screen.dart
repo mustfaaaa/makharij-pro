@@ -160,7 +160,12 @@ class _SurahList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 14, AppSpacing.screenPadding, AppSpacing.lg),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.screenPadding,
+        14,
+        AppSpacing.screenPadding,
+        AppSpacing.bottomNavClearance + MediaQuery.of(context).padding.bottom,
+      ),
       itemCount: surahs.length,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
       itemBuilder: (context, i) {
