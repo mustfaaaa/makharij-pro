@@ -1,4 +1,5 @@
 import 'achievement_service.dart';
+import 'auth_service.dart';
 import 'notification_service.dart';
 import 'practice_plan_service.dart';
 import 'progress_service.dart';
@@ -19,6 +20,7 @@ abstract class Services {
   static final PracticePlanService practicePlan = DummyPracticePlanService();
   static final AchievementService achievement = DummyAchievementService();
   static final NotificationService notification = DummyNotificationService();
-  static final UserService user = DummyUserService();
+  static final UserService user = FirebaseUserService();
   static final ProgressService progress = DummyProgressService();
+  static final AuthService auth = FirebaseAuthService();
 }

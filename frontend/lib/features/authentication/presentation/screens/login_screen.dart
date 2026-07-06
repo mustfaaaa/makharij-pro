@@ -1,10 +1,16 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/validators.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/google_sign_in_button.dart';
+import '../../../../shared/widgets/buttons/google_web_button.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../../../shared/widgets/illustrations/islamic_arch_header.dart';
 import '../../../../shared/widgets/inputs/custom_text_field.dart';
 import '../../../../theme/app_colors.dart';
@@ -23,13 +29,40 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscure = true;
   bool _loading = false;
   bool _googleLoading = false;
+  bool _webGoogleReady = false;
   String? _emailError;
   String? _passwordError;
+  StreamSubscription<void>? _googleWebSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // Web can't use a custom button + programmatic sign-in (see
+    // GoogleSignIn.supportsAuthenticate) — it must render Google's own
+    // button and react to the sign-in completing asynchronously instead.
+    if (kIsWeb) {
+      Services.auth.initializeGoogleSignIn().then((_) {
+        if (!mounted) return;
+        setState(() => _webGoogleReady = true);
+      });
+      _googleWebSub = Services.auth.googleWebSignInCompleted.listen(
+        (_) {
+          if (mounted) context.go(RoutePaths.home);
+        },
+        onError: (Object e) {
+          if (!mounted) return;
+          final message = Services.auth.errorMessageFor(e);
+          if (message.isNotEmpty) AppSnackbar.show(context, message, isError: true);
+        },
+      );
+    }
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _googleWebSub?.cancel();
     super.dispose();
   }
 
@@ -46,20 +79,43 @@ class _LoginScreenState extends State<LoginScreen> {
   void _submit() async {
     if (!_validate()) return;
     setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    setState(() => _loading = false);
-    context.go(RoutePaths.home);
+    try {
+      await Services.auth.signInWithEmail(email: _emailController.text, password: _passwordController.text);
+      if (!mounted) return;
+      context.go(RoutePaths.home);
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackbar.show(context, Services.auth.errorMessageFor(e), isError: true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
-  // UI-only dummy. Later this calls Firebase Auth's Google sign-in and only
-  // navigates on success; the button + this method stay, the body swaps.
   void _googleSignIn() async {
     setState(() => _googleLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1100));
-    if (!mounted) return;
-    setState(() => _googleLoading = false);
-    context.go(RoutePaths.home);
+    try {
+      await Services.auth.signInWithGoogle();
+      if (!mounted) return;
+      context.go(RoutePaths.home);
+    } catch (e) {
+      if (!mounted) return;
+      final message = Services.auth.errorMessageFor(e);
+      if (message.isNotEmpty) AppSnackbar.show(context, message, isError: true);
+    } finally {
+      if (mounted) setState(() => _googleLoading = false);
+    }
+  }
+
+  Widget _buildGoogleButton() {
+    if (!kIsWeb) {
+      return GoogleSignInButton(onPressed: _googleSignIn, isLoading: _googleLoading);
+    }
+    // Web must render Google's own button (see GoogleSignIn.supportsAuthenticate);
+    // it handles its own account-picker UI, so there's no separate loading state to show here.
+    if (!_webGoogleReady) {
+      return const SizedBox(height: 44, child: Center(child: CircularProgressIndicator(strokeWidth: 2.4)));
+    }
+    return SizedBox(width: double.infinity, height: 44, child: Center(child: renderGoogleWebButton()));
   }
 
   @override
@@ -117,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: AppSpacing.lg),
               const _OrDivider(),
               const SizedBox(height: AppSpacing.lg),
-              GoogleSignInButton(onPressed: _googleSignIn, isLoading: _googleLoading),
+              _buildGoogleButton(),
               const SizedBox(height: AppSpacing.lg),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

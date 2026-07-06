@@ -32,8 +32,8 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AsyncView<UserProfile>(
-        future: Services.user.getCurrentUser(),
+      body: AsyncStreamView<UserProfile>(
+        stream: Services.user.watchCurrentUser(),
         errorMessage: 'Could not load your profile.',
         builder: (context, user) => _ProfileBody(user: user),
       ),

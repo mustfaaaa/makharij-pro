@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/validators.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../../../shared/widgets/illustrations/islamic_arch_header.dart';
 import '../../../../shared/widgets/inputs/custom_text_field.dart';
 import '../../../../theme/app_colors.dart';
@@ -49,10 +51,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _submit() async {
     if (!_validate()) return;
     setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    setState(() => _loading = false);
-    context.go(RoutePaths.home);
+    try {
+      await Services.auth.registerWithEmail(
+        name: _nameController.text,
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
+      context.go(RoutePaths.home);
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackbar.show(context, Services.auth.errorMessageFor(e), isError: true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override

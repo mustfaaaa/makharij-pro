@@ -32,12 +32,41 @@ import '../features/splash/presentation/screens/splash_screen.dart';
 import '../features/tajweed_rules/presentation/screens/bookmarks_screen.dart';
 import '../features/tajweed_rules/presentation/screens/rule_details_screen.dart';
 import '../features/tajweed_rules/presentation/screens/tajweed_rules_library_screen.dart';
+import '../services/service_locator.dart';
 import 'app_shell.dart';
+import 'go_router_refresh_stream.dart';
 import 'page_transitions.dart';
 import 'route_names.dart';
 
+// Routes reachable before/without being signed in. Splash is deliberately
+// excluded — it always plays out fully and decides the next route itself
+// (see splash_screen.dart), rather than being redirected away mid-animation.
+const _preAuthRoutes = {
+  RoutePaths.onboarding,
+  RoutePaths.welcome,
+  RoutePaths.login,
+  RoutePaths.register,
+};
+
 final GoRouter appRouter = GoRouter(
   initialLocation: RoutePaths.splash,
+  refreshListenable: GoRouterRefreshStream(Services.auth.authStateChanges),
+  redirect: (context, state) {
+    if (state.matchedLocation == RoutePaths.splash) return null;
+
+    final loggedIn = Services.auth.currentUser != null;
+    final onPreAuthRoute = _preAuthRoutes.contains(state.matchedLocation);
+
+    // Forgot-password is reachable both signed-out ("forgot my password")
+    // and signed-in (Settings > Change Password), so it's never force-redirected.
+    if (!loggedIn && !onPreAuthRoute && state.matchedLocation != RoutePaths.forgotPassword) {
+      return RoutePaths.welcome;
+    }
+    if (loggedIn && onPreAuthRoute) {
+      return RoutePaths.home;
+    }
+    return null;
+  },
   routes: [
     GoRoute(
       path: RoutePaths.splash,

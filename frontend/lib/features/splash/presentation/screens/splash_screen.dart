@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../routes/route_names.dart';
+import '../../../../services/service_locator.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_typography.dart';
 
@@ -46,7 +47,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     _controller.forward();
     Timer(const Duration(milliseconds: 2100), () {
-      if (mounted) context.go(RoutePaths.onboarding);
+      if (!mounted) return;
+      context.go(Services.auth.currentUser != null ? RoutePaths.home : RoutePaths.onboarding);
     });
   }
 

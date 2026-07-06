@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "639830542253",
+    "project_id": "makharijpro-ai-9606e",
+    "storage_bucket": "makharijpro-ai-9606e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:639830542253:android:bdc69a62c99b5bd19dc324",
+        "android_client_info": {
+          "package_name": "com.makharijpro.frontend"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "639830542253-vgov06b3v2apeui4pgh6toq010ft54jd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.makharijpro.frontend",
+            "certificate_hash": "b848184fffc90027b88f2f1378fbc32f3c2df84b"
+          }
+        },
+        {
+          "client_id": "639830542253-76krmb3ql1numt1fsbfae2qi5drkuol0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkfPAYOaWMlCo2lTLhietZda3eHO5c5OE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "639830542253-76krmb3ql1numt1fsbfae2qi5drkuol0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/cubit/theme_cubit.dart';
 import '../../../../app/cubit/verse_text_size_cubit.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/feedback/app_dialogs.dart';
 import '../../../../shared/widgets/pickers/verse_text_size_picker.dart';
 import '../../../../shared/widgets/responsive_center.dart';
@@ -78,7 +79,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 confirmLabel: 'Logout',
                 isDestructive: true,
               );
-              if (confirmed == true && context.mounted) context.go(RoutePaths.welcome);
+              if (confirmed != true) return;
+              await Services.auth.signOut();
+              if (context.mounted) context.go(RoutePaths.welcome);
             },
           ),
         ],

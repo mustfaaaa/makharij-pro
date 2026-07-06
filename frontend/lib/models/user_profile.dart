@@ -29,4 +29,30 @@ class UserProfile {
     required this.joinedAt,
     this.hasanahCount = 0,
   });
+
+  UserProfile copyWith({
+    String? name,
+    String? email,
+    String? avatarUrl,
+    LearningLevel? level,
+    int? currentStreak,
+    double? overallAccuracy,
+    int? totalSessions,
+    List<String>? targetSurahs,
+    DateTime? joinedAt,
+    int? hasanahCount,
+  }) {
+    return UserProfile(
+      name: name ?? this.name,
+      email: email ?? this.email,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      level: level ?? this.level,
+      currentStreak: currentStreak ?? this.currentStreak,
+      overallAccuracy: overallAccuracy ?? this.overallAccuracy,
+      totalSessions: totalSessions ?? this.totalSessions,
+      targetSurahs: targetSurahs ?? this.targetSurahs,
+      joinedAt: joinedAt ?? this.joinedAt,
+      hasanahCount: hasanahCount ?? this.hasanahCount,
+    );
+  }
 }

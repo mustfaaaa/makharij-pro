@@ -40,11 +40,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _save() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      AppSnackbar.show(context, 'Name cannot be empty');
+      return;
+    }
     setState(() => _saving = true);
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
-    setState(() => _saving = false);
-    AppSnackbar.show(context, 'Profile updated');
+    try {
+      await Services.user.updateName(name);
+      if (!mounted) return;
+      AppSnackbar.show(context, 'Profile updated');
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackbar.show(context, 'Could not update your profile. Please try again.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -77,8 +88,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   const SizedBox(height: AppSpacing.xl),
                   CustomTextField(label: 'Full Name', controller: _nameController, prefixIcon: Icons.person_outline),
                   const SizedBox(height: AppSpacing.md),
-                  CustomTextField(label: 'Email', controller: _emailController, prefixIcon: Icons.mail_outline),
-                  const SizedBox(height: AppSpacing.xl),
+                  CustomTextField(label: 'Email', controller: _emailController, prefixIcon: Icons.mail_outline, enabled: false),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Email is tied to your sign-in method and can\'t be changed here.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
                   PrimaryButton(label: 'Save Changes', onPressed: _save, isLoading: _saving),
                 ],
               ),

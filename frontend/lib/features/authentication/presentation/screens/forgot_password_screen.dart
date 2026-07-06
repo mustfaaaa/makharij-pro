@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/validators.dart';
+import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../../../shared/widgets/illustrations/islamic_arch_header.dart';
@@ -34,13 +35,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
     setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _sent = true;
-    });
-    AppSnackbar.show(context, 'Reset link sent to your email');
+    try {
+      await Services.auth.sendPasswordResetEmail(_emailController.text);
+      if (!mounted) return;
+      setState(() => _sent = true);
+      AppSnackbar.show(context, 'Reset link sent to your email');
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackbar.show(context, Services.auth.errorMessageFor(e), isError: true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override

@@ -38,3 +38,38 @@ class AsyncView<T> extends StatelessWidget {
     );
   }
 }
+
+/// Same loading/error/data unification as [AsyncView], but for a live
+/// [Stream] (e.g. a Firestore snapshot listener) instead of a one-off Future.
+class AsyncStreamView<T> extends StatelessWidget {
+  final Stream<T> stream;
+  final Widget Function(BuildContext context, T data) builder;
+  final Widget? loading;
+  final String errorMessage;
+  final VoidCallback? onRetry;
+
+  const AsyncStreamView({
+    super.key,
+    required this.stream,
+    required this.builder,
+    this.loading,
+    this.errorMessage = 'Something went wrong.',
+    this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<T>(
+      stream: stream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return ErrorStateWidget(message: errorMessage, onRetry: onRetry);
+        }
+        if (!snapshot.hasData) {
+          return loading ?? const AppLoadingIndicator();
+        }
+        return builder(context, snapshot.data as T);
+      },
+    );
+  }
+}
