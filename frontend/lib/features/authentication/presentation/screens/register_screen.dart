@@ -85,104 +85,113 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: Stack(
         children: [
           const Positioned.fill(child: MandalaBackground()),
-          SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.screenPadding,
-              MediaQuery.of(context).padding.top +
-                  kToolbarHeight +
-                  AppSpacing.sm,
-              AppSpacing.screenPadding,
-              AppSpacing.screenPadding,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Create your account',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Start learning correct Tajweed today',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                CustomTextField(
-                  label: 'Full Name',
-                  hint: 'Your name',
-                  controller: _nameController,
-                  prefixIcon: Icons.person_outline,
-                  errorText: _nameError,
-                  onChanged: (_) {
-                    if (_nameError != null) {
-                      setState(() => _nameError = null);
-                    }
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CustomTextField(
-                  label: 'Email',
-                  hint: 'you@example.com',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  prefixIcon: Icons.mail_outline,
-                  errorText: _emailError,
-                  onChanged: (_) {
-                    if (_emailError != null) {
-                      setState(() => _emailError = null);
-                    }
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CustomTextField(
-                  label: 'Password',
-                  hint: '••••••••',
-                  controller: _passwordController,
-                  obscureText: _obscure,
-                  prefixIcon: Icons.lock_outline,
-                  errorText: _passwordError,
-                  onChanged: (_) {
-                    if (_passwordError != null) {
-                      setState(() => _passwordError = null);
-                    }
-                  },
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscure
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      size: 20,
-                    ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenPadding,
+                    vertical: AppSpacing.lg,
                   ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                PrimaryButton(
-                  label: 'Create Account',
-                  onPressed: _submit,
-                  isLoading: _loading,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Already have an account? ',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - 2 * AppSpacing.lg,
                     ),
-                    GestureDetector(
-                      onTap: () => context.push(RoutePaths.login),
-                      child: Text(
-                        'Sign In',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Create your account',
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
-                      ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Start learning correct Tajweed today',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                        CustomTextField(
+                          label: 'Full Name',
+                          hint: 'Your name',
+                          controller: _nameController,
+                          prefixIcon: Icons.person_outline,
+                          errorText: _nameError,
+                          onChanged: (_) {
+                            if (_nameError != null) {
+                              setState(() => _nameError = null);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        CustomTextField(
+                          label: 'Email',
+                          hint: 'you@example.com',
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          prefixIcon: Icons.mail_outline,
+                          errorText: _emailError,
+                          onChanged: (_) {
+                            if (_emailError != null) {
+                              setState(() => _emailError = null);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        CustomTextField(
+                          label: 'Password',
+                          hint: '••••••••',
+                          controller: _passwordController,
+                          obscureText: _obscure,
+                          prefixIcon: Icons.lock_outline,
+                          errorText: _passwordError,
+                          onChanged: (_) {
+                            if (_passwordError != null) {
+                              setState(() => _passwordError = null);
+                            }
+                          },
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscure
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 20,
+                            ),
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        PrimaryButton(
+                          label: 'Create Account',
+                          onPressed: _submit,
+                          isLoading: _loading,
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Already have an account? ',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            GestureDetector(
+                              onTap: () => context.push(RoutePaths.login),
+                              child: Text(
+                                'Sign In',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                );
+              },
             ),
           ),
           Positioned(

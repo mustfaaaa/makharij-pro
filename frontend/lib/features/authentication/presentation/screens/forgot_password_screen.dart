@@ -66,77 +66,85 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       body: Stack(
         children: [
           const Positioned.fill(child: MandalaBackground()),
-          SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.screenPadding,
-              MediaQuery.of(context).padding.top +
-                  kToolbarHeight +
-                  AppSpacing.sm,
-              AppSpacing.screenPadding,
-              AppSpacing.screenPadding,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySurface,
-                    shape: BoxShape.circle,
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenPadding,
+                    vertical: AppSpacing.lg,
                   ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.lock_reset_rounded,
-                    size: 32,
-                    color: AppColors.primary,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - 2 * AppSpacing.lg,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySurface,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.lock_reset_rounded,
+                            size: 32,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(
+                          'Reset your password',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Enter the email associated with your account and we\'ll send a reset link.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                        CustomTextField(
+                          label: 'Email',
+                          hint: 'you@example.com',
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          prefixIcon: Icons.mail_outline,
+                          errorText: _emailError,
+                          onChanged: (_) {
+                            if (_emailError != null) {
+                              setState(() => _emailError = null);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        PrimaryButton(
+                          label: 'Send Reset Link',
+                          onPressed: _submit,
+                          isLoading: _loading,
+                        ),
+                        if (_sent) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle,
+                                size: 18,
+                                color: AppColors.success,
+                              ),
+                              SizedBox(width: 8),
+                              Text('Check your inbox for the reset link.'),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Reset your password',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Enter the email associated with your account and we\'ll send a reset link.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                CustomTextField(
-                  label: 'Email',
-                  hint: 'you@example.com',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  prefixIcon: Icons.mail_outline,
-                  errorText: _emailError,
-                  onChanged: (_) {
-                    if (_emailError != null) {
-                      setState(() => _emailError = null);
-                    }
-                  },
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                PrimaryButton(
-                  label: 'Send Reset Link',
-                  onPressed: _submit,
-                  isLoading: _loading,
-                ),
-                if (_sent) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 18,
-                        color: AppColors.success,
-                      ),
-                      SizedBox(width: 8),
-                      Text('Check your inbox for the reset link.'),
-                    ],
-                  ),
-                ],
-              ],
+                );
+              },
             ),
           ),
           Positioned(
