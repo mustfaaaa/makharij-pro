@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/utils/number_format.dart';
 import '../../../theme/app_colors.dart';
@@ -160,8 +159,3 @@ class _CountUpNumber extends StatelessWidget {
     );
   }
 }
-
-/// Fires a light haptic + gold glow flash — call when the counter crosses a
-/// milestone (e.g. every 10,000). Not currently wired to a trigger, but
-/// available for when session-based hasanah accrual is added.
-void hasanahMilestoneHaptic() => HapticFeedback.mediumImpact();

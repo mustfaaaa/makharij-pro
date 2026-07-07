@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/utils/hijri_date.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/feedback/app_snackbar.dart';
-import '../../../../shared/widgets/illustrations/islamic_arch_header.dart';
+import '../../../../shared/widgets/illustrations/mandala_background.dart';
 import '../../../../shared/widgets/inputs/custom_text_field.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
+import '../../../../theme/app_typography.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -61,7 +63,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context.go(RoutePaths.home);
     } catch (e) {
       if (!mounted) return;
-      AppSnackbar.show(context, Services.auth.errorMessageFor(e), isError: true);
+      AppSnackbar.show(
+        context,
+        Services.auth.errorMessageFor(e),
+        isError: true,
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -70,73 +76,127 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.screenPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const IslamicArchHeader(),
-              const SizedBox(height: AppSpacing.lg),
-              Text('Create your account', style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: AppSpacing.xs),
-              Text('Start learning correct Tajweed today', style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: AppSpacing.xl),
-              CustomTextField(
-                label: 'Full Name',
-                hint: 'Your name',
-                controller: _nameController,
-                prefixIcon: Icons.person_outline,
-                errorText: _nameError,
-                onChanged: (_) {
-                  if (_nameError != null) setState(() => _nameError = null);
-                },
-              ),
-              const SizedBox(height: AppSpacing.md),
-              CustomTextField(
-                label: 'Email',
-                hint: 'you@example.com',
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                prefixIcon: Icons.mail_outline,
-                errorText: _emailError,
-                onChanged: (_) {
-                  if (_emailError != null) setState(() => _emailError = null);
-                },
-              ),
-              const SizedBox(height: AppSpacing.md),
-              CustomTextField(
-                label: 'Password',
-                hint: '••••••••',
-                controller: _passwordController,
-                obscureText: _obscure,
-                prefixIcon: Icons.lock_outline,
-                errorText: _passwordError,
-                onChanged: (_) {
-                  if (_passwordError != null) setState(() => _passwordError = null);
-                },
-                suffixIcon: IconButton(
-                  icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
-                  onPressed: () => setState(() => _obscure = !_obscure),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: AppColors.textPrimary,
+      ),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: MandalaBackground()),
+          SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.screenPadding,
+              MediaQuery.of(context).padding.top +
+                  kToolbarHeight +
+                  AppSpacing.sm,
+              AppSpacing.screenPadding,
+              AppSpacing.screenPadding,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Create your account',
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              PrimaryButton(label: 'Create Account', onPressed: _submit, isLoading: _loading),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Already have an account? ', style: Theme.of(context).textTheme.bodyMedium),
-                  GestureDetector(
-                    onTap: () => context.push(RoutePaths.login),
-                    child: Text('Sign In', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Start learning correct Tajweed today',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                CustomTextField(
+                  label: 'Full Name',
+                  hint: 'Your name',
+                  controller: _nameController,
+                  prefixIcon: Icons.person_outline,
+                  errorText: _nameError,
+                  onChanged: (_) {
+                    if (_nameError != null) {
+                      setState(() => _nameError = null);
+                    }
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
+                CustomTextField(
+                  label: 'Email',
+                  hint: 'you@example.com',
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  prefixIcon: Icons.mail_outline,
+                  errorText: _emailError,
+                  onChanged: (_) {
+                    if (_emailError != null) {
+                      setState(() => _emailError = null);
+                    }
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
+                CustomTextField(
+                  label: 'Password',
+                  hint: '••••••••',
+                  controller: _passwordController,
+                  obscureText: _obscure,
+                  prefixIcon: Icons.lock_outline,
+                  errorText: _passwordError,
+                  onChanged: (_) {
+                    if (_passwordError != null) {
+                      setState(() => _passwordError = null);
+                    }
+                  },
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscure
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 20,
+                    ),
+                    onPressed: () => setState(() => _obscure = !_obscure),
                   ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                PrimaryButton(
+                  label: 'Create Account',
+                  onPressed: _submit,
+                  isLoading: _loading,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Already have an account? ',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    GestureDetector(
+                      onTap: () => context.push(RoutePaths.login),
+                      child: Text(
+                        'Sign In',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
+          Positioned(
+            bottom: 12,
+            right: 16,
+            child: Text(
+              HijriDate.currentYearLabel(),
+              style: AppTypography.arabicWord(
+                fontSize: 13,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

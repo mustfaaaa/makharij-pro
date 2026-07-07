@@ -107,8 +107,8 @@ class _IslamicRefreshIndicatorState extends State<IslamicRefreshIndicator>
   }
 }
 
-/// A small 8-point star, the same motif used in [IslamicArchHeader]'s
-/// sparkles — kept consistent rather than introducing a new shape language.
+/// A small 8-point star — the app's recurring Islamic sparkle motif, kept
+/// consistent rather than introducing a new shape language.
 class _IslamicStarPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
