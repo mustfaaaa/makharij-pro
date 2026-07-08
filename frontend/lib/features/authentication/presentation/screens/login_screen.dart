@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/hijri_date.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
@@ -12,11 +11,10 @@ import '../../../../shared/widgets/buttons/google_sign_in_button.dart';
 import '../../../../shared/widgets/buttons/google_web_button.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/feedback/app_snackbar.dart';
-import '../../../../shared/widgets/illustrations/mandala_background.dart';
 import '../../../../shared/widgets/inputs/custom_text_field.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
-import '../../../../theme/app_typography.dart';
+import '../widgets/auth_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -141,134 +139,85 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-      ),
-      body: Stack(
+    return AuthShell(
+      title: 'Welcome Back',
+      subtitle: 'Sign in to continue your Tajweed journey',
+      activeTab: AuthTab.login,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Positioned.fill(child: MandalaBackground()),
-          SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenPadding,
-                    vertical: AppSpacing.lg,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight - 2 * AppSpacing.lg,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome back',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'Sign in to continue your Tajweed journey',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: AppSpacing.xl),
-                        CustomTextField(
-                          label: 'Email',
-                          hint: 'you@example.com',
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          prefixIcon: Icons.mail_outline,
-                          errorText: _emailError,
-                          onChanged: (_) {
-                            if (_emailError != null) {
-                              setState(() => _emailError = null);
-                            }
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        CustomTextField(
-                          label: 'Password',
-                          hint: '••••••••',
-                          controller: _passwordController,
-                          obscureText: _obscure,
-                          prefixIcon: Icons.lock_outline,
-                          errorText: _passwordError,
-                          onChanged: (_) {
-                            if (_passwordError != null) {
-                              setState(() => _passwordError = null);
-                            }
-                          },
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscure
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              size: 20,
-                            ),
-                            onPressed: () =>
-                                setState(() => _obscure = !_obscure),
-                          ),
-                        ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () =>
-                                context.push(RoutePaths.forgotPassword),
-                            child: const Text('Forgot Password?'),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        PrimaryButton(
-                          label: 'Sign In',
-                          onPressed: _submit,
-                          isLoading: _loading,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        const _OrDivider(),
-                        const SizedBox(height: AppSpacing.lg),
-                        _buildGoogleButton(),
-                        const SizedBox(height: AppSpacing.lg),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "Don't have an account? ",
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            GestureDetector(
-                              onTap: () => context.push(RoutePaths.register),
-                              child: Text(
-                                'Register',
-                                style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+          CustomTextField(
+            label: 'Email',
+            hint: 'you@example.com',
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            prefixIcon: Icons.mail_outline,
+            errorText: _emailError,
+            onChanged: (_) {
+              if (_emailError != null) {
+                setState(() => _emailError = null);
+              }
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          CustomTextField(
+            label: 'Password',
+            hint: '••••••••',
+            controller: _passwordController,
+            obscureText: _obscure,
+            prefixIcon: Icons.lock_outline,
+            errorText: _passwordError,
+            onChanged: (_) {
+              if (_passwordError != null) {
+                setState(() => _passwordError = null);
+              }
+            },
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscure
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                size: 20,
+              ),
+              onPressed: () => setState(() => _obscure = !_obscure),
             ),
           ),
-          Positioned(
-            bottom: 12,
-            right: 16,
-            child: Text(
-              HijriDate.currentYearLabel(),
-              style: AppTypography.arabicWord(
-                fontSize: 13,
-                color: AppColors.textMuted,
-              ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => context.push(RoutePaths.forgotPassword),
+              child: const Text('Forgot Password?'),
             ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          PrimaryButton(
+            label: 'Login',
+            onPressed: _submit,
+            isLoading: _loading,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const _OrDivider(),
+          const SizedBox(height: AppSpacing.lg),
+          _buildGoogleButton(),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                "Don't have an account? ",
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              GestureDetector(
+                onTap: () => context.pushReplacement(RoutePaths.register),
+                child: Text(
+                  'Create an account',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -286,7 +235,10 @@ class _OrDivider extends StatelessWidget {
         Expanded(child: Divider(color: AppColors.border)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: Text('or', style: Theme.of(context).textTheme.bodySmall),
+          child: Text(
+            'Or continue with',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ),
         Expanded(child: Divider(color: AppColors.border)),
       ],

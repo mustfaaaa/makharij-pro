@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/utils/hijri_date.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/feedback/app_snackbar.dart';
-import '../../../../shared/widgets/illustrations/mandala_background.dart';
 import '../../../../shared/widgets/inputs/custom_text_field.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
-import '../../../../theme/app_typography.dart';
+import '../widgets/auth_shell.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -23,6 +21,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   bool _sent = false;
   bool _loading = false;
   String? _emailError;
+  String? _sentTo;
 
   @override
   void dispose() {
@@ -40,8 +39,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     try {
       await Services.auth.sendPasswordResetEmail(_emailController.text);
       if (!mounted) return;
-      setState(() => _sent = true);
-      AppSnackbar.show(context, 'Reset link sent to your email');
+      setState(() {
+        _sent = true;
+        _sentTo = _emailController.text.trim();
+      });
+      AppSnackbar.show(context, 'Reset link sent — check your inbox');
     } catch (e) {
       if (!mounted) return;
       AppSnackbar.show(
@@ -56,108 +58,75 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-      ),
-      body: Stack(
+    return AuthShell(
+      title: 'Reset Password',
+      subtitle: 'Enter your email and we\'ll send you a reset link',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Positioned.fill(child: MandalaBackground()),
-          SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenPadding,
-                    vertical: AppSpacing.lg,
+          CustomTextField(
+            label: 'Email',
+            hint: 'you@example.com',
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            prefixIcon: Icons.mail_outline,
+            errorText: _emailError,
+            onChanged: (_) {
+              if (_emailError != null) {
+                setState(() => _emailError = null);
+              }
+            },
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          PrimaryButton(
+            label: 'Send Reset Link',
+            onPressed: _submit,
+            isLoading: _loading,
+          ),
+          if (_sent) ...[
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.successLight,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.success.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.mark_email_read_rounded,
+                    size: 20,
+                    color: AppColors.success,
                   ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight - 2 * AppSpacing.lg,
-                    ),
+                  const SizedBox(width: 12),
+                  Expanded(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            color: AppColors.primarySurface,
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: Icon(
-                            Icons.lock_reset_rounded,
-                            size: 32,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
                         Text(
-                          'Reset your password',
-                          style: Theme.of(context).textTheme.headlineSmall,
+                          'Email on its way',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(color: AppColors.success),
                         ),
-                        const SizedBox(height: AppSpacing.xs),
+                        const SizedBox(height: 4),
                         Text(
-                          'Enter the email associated with your account and we\'ll send a reset link.',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          'If an account exists for ${_sentTo ?? 'that email'}, a reset link is being sent. '
+                          'Check your inbox — and your spam folder if you don\'t see it.',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(height: 1.4),
                         ),
-                        const SizedBox(height: AppSpacing.xl),
-                        CustomTextField(
-                          label: 'Email',
-                          hint: 'you@example.com',
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          prefixIcon: Icons.mail_outline,
-                          errorText: _emailError,
-                          onChanged: (_) {
-                            if (_emailError != null) {
-                              setState(() => _emailError = null);
-                            }
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        PrimaryButton(
-                          label: 'Send Reset Link',
-                          onPressed: _submit,
-                          isLoading: _loading,
-                        ),
-                        if (_sent) ...[
-                          const SizedBox(height: AppSpacing.md),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.check_circle,
-                                size: 18,
-                                color: AppColors.success,
-                              ),
-                              SizedBox(width: 8),
-                              Text('Check your inbox for the reset link.'),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-          Positioned(
-            bottom: 12,
-            right: 16,
-            child: Text(
-              HijriDate.currentYearLabel(),
-              style: AppTypography.arabicWord(
-                fontSize: 13,
-                color: AppColors.textMuted,
+                ],
               ),
             ),
-          ),
+          ],
         ],
       ),
     );

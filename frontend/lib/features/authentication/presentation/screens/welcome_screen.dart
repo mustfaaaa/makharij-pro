@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/utils/hijri_date.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/animated/staggered_fade_slide.dart';
-import '../../../../shared/widgets/illustrations/mandala_background.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
@@ -43,7 +42,18 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     return Scaffold(
       body: Stack(
         children: [
-          const Positioned.fill(child: MandalaBackground()),
+          // Full-bleed welcome photograph, sitting faintly behind everything
+          // so the cream background still reads through it.
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.18,
+              child: Image.asset(
+                'assets/images/welcome.jpeg',
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
           SafeArea(
             child: Column(
               children: [
