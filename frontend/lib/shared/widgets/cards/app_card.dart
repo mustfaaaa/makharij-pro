@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_spacing.dart';
+import '../../../theme/app_theme.dart';
 import '../animated/pressable.dart';
 
-/// Base rounded, bordered card. Other card widgets compose this.
-/// Tappable cards get the app-wide [Pressable] scale + haptic feel.
+/// Base rounded card sharing the app's canonical surface (see
+/// [AppTheme.cardDecoration]) — soft shadow + hairline border. Other card
+/// widgets compose this; tappable ones get the app-wide [Pressable] feel.
 class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -19,7 +21,11 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final card = Card(child: Padding(padding: padding, child: child));
+    final card = Container(
+      padding: padding,
+      decoration: AppTheme.cardDecoration(),
+      child: child,
+    );
     if (onTap == null) return card;
     return Pressable(onTap: onTap, child: card);
   }

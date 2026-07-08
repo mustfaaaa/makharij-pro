@@ -62,7 +62,10 @@ abstract class AppColors {
   static Color get darkTextPrimary => const Color(0xFFF2ECDE);
 
   // ── Shadow ───────────────────────────────────────────────────────────────
-  static Color get cardShadow => _d ? const Color(0x33000000) : const Color(0x08000000);
+  // Soft, still subtle — enough to lift cards off the cream background without
+  // looking heavy. Dark mode leans on a deeper shadow since there's no border
+  // contrast to rely on.
+  static Color get cardShadow => _d ? const Color(0x40000000) : const Color(0x14100A00);
 
   // ── Liquid glass (frosted bars) ──────────────────────────────────────────
   static Color get glassSurface => _d ? const Color(0x992A2419) : const Color(0x99FFFFFF);

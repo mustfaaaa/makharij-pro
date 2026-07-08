@@ -32,9 +32,12 @@ class HasanahCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.primarySurface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(color: AppColors.cardShadow, blurRadius: 18, offset: const Offset(0, 8)),
+        ],
       ),
       child: Row(
         children: [

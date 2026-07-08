@@ -131,14 +131,15 @@ abstract class AppTheme {
     );
   }
 
-  /// Standard gold-shadow card decoration.
-  static BoxDecoration cardDecoration({double radius = 16}) {
+  /// The one canonical card surface used across the app: clean white/dark
+  /// surface, hairline border, soft warm shadow, generous corner radius.
+  static BoxDecoration cardDecoration({double radius = 18}) {
     return BoxDecoration(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(color: AppColors.border),
       boxShadow: [
-        BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: Offset(0, 4)),
+        BoxShadow(color: AppColors.cardShadow, blurRadius: 18, offset: const Offset(0, 8)),
       ],
     );
   }
