@@ -9,13 +9,13 @@ import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/google_sign_in_button.dart';
 import '../../../../shared/widgets/buttons/google_web_button.dart';
-import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/feedback/app_snackbar.dart';
-import '../../../../shared/widgets/inputs/custom_text_field.dart';
 import '../../../../theme/app_colors.dart';
-import '../../../../theme/app_spacing.dart';
-import '../widgets/auth_shell.dart';
+import '../widgets/arch_auth_shell.dart';
 
+/// Login screen rebuilt to the provided mockup: arch-door photo header,
+/// cream sheet, 'م' logo circle, Google-first sign in, gold Login button.
+/// All authentication logic is unchanged from the previous version.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -90,11 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
       context.go(RoutePaths.home);
     } catch (e) {
       if (!mounted) return;
-      AppSnackbar.show(
-        context,
-        Services.auth.errorMessageFor(e),
-        isError: true,
-      );
+      AppSnackbar.show(context, Services.auth.errorMessageFor(e), isError: true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -117,13 +113,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildGoogleButton() {
     if (!kIsWeb) {
-      return GoogleSignInButton(
-        onPressed: _googleSignIn,
-        isLoading: _googleLoading,
-      );
+      return GoogleSignInButton(onPressed: _googleSignIn, isLoading: _googleLoading);
     }
-    // Web must render Google's own button (see GoogleSignIn.supportsAuthenticate);
-    // it handles its own account-picker UI, so there's no separate loading state to show here.
     if (!_webGoogleReady) {
       return const SizedBox(
         height: 44,
@@ -139,109 +130,75 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AuthShell(
-      title: 'Welcome Back',
-      subtitle: 'Sign in to continue your Tajweed journey',
-      activeTab: AuthTab.login,
+    return ArchAuthShell(
+      title: 'MakharijPro AI',
+      subtitle: 'Login to Your Journey',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CustomTextField(
-            label: 'Email',
-            hint: 'you@example.com',
+          _buildGoogleButton(),
+          const SizedBox(height: 20),
+          const AuthOrDivider(label: 'Or log in with email'),
+          const SizedBox(height: 20),
+          AuthField(
+            hint: 'Email',
+            icon: Icons.mail_rounded,
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
-            prefixIcon: Icons.mail_outline,
             errorText: _emailError,
             onChanged: (_) {
-              if (_emailError != null) {
-                setState(() => _emailError = null);
-              }
+              if (_emailError != null) setState(() => _emailError = null);
             },
           ),
-          const SizedBox(height: AppSpacing.md),
-          CustomTextField(
-            label: 'Password',
-            hint: '••••••••',
+          const SizedBox(height: 16),
+          AuthField(
+            hint: 'Password',
+            icon: Icons.lock_rounded,
             controller: _passwordController,
             obscureText: _obscure,
-            prefixIcon: Icons.lock_outline,
             errorText: _passwordError,
             onChanged: (_) {
-              if (_passwordError != null) {
-                setState(() => _passwordError = null);
-              }
+              if (_passwordError != null) setState(() => _passwordError = null);
             },
             suffixIcon: IconButton(
               icon: Icon(
-                _obscure
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
+                _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                 size: 20,
+                color: AppColors.textMuted,
               ),
               onPressed: () => setState(() => _obscure = !_obscure),
             ),
           ),
+          const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => context.push(RoutePaths.forgotPassword),
-              child: const Text('Forgot Password?'),
+            child: GestureDetector(
+              onTap: () => context.push(RoutePaths.forgotPassword),
+              child: Text(
+                'Forgot password?',
+                style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700, fontSize: 15),
+              ),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          PrimaryButton(
-            label: 'Login',
-            onPressed: _submit,
-            isLoading: _loading,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          const _OrDivider(),
-          const SizedBox(height: AppSpacing.lg),
-          _buildGoogleButton(),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 18),
+          AuthGoldButton(label: 'Login', onPressed: _submit, isLoading: _loading),
+          const SizedBox(height: 22),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                "Don't have an account? ",
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+              Text("Don't have an account? ",
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary)),
               GestureDetector(
                 onTap: () => context.pushReplacement(RoutePaths.register),
                 child: Text(
-                  'Create an account',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  'Sign Up',
+                  style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w800, fontSize: 16),
                 ),
               ),
             ],
           ),
         ],
       ),
-    );
-  }
-}
-
-class _OrDivider extends StatelessWidget {
-  const _OrDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: Divider(color: AppColors.border)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: Text(
-            'Or continue with',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
-        Expanded(child: Divider(color: AppColors.border)),
-      ],
     );
   }
 }

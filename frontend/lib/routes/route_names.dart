@@ -8,6 +8,7 @@ abstract class RouteNames {
 
   static const String home = 'home';
   static const String quran = 'quran';
+  static const String askAi = 'askAi';
   static const String progress = 'progress';
   static const String profile = 'profile';
 
@@ -48,6 +49,7 @@ abstract class RoutePaths {
 
   static const String home = '/home';
   static const String quran = '/quran';
+  static const String askAi = '/ask-ai';
   static const String progress = '/progress';
   static const String profile = '/profile';
 

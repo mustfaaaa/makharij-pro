@@ -1,243 +1,369 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/base_list_cubit.dart';
-import '../../../../models/session_result.dart';
+import '../../../../dummy/dummy_surahs.dart';
 import '../../../../models/surah.dart';
 import '../../../../routes/route_names.dart';
-import '../../../../services/service_locator.dart';
-import '../../../../shared/widgets/animated/staggered_fade_slide.dart';
-import '../../../../shared/widgets/cards/surah_card.dart';
-import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
-import '../../../../shared/widgets/states/empty_state_widget.dart';
-import '../../../../shared/widgets/states/error_state_widget.dart';
+import '../../../../shared/widgets/animated/pressable.dart';
 import '../../../../theme/app_colors.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
-import '../bloc/surah_list_cubit.dart';
+import '../../../../theme/app_typography.dart';
 
-class SurahSelectionScreen extends StatelessWidget {
+enum _SurahFilter { all, recent, favourites }
+
+/// Quran tab rebuilt to the provided mockup: QURAN heading with a
+/// "114 Surahs" chip, search by name / meaning / number, the provided Quran
+/// photo as a hero card with the Last Read strip, and All / Recent /
+/// Favourites tabs over the full 114-surah list.
+class SurahSelectionScreen extends StatefulWidget {
   const SurahSelectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => SurahListCubit(),
-      child: const _SurahSelectionView(),
-    );
-  }
+  State<SurahSelectionScreen> createState() => _SurahSelectionScreenState();
 }
 
-class _SurahSelectionView extends StatefulWidget {
-  const _SurahSelectionView();
-  @override
-  State<_SurahSelectionView> createState() => _SurahSelectionViewState();
-}
-
-class _SurahSelectionViewState extends State<_SurahSelectionView> {
+class _SurahSelectionScreenState extends State<SurahSelectionScreen> {
+  final _searchController = TextEditingController();
+  _SurahFilter _filter = _SurahFilter.all;
   String _query = '';
-  int _filterIndex = 0; // 0=All, 1=Recent, 2=Favourites
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Surah> get _visibleSurahs {
+    Iterable<Surah> list = dummySurahs;
+    switch (_filter) {
+      case _SurahFilter.recent:
+        list = list.where((s) => s.lastScore != null);
+      case _SurahFilter.favourites:
+        list = list.where((s) => s.isBookmarked);
+      case _SurahFilter.all:
+        break;
+    }
+    final q = _query.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      list = list.where((s) =>
+          s.nameEnglish.toLowerCase().contains(q) ||
+          s.meaning.toLowerCase().contains(q) ||
+          s.nameArabic.contains(q) ||
+          s.number.toString() == q);
+    }
+    return list.toList();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final surahs = _visibleSurahs;
+    final bottomPad = AppSpacing.bottomNavClearance + MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: BlocBuilder<SurahListCubit, ListState<Surah>>(
-          builder: (context, state) {
-            if (state.status == ListStatus.loading) {
-              return const ShimmerListPlaceholder(itemCount: 8);
-            }
-            if (state.status == ListStatus.error) {
-              return ErrorStateWidget(
-                message: state.errorMessage ?? 'Could not load surahs.',
-                onRetry: () => context.read<SurahListCubit>().load(),
-              );
-            }
-
-            final all = state.items;
-
-            return Column(children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Row(children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Explore',
-                            style: TextStyle(color: AppColors.primary, fontSize: 22, fontWeight: FontWeight.w800)),
-                        Text('${all.length} Surahs of the Holy Quran',
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                      ],
-                    ),
+        bottom: false,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+              AppSpacing.screenPadding, 12, AppSpacing.screenPadding, bottomPad),
+          children: [
+            // ── QURAN heading ────────────────────────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('QURAN',
+                          style: textTheme.displayLarge?.copyWith(
+                              color: AppColors.primaryDark,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 30,
+                              letterSpacing: 1.2)),
+                      const SizedBox(height: 2),
+                      Text('114 Surahs of the Holy Quran',
+                          style: textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+                    ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text('${all.length} Surahs',
-                        style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700, fontSize: 12)),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius: AppRadii.pillRadius,
                   ),
-                ]),
+                  child: Text('114 Surahs',
+                      style: TextStyle(
+                          color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 12.5)),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // ── Search ───────────────────────────────────────────────────
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: AppRadii.pillRadius,
+                border: Border.all(color: AppColors.border),
               ),
-
-              // Search
+              child: TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _query = v),
+                decoration: InputDecoration(
+                  hintText: 'Search by name, meaning or number...',
+                  hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14.5),
+                  prefixIcon: Icon(Icons.search_rounded, color: AppColors.textMuted, size: 22),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // ── Hero: the provided Quran photo + Last Read strip ─────────
+            const _QuranHeroCard(),
+            const SizedBox(height: AppSpacing.md),
+            // ── All / Recent / Favourites tabs ───────────────────────────
+            Row(
+              children: [
+                _FilterTab(
+                    label: 'All',
+                    selected: _filter == _SurahFilter.all,
+                    onTap: () => setState(() => _filter = _SurahFilter.all)),
+                const SizedBox(width: AppSpacing.lg),
+                _FilterTab(
+                    label: 'Recent',
+                    selected: _filter == _SurahFilter.recent,
+                    onTap: () => setState(() => _filter = _SurahFilter.recent)),
+                const SizedBox(width: AppSpacing.lg),
+                _FilterTab(
+                    label: 'Favourites',
+                    selected: _filter == _SurahFilter.favourites,
+                    onTap: () => setState(() => _filter = _SurahFilter.favourites)),
+              ],
+            ),
+            Divider(color: AppColors.divider, height: 18),
+            const SizedBox(height: 4),
+            // ── The surah list ───────────────────────────────────────────
+            if (surahs.isEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                child: TextField(
-                  onChanged: (v) => setState(() => _query = v),
-                  decoration: InputDecoration(
-                    hintText: 'Search by name, meaning or number…',
-                    prefixIcon: Icon(Icons.search, color: AppColors.textSecondary),
+                padding: const EdgeInsets.symmetric(vertical: 48),
+                child: Column(
+                  children: [
+                    Icon(Icons.search_off_rounded, size: 40, color: AppColors.textMuted),
+                    const SizedBox(height: 10),
+                    Text('No surahs match your search',
+                        style: textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+                  ],
+                ),
+              )
+            else
+              for (final surah in surahs) _SurahListCard(surah: surah),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Hero card: provided Quran photo + frosted Last Read strip ────────────────
+class _QuranHeroCard extends StatelessWidget {
+  const _QuranHeroCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: AppRadii.lgRadius,
+      child: Stack(
+        children: [
+          Image.asset(
+            'assets/images/quran_dark.jpg',
+            height: 300,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            alignment: const Alignment(0, 0.5),
+          ),
+          // Book sits in the upper area; the blend begins around the rehal
+          // curve so the lower portion of the mushaf's stand and carpet stays
+          // visible through the blended area, melting into the Last Read strip.
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.0, 0.5, 0.72, 1.0],
+                  colors: [
+                    Colors.black.withValues(alpha: 0.06),
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.10),
+                    Colors.black.withValues(alpha: 0.20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Frosted "Last Read" strip pinned to the bottom of the photo.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  color: Colors.white.withValues(alpha: 0.82),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration:
+                            BoxDecoration(color: AppColors.primarySurface, borderRadius: AppRadii.mdRadius),
+                        child: Icon(Icons.menu_book_rounded, color: AppColors.primaryDark, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('LAST READ',
+                                style: TextStyle(
+                                    color: AppColors.primaryDark,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10.5,
+                                    letterSpacing: 1.8)),
+                            const Text('Al-Fatihah',
+                                style: TextStyle(
+                                    color: Color(0xFF2D2A26), fontWeight: FontWeight.w700, fontSize: 16)),
+                            const Text('Ayah 5 of 7 · Juz 1',
+                                style: TextStyle(color: Color(0xFF8A8378), fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      Pressable(
+                        onTap: () => context.push(RoutePaths.surahDetailsPath(1)),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                          decoration:
+                              BoxDecoration(color: AppColors.primary, borderRadius: AppRadii.pillRadius),
+                          child: const Text('Continue',
+                              style:
+                                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5)),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-
-              // Filter tabs
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Row(children: [
-                  _FilterTab(label: 'All', isActive: _filterIndex == 0, onTap: () => setState(() => _filterIndex = 0)),
-                  const SizedBox(width: 24),
-                  _FilterTab(label: 'Recent', isActive: _filterIndex == 1, onTap: () => setState(() => _filterIndex = 1)),
-                  const SizedBox(width: 24),
-                  _FilterTab(label: 'Favourites', isActive: _filterIndex == 2, onTap: () => setState(() => _filterIndex = 2)),
-                ]),
-              ),
-              const SizedBox(height: 10),
-              Divider(height: 1, color: AppColors.divider),
-
-              // List
-              Expanded(child: _buildContent(context, all)),
-            ]);
-          },
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
-
-  Widget _buildContent(BuildContext context, List<Surah> all) {
-    switch (_filterIndex) {
-      case 1:
-        return _RecentTab(all: all);
-      case 2:
-        final favs = all.where((s) => s.isBookmarked).toList();
-        return favs.isEmpty
-            ? const EmptyStateWidget(
-                icon: Icons.bookmark_border_rounded,
-                title: 'No favourites yet',
-                message: 'Bookmark a surah from its details page to find it here.')
-            : _SurahList(surahs: favs);
-      default: // All tab with search
-        final q = _query.trim().toLowerCase();
-        final filtered = q.isEmpty
-            ? all
-            : all
-                .where((s) =>
-                    s.nameEnglish.toLowerCase().contains(q) ||
-                    s.meaning.toLowerCase().contains(q) ||
-                    s.nameArabic.contains(_query) ||
-                    s.number.toString() == _query.trim())
-                .toList();
-        return filtered.isEmpty
-            ? const EmptyStateWidget(
-                icon: Icons.search_off_rounded,
-                title: 'No surah found',
-                message: 'Try a different name or number.')
-            : _SurahList(surahs: filtered);
-    }
-  }
 }
 
-class _SurahList extends StatelessWidget {
-  final List<Surah> surahs;
-  const _SurahList({required this.surahs});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.screenPadding,
-        14,
-        AppSpacing.screenPadding,
-        AppSpacing.bottomNavClearance + MediaQuery.of(context).padding.bottom,
-      ),
-      itemCount: surahs.length,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, i) {
-        final s = surahs[i];
-        return StaggeredFadeSlide(
-          index: i,
-          child: SurahCard(surah: s, onTap: () => context.push(RoutePaths.surahDetailsPath(s.number))),
-        );
-      },
-    );
-  }
-}
-
-class _RecentTab extends StatelessWidget {
-  final List<Surah> all;
-  const _RecentTab({required this.all});
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<SessionResult>>(
-      future: Services.session.getSessions(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const ShimmerListPlaceholder(itemCount: 4);
-        // Unique surahs in most-recent-first session order.
-        final seen = <int>{};
-        final recent = <Surah>[];
-        for (final session in snapshot.data!) {
-          if (seen.add(session.surahNumber)) {
-            final match = all.where((s) => s.number == session.surahNumber);
-            if (match.isNotEmpty) recent.add(match.first);
-          }
-        }
-        if (recent.isEmpty) {
-          return const EmptyStateWidget(
-            icon: Icons.history_rounded,
-            title: 'No recent recitations',
-            message: 'Surahs you recite will appear here for quick access.',
-          );
-        }
-        return _SurahList(surahs: recent);
-      },
-    );
-  }
-}
-
+// ── All / Recent / Favourites tab item ───────────────────────────────────────
 class _FilterTab extends StatelessWidget {
   final String label;
-  final bool isActive;
+  final bool selected;
   final VoidCallback onTap;
-  const _FilterTab({required this.label, required this.isActive, required this.onTap});
+  const _FilterTab({required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(label,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
             style: TextStyle(
-                fontSize: 14,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                color: isActive ? AppColors.textPrimary : AppColors.textSecondary)),
-        const SizedBox(height: 6),
-        Container(
-          height: 2,
-          width: 32,
-          decoration: BoxDecoration(
-            color: isActive ? AppColors.success : Colors.transparent,
-            borderRadius: BorderRadius.circular(2),
+              fontSize: 15,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              color: selected ? AppColors.textPrimary : AppColors.textMuted,
+            ),
           ),
+          const SizedBox(height: 5),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: 3,
+            width: selected ? 26 : 0,
+            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── One surah row card ────────────────────────────────────────────────────────
+class _SurahListCard extends StatelessWidget {
+  final Surah surah;
+  const _SurahListCard({required this.surah});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Pressable(
+      onTap: () => context.push(RoutePaths.surahDetailsPath(surah.number)),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadii.lgRadius,
+          boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: const Offset(0, 3))],
         ),
-      ]),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+              alignment: Alignment.center,
+              child: Text('${surah.number}',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(surah.nameArabic,
+                      style: AppTypography.arabicWord(fontSize: 20)),
+                  const SizedBox(height: 2),
+                  Text('${surah.nameEnglish} / ${surah.meaning}',
+                      style: textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary, height: 1.3)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (surah.lastScore != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.successLight,
+                  borderRadius: AppRadii.pillRadius,
+                ),
+                child: Text('Practiced ${surah.lastScore!.toStringAsFixed(0)}%',
+                    style: TextStyle(
+                        color: AppColors.success, fontWeight: FontWeight.w700, fontSize: 12)),
+              )
+            else
+              Text('${surah.ayahCount} Ayat',
+                  style: textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
+          ],
+        ),
+      ),
     );
   }
 }

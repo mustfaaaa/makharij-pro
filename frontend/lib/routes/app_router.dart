@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../dev/component_gallery_screen.dart';
 import '../dev/style_guide_screen.dart';
+import '../features/ask_ai/presentation/screens/ask_ai_screen.dart';
 import '../features/authentication/presentation/screens/forgot_password_screen.dart';
 import '../features/authentication/presentation/screens/login_screen.dart';
 import '../features/authentication/presentation/screens/register_screen.dart';
@@ -245,6 +246,13 @@ final GoRouter appRouter = GoRouter(
             path: RoutePaths.quran,
             name: RouteNames.quran,
             builder: (c, s) => ThemeReactive(builder: (_) => SurahSelectionScreen()),
+          ),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: RoutePaths.askAi,
+            name: RouteNames.askAi,
+            builder: (c, s) => ThemeReactive(builder: (_) => const AskAiScreen()),
           ),
         ]),
         StatefulShellBranch(routes: [
