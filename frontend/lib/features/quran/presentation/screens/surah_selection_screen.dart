@@ -182,6 +182,7 @@ class _QuranHeroCard extends StatelessWidget {
         children: [
           Image.asset(
             'assets/images/quran_dark.jpg',
+            opacity: const AlwaysStoppedAnimation(0.8),
             height: 300,
             width: double.infinity,
             fit: BoxFit.cover,
