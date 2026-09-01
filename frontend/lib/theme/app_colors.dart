@@ -50,6 +50,24 @@ abstract class AppColors {
   static Color get errorHighlight => _d ? const Color(0xFFE0605F) : const Color(0xFFD9383A);
   static Color get errorHighlightBg => _d ? const Color(0xFF2E1C1B) : const Color(0xFFFCEAEA);
 
+  // ── Tajweed rules ─────────────────────────────────────────────────────────
+  // One signature colour per rule, so a flagged word says *which* rule it
+  // broke rather than only that something was wrong.
+  //
+  // These are deliberately four separate hues. The previous set drew Madd,
+  // Ghunnah and Shaddah from primary/accent/warning -- #C2A366, #C9A227 and
+  // #CE8A1B -- which are the same gold to the eye at verse size, so three of
+  // the four rules were indistinguishable on the page.
+  //
+  // Colour is never the only signal: see TajweedRuleStyle, which pairs each
+  // of these with an underline shape that carries the same meaning for
+  // colour-blind readers and in greyscale.
+  static Color get ruleMadd => _d ? const Color(0xFFD9A25C) : const Color(0xFFB0752F);
+  static Color get ruleGhunnah => _d ? const Color(0xFF5CBF95) : const Color(0xFF2E7D5B);
+  static Color get ruleShaddah => _d ? const Color(0xFFE0836A) : const Color(0xFFA6462F);
+  static Color get ruleMakhraj => _d ? const Color(0xFF7FAEE0) : const Color(0xFF3B6EA8);
+  static Color get ruleSkipped => _d ? const Color(0xFF8A8172) : const Color(0xFF9A948A);
+
   // ── Score bands ───────────────────────────────────────────────────────────
   static Color get scoreExcellent => _d ? const Color(0xFF3FAE7F) : const Color(0xFF00875A);
   static Color get scoreGood => const Color(0xFF7CA83B);

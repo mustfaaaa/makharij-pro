@@ -209,25 +209,28 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTick
     });
   }
 
-  /// Word colouring for one ayah, from whichever signal is live right now:
+  /// Word marking for one ayah, from whichever signal is live right now:
   /// during recitation the live cursor, afterwards the finished verdicts.
-  Map<int, WordTone> _tonesFor(Ayah ayah, RecitationState state, int wordsBefore) {
+  ///
+  /// The live cursor never marks a mistake -- it only knows how far the reciter
+  /// has got -- so rule colours appear only once the analysis is in.
+  Map<int, WordMark> _marksFor(Ayah ayah, RecitationState state, int wordsBefore) {
     final verdicts = state.result?.wordVerdicts;
     if (state.status == RecitationStatus.result && verdicts != null) {
-      final tones = <int, WordTone>{};
+      final marks = <int, WordMark>{};
       for (final v in verdicts.where((v) => v.ayahNumber == ayah.number)) {
-        tones[v.wordIndex] = !v.recited
-            ? WordTone.pending
-            : (v.flagged ? WordTone.flagged : WordTone.recited);
+        marks[v.wordIndex] = !v.recited
+            ? WordMark.pending
+            : (v.flagged ? WordMark(WordTone.flagged, rule: v.errorType) : WordMark.recited);
       }
-      return tones;
+      return marks;
     }
 
     final recited = state.liveWordsRecited;
     if (recited <= wordsBefore) return const {};
     final wordCount = ayah.arabicText.split(' ').length;
     final upto = min(recited - wordsBefore, wordCount);
-    return {for (var i = 0; i < upto; i++) i: WordTone.recited};
+    return {for (var i = 0; i < upto; i++) i: WordMark.recited};
   }
 
   @override
@@ -266,7 +269,7 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTick
             key: key,
             ayah: ayah,
             fontSize: 26 * verseScale,
-            tones: _tonesFor(ayah, state, before),
+            marks: _marksFor(ayah, state, before),
             showTranslation: _expandedAyah == ayah.number,
             onTap: () => setState(
               () => _expandedAyah = _expandedAyah == ayah.number ? null : ayah.number,

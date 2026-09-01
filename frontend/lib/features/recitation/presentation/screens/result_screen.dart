@@ -17,7 +17,10 @@ import '../../../../shared/widgets/score_badge.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
+import '../../../../theme/tajweed_rule_style.dart';
 import '../bloc/recitation_cubit.dart';
+import '../widgets/mistake_breakdown.dart';
+import '../widgets/mistake_legend.dart';
 import '../widgets/word_playback_button.dart';
 
 class ResultScreen extends StatefulWidget {
@@ -181,17 +184,27 @@ class _RealWordResults extends StatelessWidget {
     final lastAyah = ayahs.isEmpty ? 0 : ayahs.last.number;
     final stoppedEarly = reachedAyah > 0 && reachedAyah < lastAyah;
 
-    // Verdicts indexed by (ayah, word) so each rendered word can find its own.
-    final toneFor = <int, Map<int, WordTone>>{};
+    // Verdicts indexed by (ayah, word) so each rendered word can find its own,
+    // carrying the rule so the page can colour it by which mistake it was.
+    final markFor = <int, Map<int, WordMark>>{};
     for (final v in verdicts) {
       if (!v.recited) continue;
-      (toneFor[v.ayahNumber] ??= {})[v.wordIndex] =
-          v.flagged ? WordTone.flagged : WordTone.recited;
+      (markFor[v.ayahNumber] ??= {})[v.wordIndex] = v.flagged
+          ? WordMark(WordTone.flagged, rule: v.errorType)
+          : WordMark.recited;
     }
+    final counts = MistakeBreakdown.tally(flagged.map((v) => v.errorType));
+    final rulesPresent = counts.keys.toSet();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (flagged.isNotEmpty) ...[
+          // Which rules, and how many -- the pattern worth practising, which
+          // scattered coloured words alone don't tell you.
+          MistakeBreakdown(counts: counts),
+          const SizedBox(height: AppSpacing.md),
+        ],
         Text(
           flagged.isEmpty
               ? 'No mistakes found — excellent recitation!'
@@ -221,8 +234,12 @@ class _RealWordResults extends StatelessWidget {
                 MushafAyah(
                   ayah: ayah,
                   fontSize: 22,
-                  tones: toneFor[ayah.number] ?? const {},
+                  marks: markFor[ayah.number] ?? const {},
                 ),
+              if (rulesPresent.isNotEmpty || stoppedEarly) ...[
+                const SizedBox(height: AppSpacing.xs),
+                MistakeLegend(rules: rulesPresent, showNotRecited: stoppedEarly),
+              ],
             ],
           ),
         ),
@@ -246,7 +263,10 @@ class _MistakeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = verdict.errorType?.label ?? 'Pronunciation';
+    final rule = verdict.errorType;
+    final label = rule?.label ?? 'Pronunciation';
+    // Same colour as the word in the verse above, so the eye joins the two.
+    final color = rule == null ? AppColors.errorHighlight : TajweedRuleStyle.color(rule);
     final pcm = audioPcm;
 
     return Container(
@@ -265,17 +285,17 @@ class _MistakeCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.errorHighlight.withValues(alpha: 0.12),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(label,
-                    style: TextStyle(color: AppColors.errorHighlight, fontWeight: FontWeight.w600, fontSize: 12)),
+                    style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
               ),
               const SizedBox(width: AppSpacing.sm),
               Text('Ayah ${verdict.ayahNumber} · word ${verdict.wordIndex + 1}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
               const Spacer(),
-              Text(verdict.word, style: AppTypography.arabicWord(fontSize: 20, color: AppColors.textPrimary)),
+              Text(verdict.word, style: AppTypography.arabicWord(fontSize: 20, color: color)),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),

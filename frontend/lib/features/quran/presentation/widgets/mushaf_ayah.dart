@@ -2,7 +2,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../models/ayah.dart';
+import '../../../../models/tajweed_error.dart';
 import '../../../../theme/app_colors.dart';
+import '../../../../theme/tajweed_rule_style.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
 
@@ -26,6 +28,23 @@ enum WordTone {
   flagged,
 }
 
+/// One word's verdict as the page draws it.
+///
+/// A flagged word carries the rule it broke, so the page can say *which*
+/// mistake it was rather than only that there was one. [rule] is null while
+/// reciting (the live cursor reports progress, never mistakes) and for a
+/// flagged word whose rule a newer server sent under a name this build
+/// doesn't know.
+class WordMark {
+  final WordTone tone;
+  final TajweedErrorType? rule;
+
+  const WordMark(this.tone, {this.rule});
+
+  static const pending = WordMark(WordTone.pending);
+  static const recited = WordMark(WordTone.recited);
+}
+
 /// One ayah rendered as flowing, justified mushaf text, closed by a gold
 /// ayah-number medallion. Words are individually coloured so recitation
 /// progress and mistakes can be shown in place, without breaking the line
@@ -34,8 +53,8 @@ class MushafAyah extends StatelessWidget {
   final Ayah ayah;
   final double fontSize;
 
-  /// Tone per word index. Missing entries fall back to [WordTone.pending].
-  final Map<int, WordTone> tones;
+  /// Verdict per word index. Missing entries fall back to [WordMark.pending].
+  final Map<int, WordMark> marks;
   final bool showTranslation;
   final VoidCallback? onTap;
 
@@ -43,20 +62,42 @@ class MushafAyah extends StatelessWidget {
     super.key,
     required this.ayah,
     required this.fontSize,
-    this.tones = const {},
+    this.marks = const {},
     this.showTranslation = false,
     this.onTap,
   });
 
-  Color _colorFor(WordTone tone) {
-    switch (tone) {
+  /// The rule's own colour when a word is flagged, so the page distinguishes a
+  /// short madd from a missed ghunnah instead of painting both the same red.
+  Color _colorFor(WordMark mark) {
+    switch (mark.tone) {
       case WordTone.pending:
         return AppColors.textMuted;
       case WordTone.recited:
         return AppColors.textPrimary;
       case WordTone.flagged:
-        return AppColors.errorHighlight;
+        return mark.rule == null
+            ? AppColors.errorHighlight
+            : TajweedRuleStyle.color(mark.rule!);
     }
+  }
+
+  /// Colour plus, for a flagged word, the underline whose shape names the
+  /// rule. The shape is what keeps this readable without colour.
+  TextStyle _styleFor(WordMark mark) {
+    final base = AppTypography.arabicVerse(
+      fontSize: fontSize,
+      color: _colorFor(mark),
+      height: 2.1,
+    );
+    final rule = mark.rule;
+    if (mark.tone != WordTone.flagged || rule == null) return base;
+    return base.copyWith(
+      decoration: TajweedRuleStyle.decoration(rule),
+      decorationStyle: TajweedRuleStyle.decorationStyle(rule),
+      decorationColor: TajweedRuleStyle.color(rule),
+      decorationThickness: 2,
+    );
   }
 
   @override
@@ -74,11 +115,7 @@ class MushafAyah extends StatelessWidget {
               for (var i = 0; i < words.length; i++)
                 TextSpan(
                   text: i == words.length - 1 ? words[i] : '${words[i]} ',
-                  style: AppTypography.arabicVerse(
-                    fontSize: fontSize,
-                    color: _colorFor(tones[i] ?? WordTone.pending),
-                    height: 2.1,
-                  ),
+                  style: _styleFor(marks[i] ?? WordMark.pending),
                   recognizer: recognizer,
                 ),
               const TextSpan(text: ' '),
