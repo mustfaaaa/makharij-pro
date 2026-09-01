@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../data/tajweed_rules.dart';
 import '../dummy/dummy_achievements.dart';
 import '../dummy/dummy_sessions.dart';
 import '../dummy/dummy_surahs.dart';
-import '../dummy/dummy_tajweed_rules.dart';
 import '../shared/widgets/buttons/app_icon_button.dart';
 import '../shared/widgets/buttons/outlined_app_button.dart';
 import '../shared/widgets/buttons/primary_button.dart';
@@ -64,7 +64,7 @@ class ComponentGalleryScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           RecentSessionCard(session: dummySessions.first),
           const SizedBox(height: AppSpacing.sm),
-          RuleCard(rule: dummyTajweedRules.first),
+          RuleCard(rule: tajweedRules.first),
           const SizedBox(height: AppSpacing.sm),
           const Row(
             children: [

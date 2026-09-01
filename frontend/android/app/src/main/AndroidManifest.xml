@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- OE-6: the app requires internet to reach the backend and Firebase. Debug builds already
+         get this via android/app/src/debug/AndroidManifest.xml, but release builds need it here. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- FR-1: recording the user's recitation. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="MakharijPro AI"
         android:name="${applicationName}"

@@ -1,12 +1,13 @@
 import '../models/surah.dart';
 
-/// Complete 114-Surah dataset. Scores on commonly practiced surahs are
-/// pre-populated so the practiced-% badge shows in the Explore list.
-/// Replace with real backend data in a later phase.
+/// Complete, accurate 114-surah metadata (names, meanings, ayah counts,
+/// revelation place) -- real reference data, not placeholders. lastScore
+/// and isBookmarked are always unset here; AssetSurahService merges in each
+/// signed-in user's real values from session history and Firestore.
 final List<Surah> dummySurahs = [
-  const Surah(number: 1,   nameArabic: 'الفاتحة',    nameEnglish: 'Al-Fatihah',     meaning: 'The Opening',                  ayahCount: 7,   revelationPlace: 'Makkah',   lastScore: 92, isBookmarked: true),
-  const Surah(number: 2,   nameArabic: 'البقرة',      nameEnglish: 'Al-Baqarah',     meaning: 'The Cow',                       ayahCount: 286, revelationPlace: 'Madinah',  lastScore: 78),
-  const Surah(number: 3,   nameArabic: 'آل عمران',    nameEnglish: 'Aal-E-Imran',    meaning: 'The Family of Imran',           ayahCount: 200, revelationPlace: 'Madinah',  lastScore: 62),
+  const Surah(number: 1,   nameArabic: 'الفاتحة',    nameEnglish: 'Al-Fatihah',     meaning: 'The Opening',                  ayahCount: 7,   revelationPlace: 'Makkah'),
+  const Surah(number: 2,   nameArabic: 'البقرة',      nameEnglish: 'Al-Baqarah',     meaning: 'The Cow',                       ayahCount: 286, revelationPlace: 'Madinah'),
+  const Surah(number: 3,   nameArabic: 'آل عمران',    nameEnglish: 'Aal-E-Imran',    meaning: 'The Family of Imran',           ayahCount: 200, revelationPlace: 'Madinah'),
   const Surah(number: 4,   nameArabic: 'النساء',      nameEnglish: 'An-Nisa',        meaning: 'The Women',                     ayahCount: 176, revelationPlace: 'Madinah'),
   const Surah(number: 5,   nameArabic: 'المائدة',     nameEnglish: "Al-Ma'idah",     meaning: 'The Table Spread',              ayahCount: 120, revelationPlace: 'Madinah'),
   const Surah(number: 6,   nameArabic: 'الأنعام',     nameEnglish: "Al-An'am",       meaning: 'The Cattle',                    ayahCount: 165, revelationPlace: 'Makkah'),
@@ -21,7 +22,7 @@ final List<Surah> dummySurahs = [
   const Surah(number: 15,  nameArabic: 'الحجر',       nameEnglish: 'Al-Hijr',        meaning: 'The Rocky Tract',               ayahCount: 99,  revelationPlace: 'Makkah'),
   const Surah(number: 16,  nameArabic: 'النحل',       nameEnglish: 'An-Nahl',        meaning: 'The Bee',                       ayahCount: 128, revelationPlace: 'Makkah'),
   const Surah(number: 17,  nameArabic: 'الإسراء',     nameEnglish: 'Al-Isra',        meaning: 'The Night Journey',             ayahCount: 111, revelationPlace: 'Makkah'),
-  const Surah(number: 18,  nameArabic: 'الكهف',       nameEnglish: 'Al-Kahf',        meaning: 'The Cave',                      ayahCount: 110, revelationPlace: 'Makkah',   lastScore: 85, isBookmarked: true),
+  const Surah(number: 18,  nameArabic: 'الكهف',       nameEnglish: 'Al-Kahf',        meaning: 'The Cave',                      ayahCount: 110, revelationPlace: 'Makkah'),
   const Surah(number: 19,  nameArabic: 'مريم',        nameEnglish: 'Maryam',         meaning: 'Mary',                          ayahCount: 98,  revelationPlace: 'Makkah'),
   const Surah(number: 20,  nameArabic: 'طه',          nameEnglish: 'Ta-Ha',          meaning: 'Ta-Ha',                         ayahCount: 135, revelationPlace: 'Makkah'),
   const Surah(number: 21,  nameArabic: 'الأنبياء',    nameEnglish: 'Al-Anbiya',      meaning: 'The Prophets',                  ayahCount: 112, revelationPlace: 'Makkah'),
@@ -39,7 +40,7 @@ final List<Surah> dummySurahs = [
   const Surah(number: 33,  nameArabic: 'الأحزاب',     nameEnglish: 'Al-Ahzab',       meaning: 'The Combined Forces',           ayahCount: 73,  revelationPlace: 'Madinah'),
   const Surah(number: 34,  nameArabic: 'سبإ',         nameEnglish: 'Saba',           meaning: 'Sheba',                         ayahCount: 54,  revelationPlace: 'Makkah'),
   const Surah(number: 35,  nameArabic: 'فاطر',        nameEnglish: 'Fatir',          meaning: 'Originator',                    ayahCount: 45,  revelationPlace: 'Makkah'),
-  const Surah(number: 36,  nameArabic: 'يس',          nameEnglish: 'Ya-Sin',         meaning: 'Ya Sin',                        ayahCount: 83,  revelationPlace: 'Makkah',   lastScore: 88),
+  const Surah(number: 36,  nameArabic: 'يس',          nameEnglish: 'Ya-Sin',         meaning: 'Ya Sin',                        ayahCount: 83,  revelationPlace: 'Makkah'),
   const Surah(number: 37,  nameArabic: 'الصافات',     nameEnglish: 'As-Saffat',      meaning: 'Those Who Set the Ranks',       ayahCount: 182, revelationPlace: 'Makkah'),
   const Surah(number: 38,  nameArabic: 'ص',           nameEnglish: 'Sad',            meaning: 'The Letter Sad',                ayahCount: 88,  revelationPlace: 'Makkah'),
   const Surah(number: 39,  nameArabic: 'الزمر',       nameEnglish: 'Az-Zumar',       meaning: 'The Troops',                    ayahCount: 75,  revelationPlace: 'Makkah'),
@@ -58,7 +59,7 @@ final List<Surah> dummySurahs = [
   const Surah(number: 52,  nameArabic: 'الطور',       nameEnglish: 'At-Tur',         meaning: 'The Mount',                     ayahCount: 49,  revelationPlace: 'Makkah'),
   const Surah(number: 53,  nameArabic: 'النجم',       nameEnglish: 'An-Najm',        meaning: 'The Star',                      ayahCount: 62,  revelationPlace: 'Makkah'),
   const Surah(number: 54,  nameArabic: 'القمر',       nameEnglish: 'Al-Qamar',       meaning: 'The Moon',                      ayahCount: 55,  revelationPlace: 'Makkah'),
-  const Surah(number: 55,  nameArabic: 'الرحمن',      nameEnglish: 'Ar-Rahman',      meaning: 'The Beneficent',                ayahCount: 78,  revelationPlace: 'Madinah',  lastScore: 70),
+  const Surah(number: 55,  nameArabic: 'الرحمن',      nameEnglish: 'Ar-Rahman',      meaning: 'The Beneficent',                ayahCount: 78,  revelationPlace: 'Madinah'),
   const Surah(number: 56,  nameArabic: 'الواقعة',     nameEnglish: "Al-Waqi'ah",     meaning: 'The Inevitable',                ayahCount: 96,  revelationPlace: 'Makkah'),
   const Surah(number: 57,  nameArabic: 'الحديد',      nameEnglish: 'Al-Hadid',       meaning: 'The Iron',                      ayahCount: 29,  revelationPlace: 'Madinah'),
   const Surah(number: 58,  nameArabic: 'المجادلة',    nameEnglish: 'Al-Mujadila',    meaning: 'The Pleading Woman',            ayahCount: 22,  revelationPlace: 'Madinah'),
@@ -70,7 +71,7 @@ final List<Surah> dummySurahs = [
   const Surah(number: 64,  nameArabic: 'التغابن',     nameEnglish: 'At-Taghabun',    meaning: 'The Mutual Disillusion',        ayahCount: 18,  revelationPlace: 'Madinah'),
   const Surah(number: 65,  nameArabic: 'الطلاق',      nameEnglish: 'At-Talaq',       meaning: 'The Divorce',                   ayahCount: 12,  revelationPlace: 'Madinah'),
   const Surah(number: 66,  nameArabic: 'التحريم',     nameEnglish: 'At-Tahrim',      meaning: 'The Prohibition',               ayahCount: 12,  revelationPlace: 'Madinah'),
-  const Surah(number: 67,  nameArabic: 'الملك',       nameEnglish: 'Al-Mulk',        meaning: 'The Sovereignty',               ayahCount: 30,  revelationPlace: 'Makkah',   lastScore: 95),
+  const Surah(number: 67,  nameArabic: 'الملك',       nameEnglish: 'Al-Mulk',        meaning: 'The Sovereignty',               ayahCount: 30,  revelationPlace: 'Makkah'),
   const Surah(number: 68,  nameArabic: 'القلم',       nameEnglish: 'Al-Qalam',       meaning: 'The Pen',                       ayahCount: 52,  revelationPlace: 'Makkah'),
   const Surah(number: 69,  nameArabic: 'الحاقة',      nameEnglish: 'Al-Haqqah',      meaning: 'The Reality',                   ayahCount: 52,  revelationPlace: 'Makkah'),
   const Surah(number: 70,  nameArabic: 'المعارج',     nameEnglish: "Al-Ma'arij",     meaning: 'The Ascending Stairways',       ayahCount: 44,  revelationPlace: 'Makkah'),
@@ -115,7 +116,7 @@ final List<Surah> dummySurahs = [
   const Surah(number: 109, nameArabic: 'الكافرون',    nameEnglish: 'Al-Kafirun',     meaning: 'The Disbelievers',              ayahCount: 6,   revelationPlace: 'Makkah'),
   const Surah(number: 110, nameArabic: 'النصر',       nameEnglish: 'An-Nasr',        meaning: 'The Divine Support',            ayahCount: 3,   revelationPlace: 'Madinah'),
   const Surah(number: 111, nameArabic: 'المسد',       nameEnglish: 'Al-Masad',       meaning: 'The Palm Fiber',                ayahCount: 5,   revelationPlace: 'Makkah'),
-  const Surah(number: 112, nameArabic: 'الإخلاص',     nameEnglish: 'Al-Ikhlas',      meaning: 'The Sincerity',                 ayahCount: 4,   revelationPlace: 'Makkah',   lastScore: 97),
+  const Surah(number: 112, nameArabic: 'الإخلاص',     nameEnglish: 'Al-Ikhlas',      meaning: 'The Sincerity',                 ayahCount: 4,   revelationPlace: 'Makkah'),
   const Surah(number: 113, nameArabic: 'الفلق',       nameEnglish: 'Al-Falaq',       meaning: 'The Daybreak',                  ayahCount: 5,   revelationPlace: 'Makkah'),
-  const Surah(number: 114, nameArabic: 'الناس',       nameEnglish: 'An-Nas',         meaning: 'Mankind',                       ayahCount: 6,   revelationPlace: 'Makkah',   lastScore: 90),
+  const Surah(number: 114, nameArabic: 'الناس',       nameEnglish: 'An-Nas',         meaning: 'Mankind',                       ayahCount: 6,   revelationPlace: 'Makkah'),
 ];

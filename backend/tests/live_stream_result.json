@@ -1,0 +1,39 @@
+{
+  "fatihah_ayah1_only_whole_surah_range": [
+    [
+      "hello",
+      {
+        "type": "ready",
+        "surah_number": 1,
+        "total_words": 29
+      }
+    ],
+    [
+      "progress",
+      {
+        "type": "progress",
+        "ayah": 1,
+        "word_index": 0,
+        "global_index": 0
+      }
+    ],
+    [
+      "progress",
+      {
+        "type": "progress",
+        "ayah": 1,
+        "word_index": 1,
+        "global_index": 1
+      }
+    ],
+    [
+      "progress",
+      {
+        "type": "progress",
+        "ayah": 1,
+        "word_index": 2,
+        "global_index": 2
+      }
+    ]
+  ]
+}

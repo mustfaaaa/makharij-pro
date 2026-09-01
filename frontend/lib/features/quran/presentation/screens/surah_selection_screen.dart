@@ -3,9 +3,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../dummy/dummy_surahs.dart';
+import '../../../../models/session_result.dart';
 import '../../../../models/surah.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/animated/pressable.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
@@ -29,6 +30,19 @@ class _SurahSelectionScreenState extends State<SurahSelectionScreen> {
   final _searchController = TextEditingController();
   _SurahFilter _filter = _SurahFilter.all;
   String _query = '';
+  List<Surah> _allSurahs = const [];
+  SessionResult? _lastSession;
+
+  @override
+  void initState() {
+    super.initState();
+    Services.surah.getSurahs().then((s) {
+      if (mounted) setState(() => _allSurahs = s);
+    });
+    Services.session.getSessions().then((sessions) {
+      if (mounted && sessions.isNotEmpty) setState(() => _lastSession = sessions.first);
+    });
+  }
 
   @override
   void dispose() {
@@ -37,7 +51,7 @@ class _SurahSelectionScreenState extends State<SurahSelectionScreen> {
   }
 
   List<Surah> get _visibleSurahs {
-    Iterable<Surah> list = dummySurahs;
+    Iterable<Surah> list = _allSurahs;
     switch (_filter) {
       case _SurahFilter.recent:
         list = list.where((s) => s.lastScore != null);
@@ -125,7 +139,7 @@ class _SurahSelectionScreenState extends State<SurahSelectionScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             // ── Hero: the provided Quran photo + Last Read strip ─────────
-            const _QuranHeroCard(),
+            _QuranHeroCard(lastSession: _lastSession),
             const SizedBox(height: AppSpacing.md),
             // ── All / Recent / Favourites tabs ───────────────────────────
             Row(
@@ -172,7 +186,8 @@ class _SurahSelectionScreenState extends State<SurahSelectionScreen> {
 
 // ── Hero card: provided Quran photo + frosted Last Read strip ────────────────
 class _QuranHeroCard extends StatelessWidget {
-  const _QuranHeroCard();
+  final SessionResult? lastSession;
+  const _QuranHeroCard({required this.lastSession});
 
   @override
   Widget build(BuildContext context) {
@@ -233,22 +248,26 @@ class _QuranHeroCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('LAST READ',
+                            Text(lastSession == null ? 'GET STARTED' : 'LAST PRACTICED',
                                 style: TextStyle(
                                     color: AppColors.primaryDark,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 10.5,
                                     letterSpacing: 1.8)),
-                            const Text('Al-Fatihah',
-                                style: TextStyle(
+                            Text(lastSession?.surahName ?? 'Al-Fatihah',
+                                style: const TextStyle(
                                     color: Color(0xFF2D2A26), fontWeight: FontWeight.w700, fontSize: 16)),
-                            const Text('Ayah 5 of 7 · Juz 1',
-                                style: TextStyle(color: Color(0xFF8A8378), fontSize: 12)),
+                            Text(
+                              lastSession == null
+                                  ? 'Recite your first surah'
+                                  : '${lastSession!.accuracyScore.toStringAsFixed(0)}% accuracy',
+                              style: const TextStyle(color: Color(0xFF8A8378), fontSize: 12),
+                            ),
                           ],
                         ),
                       ),
                       Pressable(
-                        onTap: () => context.push(RoutePaths.surahDetailsPath(1)),
+                        onTap: () => context.push(RoutePaths.surahDetailsPath(lastSession?.surahNumber ?? 1)),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                           decoration:

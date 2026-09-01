@@ -18,4 +18,17 @@ class Surah {
     this.lastScore,
     this.isBookmarked = false,
   });
+
+  Surah copyWith({double? lastScore, bool? isBookmarked}) {
+    return Surah(
+      number: number,
+      nameArabic: nameArabic,
+      nameEnglish: nameEnglish,
+      meaning: meaning,
+      ayahCount: ayahCount,
+      revelationPlace: revelationPlace,
+      lastScore: lastScore ?? this.lastScore,
+      isBookmarked: isBookmarked ?? this.isBookmarked,
+    );
+  }
 }

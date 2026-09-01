@@ -11,6 +11,7 @@ import '../../../../shared/widgets/states/empty_state_widget.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
+import '../../../../theme/app_typography.dart';
 import '../bloc/practice_plan_cubit.dart';
 
 class PracticePlanScreen extends StatelessWidget {
@@ -35,20 +36,12 @@ class PracticePlanScreen extends StatelessWidget {
                 message: 'Complete a recitation session to get a personalized plan.',
               );
             }
-            final pending = state.items.where((p) => !p.isCompleted).toList();
-            final completed = state.items.where((p) => p.isCompleted).toList();
             return ListView(
               padding: const EdgeInsets.all(AppSpacing.screenPadding),
               children: [
-                Text('Based on your recent sessions, focus on these areas:', style: Theme.of(context).textTheme.bodyMedium),
+                Text('Based on your recent sessions, focus on these Tajweed rules:', style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: AppSpacing.lg),
-                ...pending.map((item) => _PlanTile(item: item)),
-                if (completed.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.lg),
-                  Text('Completed', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.sm),
-                  ...completed.map((item) => _PlanTile(item: item)),
-                ],
+                ...state.items.map((item) => _PlanTile(item: item)),
               ],
             );
           },
@@ -68,16 +61,13 @@ class _PlanTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: const EdgeInsets.all(AppSpacing.cardPadding),
       decoration: BoxDecoration(
-        color: item.isCompleted ? AppColors.surfaceAlt : AppColors.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
-          Icon(
-            item.isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: item.isCompleted ? AppColors.success : AppColors.textMuted,
-          ),
+          Icon(Icons.radio_button_unchecked, color: AppColors.textMuted),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -85,28 +75,58 @@ class _PlanTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(item.surahName, style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(20)),
-                      child: Text(item.focusArea, style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
-                    ),
+                    Expanded(child: Text(item.tajweedRule, style: Theme.of(context).textTheme.titleSmall)),
+                    if (item.errorCount != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(20)),
+                        child: Text('${item.errorCount}x', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(item.reason, style: Theme.of(context).textTheme.bodySmall),
+                if (item.examples.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  // The actual words this was measured on -- the plan can now
+                  // show its working instead of just asserting a weak area.
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final e in item.examples)
+                        Tooltip(
+                          message: e.explanation,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceAlt,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              e.word,
+                              style: AppTypography.arabicWord(fontSize: 18, color: AppColors.textPrimary),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
-          if (!item.isCompleted)
-            IconButton(
-              icon: Icon(Icons.play_circle_outline, color: AppColors.primary),
-              // Quran is a bottom-nav shell tab, not a standalone pushed
-              // route — go() re-enters the shell at that branch instead of
-              // stacking a second, conflicting Navigator for the same path.
-              onPressed: () => context.go(RoutePaths.quran),
-            ),
+          IconButton(
+            icon: Icon(Icons.play_circle_outline, color: AppColors.primary),
+            // Recommendations now carry the surah each flagged word came from,
+            // so this can open exactly where the mistake happened rather than
+            // dropping the user at the Quran tab to go find it.
+            onPressed: () {
+              final surah = item.examples
+                  .map((e) => e.surahNumber)
+                  .firstWhere((n) => n != null, orElse: () => null);
+              context.go(surah == null ? RoutePaths.quran : RoutePaths.surahDetailsPath(surah));
+            },
+          ),
         ],
       ),
     );

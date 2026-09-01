@@ -1,0 +1,12 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+tensorflow==2.20.0
+librosa==0.11.0
+numpy
+pydantic==2.10.4
+firebase-admin==6.6.0
+# Runs the Quran-Lab streaming zipformer that powers word-level analysis
+# (app/phoneme_analysis_service.py). Without it the app still starts, but
+# /sessions/analyze_word_level 503s -- which is the whole feature.
+sherpa-onnx==1.13.6

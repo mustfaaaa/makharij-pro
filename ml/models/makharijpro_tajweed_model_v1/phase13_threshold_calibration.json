@@ -1,0 +1,326 @@
+{
+  "separate_tide": {
+    "sweep": [
+      {
+        "threshold": 0.1,
+        "macro_f1": 0.573076923076923,
+        "false_positive_rate_on_correct": 0.0,
+        "real_error_recall": 0.27450980392156865
+      },
+      {
+        "threshold": 0.15,
+        "macro_f1": 0.6697154471544715,
+        "false_positive_rate_on_correct": 0.0,
+        "real_error_recall": 0.4117647058823529
+      },
+      {
+        "threshold": 0.2,
+        "macro_f1": 0.7089230429013711,
+        "false_positive_rate_on_correct": 0.010752688172043012,
+        "real_error_recall": 0.4803921568627451
+      },
+      {
+        "threshold": 0.25,
+        "macro_f1": 0.7312234804464744,
+        "false_positive_rate_on_correct": 0.053763440860215055,
+        "real_error_recall": 0.5490196078431373
+      },
+      {
+        "threshold": 0.3,
+        "macro_f1": 0.7662555605870914,
+        "false_positive_rate_on_correct": 0.07526881720430108,
+        "real_error_recall": 0.6274509803921569
+      },
+      {
+        "threshold": 0.35,
+        "macro_f1": 0.7775921063101774,
+        "false_positive_rate_on_correct": 0.08602150537634409,
+        "real_error_recall": 0.6568627450980392
+      },
+      {
+        "threshold": 0.4,
+        "macro_f1": 0.788944325651382,
+        "false_positive_rate_on_correct": 0.10752688172043011,
+        "real_error_recall": 0.696078431372549
+      },
+      {
+        "threshold": 0.45,
+        "macro_f1": 0.7893891098759254,
+        "false_positive_rate_on_correct": 0.12903225806451613,
+        "real_error_recall": 0.7156862745098039
+      },
+      {
+        "threshold": 0.5,
+        "macro_f1": 0.7845643939393939,
+        "false_positive_rate_on_correct": 0.16129032258064516,
+        "real_error_recall": 0.7352941176470589
+      },
+      {
+        "threshold": 0.55,
+        "macro_f1": 0.8101765371359415,
+        "false_positive_rate_on_correct": 0.17204301075268819,
+        "real_error_recall": 0.7941176470588235
+      },
+      {
+        "threshold": 0.6,
+        "macro_f1": 0.8097560975609757,
+        "false_positive_rate_on_correct": 0.20430107526881722,
+        "real_error_recall": 0.8235294117647058
+      },
+      {
+        "threshold": 0.65,
+        "macro_f1": 0.7978737541528239,
+        "false_positive_rate_on_correct": 0.26881720430107525,
+        "real_error_recall": 0.8627450980392157
+      },
+      {
+        "threshold": 0.7,
+        "macro_f1": 0.7650539505743126,
+        "false_positive_rate_on_correct": 0.3333333333333333,
+        "real_error_recall": 0.8627450980392157
+      },
+      {
+        "threshold": 0.75,
+        "macro_f1": 0.7360298895386614,
+        "false_positive_rate_on_correct": 0.3978494623655914,
+        "real_error_recall": 0.8725490196078431
+      },
+      {
+        "threshold": 0.8,
+        "macro_f1": 0.6934723256391164,
+        "false_positive_rate_on_correct": 0.4838709677419355,
+        "real_error_recall": 0.8823529411764706
+      },
+      {
+        "threshold": 0.85,
+        "macro_f1": 0.6587059620596205,
+        "false_positive_rate_on_correct": 0.5591397849462365,
+        "real_error_recall": 0.9019607843137255
+      },
+      {
+        "threshold": 0.9,
+        "macro_f1": 0.6500115794349235,
+        "false_positive_rate_on_correct": 0.6021505376344086,
+        "real_error_recall": 0.9411764705882353
+      }
+    ],
+    "chosen_threshold": 0.55,
+    "selection_method": "relaxed to 20% FP cap -- 10% cap suppressed error-catching too much on this already-weak task"
+  },
+  "the_tight_noon": {
+    "sweep": [
+      {
+        "threshold": 0.1,
+        "macro_f1": 0.6030769230769231,
+        "false_positive_rate_on_correct": 0.0,
+        "real_error_recall": 0.2037037037037037
+      },
+      {
+        "threshold": 0.15,
+        "macro_f1": 0.6566436407964242,
+        "false_positive_rate_on_correct": 0.0,
+        "real_error_recall": 0.2777777777777778
+      },
+      {
+        "threshold": 0.2,
+        "macro_f1": 0.7050689252841278,
+        "false_positive_rate_on_correct": 0.0,
+        "real_error_recall": 0.35185185185185186
+      },
+      {
+        "threshold": 0.25,
+        "macro_f1": 0.7572362278244631,
+        "false_positive_rate_on_correct": 0.028368794326241134,
+        "real_error_recall": 0.48148148148148145
+      },
+      {
+        "threshold": 0.3,
+        "macro_f1": 0.7977777777777777,
+        "false_positive_rate_on_correct": 0.03546099290780142,
+        "real_error_recall": 0.5740740740740741
+      },
+      {
+        "threshold": 0.35,
+        "macro_f1": 0.8121320249776984,
+        "false_positive_rate_on_correct": 0.04964539007092199,
+        "real_error_recall": 0.6296296296296297
+      },
+      {
+        "threshold": 0.4,
+        "macro_f1": 0.8056736646292851,
+        "false_positive_rate_on_correct": 0.09929078014184398,
+        "real_error_recall": 0.7037037037037037
+      },
+      {
+        "threshold": 0.45,
+        "macro_f1": 0.7922115664051148,
+        "false_positive_rate_on_correct": 0.1276595744680851,
+        "real_error_recall": 0.7222222222222222
+      },
+      {
+        "threshold": 0.5,
+        "macro_f1": 0.8036748049332998,
+        "false_positive_rate_on_correct": 0.14184397163120568,
+        "real_error_recall": 0.7777777777777778
+      },
+      {
+        "threshold": 0.55,
+        "macro_f1": 0.8057358490566038,
+        "false_positive_rate_on_correct": 0.1773049645390071,
+        "real_error_recall": 0.8518518518518519
+      },
+      {
+        "threshold": 0.6,
+        "macro_f1": 0.7956648004550761,
+        "false_positive_rate_on_correct": 0.19148936170212766,
+        "real_error_recall": 0.8518518518518519
+      },
+      {
+        "threshold": 0.65,
+        "macro_f1": 0.8053206483439042,
+        "false_positive_rate_on_correct": 0.20567375886524822,
+        "real_error_recall": 0.9074074074074074
+      },
+      {
+        "threshold": 0.7,
+        "macro_f1": 0.796780917091246,
+        "false_positive_rate_on_correct": 0.22695035460992907,
+        "real_error_recall": 0.9259259259259259
+      },
+      {
+        "threshold": 0.75,
+        "macro_f1": 0.7688008130081301,
+        "false_positive_rate_on_correct": 0.2765957446808511,
+        "real_error_recall": 0.9444444444444444
+      },
+      {
+        "threshold": 0.8,
+        "macro_f1": 0.7424609289016069,
+        "false_positive_rate_on_correct": 0.3333333333333333,
+        "real_error_recall": 0.9814814814814815
+      },
+      {
+        "threshold": 0.85,
+        "macro_f1": 0.6805939690126473,
+        "false_positive_rate_on_correct": 0.425531914893617,
+        "real_error_recall": 0.9814814814814815
+      },
+      {
+        "threshold": 0.9,
+        "macro_f1": 0.6237013931111053,
+        "false_positive_rate_on_correct": 0.5177304964539007,
+        "real_error_recall": 1.0
+      }
+    ],
+    "chosen_threshold": 0.4,
+    "selection_method": "ACC-2-constrained (FP-on-correct <= 10%, max error-recall within that)"
+  },
+  "concealment": {
+    "sweep": [
+      {
+        "threshold": 0.1,
+        "macro_f1": 0.4497503798567397,
+        "false_positive_rate_on_correct": 0.0,
+        "real_error_recall": 0.13333333333333333
+      },
+      {
+        "threshold": 0.15,
+        "macro_f1": 0.5419309372797745,
+        "false_positive_rate_on_correct": 0.011111111111111112,
+        "real_error_recall": 0.24761904761904763
+      },
+      {
+        "threshold": 0.2,
+        "macro_f1": 0.6233308138070043,
+        "false_positive_rate_on_correct": 0.03333333333333333,
+        "real_error_recall": 0.37142857142857144
+      },
+      {
+        "threshold": 0.25,
+        "macro_f1": 0.6487849483222035,
+        "false_positive_rate_on_correct": 0.03333333333333333,
+        "real_error_recall": 0.4095238095238095
+      },
+      {
+        "threshold": 0.3,
+        "macro_f1": 0.6808162374508948,
+        "false_positive_rate_on_correct": 0.044444444444444446,
+        "real_error_recall": 0.4666666666666667
+      },
+      {
+        "threshold": 0.35,
+        "macro_f1": 0.7224832845519723,
+        "false_positive_rate_on_correct": 0.05555555555555555,
+        "real_error_recall": 0.5428571428571428
+      },
+      {
+        "threshold": 0.4,
+        "macro_f1": 0.7312910748357007,
+        "false_positive_rate_on_correct": 0.1111111111111111,
+        "real_error_recall": 0.6
+      },
+      {
+        "threshold": 0.45,
+        "macro_f1": 0.7536842105263157,
+        "false_positive_rate_on_correct": 0.15555555555555556,
+        "real_error_recall": 0.6761904761904762
+      },
+      {
+        "threshold": 0.5,
+        "macro_f1": 0.7230113636363636,
+        "false_positive_rate_on_correct": 0.23333333333333334,
+        "real_error_recall": 0.6857142857142857
+      },
+      {
+        "threshold": 0.55,
+        "macro_f1": 0.737106452721457,
+        "false_positive_rate_on_correct": 0.2777777777777778,
+        "real_error_recall": 0.7523809523809524
+      },
+      {
+        "threshold": 0.6,
+        "macro_f1": 0.7232857640097459,
+        "false_positive_rate_on_correct": 0.35555555555555557,
+        "real_error_recall": 0.8
+      },
+      {
+        "threshold": 0.65,
+        "macro_f1": 0.7552924487123527,
+        "false_positive_rate_on_correct": 0.37777777777777777,
+        "real_error_recall": 0.8857142857142857
+      },
+      {
+        "threshold": 0.7,
+        "macro_f1": 0.752045555064131,
+        "false_positive_rate_on_correct": 0.4111111111111111,
+        "real_error_recall": 0.9142857142857143
+      },
+      {
+        "threshold": 0.75,
+        "macro_f1": 0.7120626987732849,
+        "false_positive_rate_on_correct": 0.5,
+        "real_error_recall": 0.9333333333333333
+      },
+      {
+        "threshold": 0.8,
+        "macro_f1": 0.6394918893129771,
+        "false_positive_rate_on_correct": 0.6333333333333333,
+        "real_error_recall": 0.9523809523809523
+      },
+      {
+        "threshold": 0.85,
+        "macro_f1": 0.5529400368110046,
+        "false_positive_rate_on_correct": 0.7777777777777778,
+        "real_error_recall": 0.9904761904761905
+      },
+      {
+        "threshold": 0.9,
+        "macro_f1": 0.44862068965517243,
+        "false_positive_rate_on_correct": 0.9,
+        "real_error_recall": 0.9904761904761905
+      }
+    ],
+    "chosen_threshold": 0.35,
+    "selection_method": "ACC-2-constrained (FP-on-correct <= 10%, max error-recall within that)"
+  }
+}

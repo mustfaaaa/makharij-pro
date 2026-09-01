@@ -1,0 +1,38 @@
+[
+  {
+    "qari": "abdurrahmaan_as_sudais",
+    "surah": 112,
+    "status": 200,
+    "reached_ayah": 1,
+    "words_recited": 4,
+    "words_correct": 4,
+    "fabricated_beyond_ayah1": 0
+  },
+  {
+    "qari": "abdurrahmaan_as_sudais",
+    "surah": 108,
+    "status": 200,
+    "reached_ayah": 1,
+    "words_recited": 3,
+    "words_correct": 3,
+    "fabricated_beyond_ayah1": 0
+  },
+  {
+    "qari": "yasser_ad_dussary",
+    "surah": 114,
+    "status": 200,
+    "reached_ayah": 3,
+    "words_recited": 8,
+    "words_correct": 4,
+    "fabricated_beyond_ayah1": 4
+  },
+  {
+    "qari": "alafasy",
+    "surah": 113,
+    "status": 200,
+    "reached_ayah": 2,
+    "words_recited": 7,
+    "words_correct": 3,
+    "fabricated_beyond_ayah1": 3
+  }
+]

@@ -12,11 +12,21 @@ abstract class UserService {
   Stream<UserProfile> watchCurrentUser();
 
   Future<void> updateName(String name);
+  Future<void> updateTargetSurahs(List<String> surahs);
+
+  /// Real, persisted running total -- ten hasanah per Arabic letter recited
+  /// (Tirmidhi 2910), accumulated across every real session rather than
+  /// reset to a placeholder seed on every app launch.
+  Future<int> getHasanahTotal();
+  Future<void> addHasanahTotal(int amount);
 }
 
-/// Name and email are real, read from Firebase Auth / Firestore. Every other
-/// field (streak, accuracy, sessions, target surahs, hasanah) is layered in
-/// from [dummyUser] until the real recitation/AI pipeline exists.
+/// Name, email, and joinedAt are real, read from Firebase Auth / Firestore
+/// (createdAt is written once at signup — see auth_service.dart). targetSurahs
+/// is real too, stored per-user in the same document. Streak/accuracy/sessions
+/// live in ProgressService instead (backed by real session history), not here
+/// — [dummyUser] is used only as a display fallback before the profile doc
+/// has loaded, never as a source of truth.
 class FirebaseUserService implements UserService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -34,6 +44,7 @@ class FirebaseUserService implements UserService {
       name: (data?['name'] as String?) ?? authUser?.displayName ?? dummyUser.name,
       email: (data?['email'] as String?) ?? authUser?.email ?? dummyUser.email,
       joinedAt: createdAt is Timestamp ? createdAt.toDate() : dummyUser.joinedAt,
+      targetSurahs: (data?['targetSurahs'] as List?)?.cast<String>() ?? const [],
     );
   }
 
@@ -53,5 +64,21 @@ class FirebaseUserService implements UserService {
     final trimmed = name.trim();
     await _doc.set({'name': trimmed}, SetOptions(merge: true));
     await _auth.currentUser?.updateDisplayName(trimmed);
+  }
+
+  @override
+  Future<void> updateTargetSurahs(List<String> surahs) async {
+    await _doc.set({'targetSurahs': surahs}, SetOptions(merge: true));
+  }
+
+  @override
+  Future<int> getHasanahTotal() async {
+    final snapshot = await _doc.get();
+    return (snapshot.data()?['hasanahTotal'] as num?)?.toInt() ?? 0;
+  }
+
+  @override
+  Future<void> addHasanahTotal(int amount) async {
+    await _doc.set({'hasanahTotal': FieldValue.increment(amount)}, SetOptions(merge: true));
   }
 }

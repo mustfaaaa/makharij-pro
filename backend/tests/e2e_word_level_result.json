@@ -1,0 +1,42 @@
+{
+  "status": 200,
+  "body": {
+    "surah_number": 1,
+    "ayah_number": 1,
+    "qari_id": "abdurrahmaan_as_sudais",
+    "words": [
+      {
+        "word": "بِسْمِ",
+        "start_sec": 0.52,
+        "end_sec": 0.76,
+        "distance": 0.0,
+        "confidence": 1.0,
+        "flagged": false
+      },
+      {
+        "word": "ٱللَّهِ",
+        "start_sec": 0.96,
+        "end_sec": 1.16,
+        "distance": 0.0,
+        "confidence": 1.0,
+        "flagged": false
+      },
+      {
+        "word": "ٱلرَّحْمَـٰنِ",
+        "start_sec": 1.6,
+        "end_sec": 2.12,
+        "distance": 0.0,
+        "confidence": 1.0,
+        "flagged": false
+      },
+      {
+        "word": "ٱلرَّحِيمِ",
+        "start_sec": 2.48,
+        "end_sec": 3.0,
+        "distance": 2.0,
+        "confidence": 0.8,
+        "flagged": true
+      }
+    ]
+  }
+}

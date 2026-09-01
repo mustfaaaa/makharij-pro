@@ -3,6 +3,7 @@ import 'auth_service.dart';
 import 'notification_service.dart';
 import 'practice_plan_service.dart';
 import 'progress_service.dart';
+import 'rattil_service.dart';
 import 'session_service.dart';
 import 'surah_service.dart';
 import 'tajweed_rule_service.dart';
@@ -14,13 +15,14 @@ import 'user_service.dart';
 /// its own. A DI package (get_it / provider) can replace this without
 /// touching call sites once real API-backed services arrive.
 abstract class Services {
-  static final SurahService surah = DummySurahService();
-  static final SessionService session = DummySessionService();
-  static final TajweedRuleService tajweedRule = DummyTajweedRuleService();
-  static final PracticePlanService practicePlan = DummyPracticePlanService();
-  static final AchievementService achievement = DummyAchievementService();
-  static final NotificationService notification = DummyNotificationService();
+  static final SurahService surah = AssetSurahService();
+  static final SessionService session = ApiSessionService();
+  static final TajweedRuleService tajweedRule = LocalTajweedRuleService();
+  static final PracticePlanService practicePlan = ApiPracticePlanService();
+  static final AchievementService achievement = ApiAchievementService();
+  static final NotificationService notification = ApiNotificationService();
   static final UserService user = FirebaseUserService();
-  static final ProgressService progress = DummyProgressService();
+  static final ProgressService progress = ApiProgressService();
   static final AuthService auth = FirebaseAuthService();
+  static final RattilService rattil = ApiRattilService();
 }

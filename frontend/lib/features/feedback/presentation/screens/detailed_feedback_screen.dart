@@ -39,6 +39,8 @@ class _DetailedFeedbackScreenState extends State<DetailedFeedbackScreen> {
         return AppColors.warning;
       case TajweedErrorType.madd:
         return AppColors.primary;
+      case TajweedErrorType.skipped:
+        return AppColors.errorHighlight;
     }
   }
 

@@ -62,10 +62,31 @@ class _RuleDetailsScreenState extends State<RuleDetailsScreen> {
             child: Text(rule.arabicExample, style: AppTypography.arabicVerse(fontSize: 34, color: AppColors.primary), textAlign: TextAlign.center),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: AppColors.accentSurface, borderRadius: BorderRadius.circular(20)),
-            child: Text(rule.category, style: TextStyle(color: AppColors.textOnAccent, fontWeight: FontWeight.w600, fontSize: 12)),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: AppColors.accentSurface, borderRadius: BorderRadius.circular(20)),
+                child: Text(rule.category, style: TextStyle(color: AppColors.textOnAccent, fontWeight: FontWeight.w600, fontSize: 12)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: rule.isAiDetectable ? AppColors.successLight : AppColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  rule.isAiDetectable ? 'Checked by AI when you recite' : 'Reference only — not yet AI-checked',
+                  style: TextStyle(
+                    color: rule.isAiDetectable ? AppColors.success : AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.md),
           Text(rule.title, style: Theme.of(context).textTheme.headlineSmall),

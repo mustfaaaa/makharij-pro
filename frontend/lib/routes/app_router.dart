@@ -21,9 +21,7 @@ import '../features/progress/presentation/screens/progress_dashboard_screen.dart
 import '../features/progress/presentation/screens/statistics_screen.dart';
 import '../features/quran/presentation/screens/surah_details_screen.dart';
 import '../features/quran/presentation/screens/surah_selection_screen.dart';
-import '../features/recitation/presentation/screens/listening_screen.dart';
 import '../features/recitation/presentation/screens/processing_screen.dart';
-import '../features/recitation/presentation/screens/recitation_screen.dart';
 import '../features/recitation/presentation/screens/result_screen.dart';
 import '../features/settings/presentation/screens/about_screen.dart';
 import '../features/settings/presentation/screens/contact_screen.dart';
@@ -115,21 +113,20 @@ final GoRouter appRouter = GoRouter(
         child: ThemeReactive(builder: (_) => SurahDetailsScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!))),
       ),
     ),
+    // Recitation used to have its own screen plus a separate "listening"
+    // screen whose word highlighting was a timed animation, not the reciter's
+    // actual voice. Both are gone: the surah reading page is now the single
+    // place a recitation happens, and its highlighting is driven by the live
+    // analysis socket. These routes redirect so older links still resolve.
     GoRoute(
       path: RoutePaths.recitation,
       name: RouteNames.recitation,
-      pageBuilder: (c, s) => fadeSlidePage(
-        key: s.pageKey,
-        child: ThemeReactive(builder: (_) => RecitationScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!))),
-      ),
+      redirect: (c, s) => RoutePaths.surahDetailsPath(int.parse(s.pathParameters['surahNumber']!)),
     ),
     GoRoute(
       path: RoutePaths.listening,
       name: RouteNames.listening,
-      pageBuilder: (c, s) => fadeSlidePage(
-        key: s.pageKey,
-        child: ThemeReactive(builder: (_) => ListeningScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!))),
-      ),
+      redirect: (c, s) => RoutePaths.surahDetailsPath(int.parse(s.pathParameters['surahNumber']!)),
     ),
     GoRoute(
       path: RoutePaths.processing,

@@ -1,13 +1,21 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../dummy/dummy_user.dart';
+import '../../services/service_locator.dart';
 
-/// Running hasanah total for the current app session, seeded from the dummy
-/// profile and incremented live as recitation sessions complete — the Home
-/// dashboard's HasanahCard and the Result screen's "earned" reveal both read
-/// from this single source so the number keeps accumulating as you recite.
+/// Real, persisted running hasanah total — loaded from Firestore on startup
+/// and incremented live as recitation sessions complete, with each increment
+/// also persisted so the total survives an app restart instead of resetting
+/// to a placeholder every launch. The Home dashboard's HasanahCard and the
+/// Result screen's "earned" reveal both read from this single source.
 class HasanahCubit extends Cubit<int> {
-  HasanahCubit() : super(dummyUser.hasanahCount);
+  HasanahCubit() : super(0) {
+    Services.user.getHasanahTotal().then((total) {
+      if (!isClosed) emit(total);
+    });
+  }
 
-  void addHasanah(int amount) => emit(state + amount);
+  void addHasanah(int amount) {
+    emit(state + amount);
+    Services.user.addHasanahTotal(amount);
+  }
 }

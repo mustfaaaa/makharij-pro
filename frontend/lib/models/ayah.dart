@@ -10,4 +10,12 @@ class Ayah {
     required this.translation,
     this.errorWordIndexes = const [],
   });
+
+  factory Ayah.fromJson(Map<String, dynamic> json) {
+    return Ayah(
+      number: json['number'] as int,
+      arabicText: json['arabicText'] as String,
+      translation: json['translation'] as String,
+    );
+  }
 }

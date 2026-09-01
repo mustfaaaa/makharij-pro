@@ -6,7 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../../app/cubit/hasanah_cubit.dart';
 import '../../../../core/utils/current_user_display.dart';
 import '../../../../core/utils/number_format.dart';
-import '../../../../dummy/dummy_user.dart';
+import '../../../../models/surah.dart';
+import '../../../../models/user_profile.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/animated/pressable.dart';
@@ -39,15 +40,56 @@ class ProfileScreen extends StatelessWidget {
     if (context.mounted) context.go(RoutePaths.welcome);
   }
 
+  Future<void> _addTargetSurah(BuildContext context, UserProfile? profile) async {
+    final surahs = await Services.surah.getSurahs();
+    final current = profile?.targetSurahs ?? const [];
+    final choices = surahs.where((s) => !current.contains(s.nameEnglish)).toList();
+    if (!context.mounted) return;
+    final chosen = await showDialog<Surah>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Add a target surah'),
+        children: [
+          SizedBox(
+            width: double.maxFinite,
+            height: 360,
+            child: ListView.builder(
+              itemCount: choices.length,
+              itemBuilder: (context, i) => ListTile(
+                title: Text(choices[i].nameEnglish),
+                subtitle: Text(choices[i].meaning),
+                onTap: () => Navigator.pop(context, choices[i]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (chosen != null) {
+      await Services.user.updateTargetSurahs([...current, chosen.nameEnglish]);
+    }
+  }
+
+  Future<void> _removeTargetSurah(String surahName, List<String> current) async {
+    await Services.user.updateTargetSurahs(current.where((s) => s != surahName).toList());
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final firstName = currentUserName();
     final email = currentUserEmail();
-    final memberSince = DateFormat('MMM d, yyyy').format(dummyUser.joinedAt);
     final bottomPad = AppSpacing.bottomNavClearance + MediaQuery.of(context).padding.bottom;
 
-    return Scaffold(
+    return StreamBuilder<UserProfile>(
+      stream: Services.user.watchCurrentUser(),
+      builder: (context, snapshot) {
+        final profile = snapshot.data;
+        final memberSince = profile == null ? '—' : DateFormat('MMM d, yyyy').format(profile.joinedAt);
+        final targetSurahs = profile?.targetSurahs ?? const [];
+        final shortId = Services.auth.currentUser?.uid.substring(0, 6).toUpperCase() ?? '——————';
+
+        return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
@@ -139,7 +181,7 @@ class ProfileScreen extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: textTheme.bodyLarge?.copyWith(color: AppColors.textPrimary)),
                         const SizedBox(height: 2),
-                        Text('Member since $memberSince · ID: MP-0160',
+                        Text('Member since $memberSince · ID: $shortId',
                             style: textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
                       ],
                     ),
@@ -346,7 +388,7 @@ class ProfileScreen extends StatelessWidget {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () => _addTargetSurah(context, profile),
                         child: Text('+ Add',
                             style: TextStyle(
                                 color: AppColors.primaryDark,
@@ -356,25 +398,39 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 10,
-                    children: [
-                      for (final surah in dummyUser.targetSurahs)
-                        Container(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          decoration: BoxDecoration(
-                              color: AppColors.accentLight.withValues(alpha: 0.55),
-                              borderRadius: AppRadii.pillRadius),
-                          child: Text(surah,
-                              style: TextStyle(
-                                  color: const Color(0xFF8B6914),
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15)),
-                        ),
-                    ],
-                  ),
+                  if (targetSurahs.isEmpty)
+                    Text("Add a surah you're focusing on",
+                        style: textTheme.bodySmall?.copyWith(color: AppColors.textMuted))
+                  else
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 10,
+                      children: [
+                        for (final surah in targetSurahs)
+                          GestureDetector(
+                            onTap: () => _removeTargetSurah(surah, targetSurahs),
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              decoration: BoxDecoration(
+                                  color: AppColors.accentLight.withValues(alpha: 0.55),
+                                  borderRadius: AppRadii.pillRadius),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(surah,
+                                      style: TextStyle(
+                                          color: const Color(0xFF8B6914),
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 15)),
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.close_rounded, size: 15, color: Color(0xFF8B6914)),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -430,6 +486,8 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+      },
     );
   }
 }
