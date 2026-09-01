@@ -1,0 +1,902 @@
+{
+  "selection_rule": "no setting reached the 10% false-positive budget; fell back to best balanced accuracy on the fit split",
+  "fp_budget": 0.1,
+  "grid": {
+    "MADD_COUNT_TOLERANCE": [
+      2,
+      3,
+      4
+    ],
+    "GHUNNAH_COUNT_TOLERANCE": [
+      2,
+      3,
+      4
+    ],
+    "MAKHRAJ_MIN_FINDINGS": [
+      1,
+      2,
+      3
+    ],
+    "MADD_DROPPED_MAX": [
+      0,
+      1
+    ]
+  },
+  "split": {
+    "seed": 42,
+    "fit_speaker_share": 0.7,
+    "fit": 257,
+    "validation": 165,
+    "held_out": 351
+  },
+  "baseline_settings": {
+    "MADD_COUNT_TOLERANCE": 2,
+    "GHUNNAH_COUNT_TOLERANCE": 2,
+    "MAKHRAJ_MIN_FINDINGS": 1,
+    "MADD_DROPPED_MAX": 1
+  },
+  "baseline_scores": {
+    "fit": {
+      "false_positive_rate": 0.4117647058823529,
+      "detection_rate": 0.7935483870967742,
+      "balanced_accuracy": 0.6908918406072106,
+      "n_correct": 102,
+      "n_incorrect": 155
+    },
+    "validation": {
+      "false_positive_rate": 0.3561643835616438,
+      "detection_rate": 0.6304347826086957,
+      "balanced_accuracy": 0.6371351995235259,
+      "n_correct": 73,
+      "n_incorrect": 92
+    },
+    "held_out": {
+      "false_positive_rate": 0.46629213483146065,
+      "detection_rate": 0.7456647398843931,
+      "balanced_accuracy": 0.6396863025264663,
+      "n_correct": 178,
+      "n_incorrect": 173
+    }
+  },
+  "chosen_settings": {
+    "MADD_COUNT_TOLERANCE": 2,
+    "GHUNNAH_COUNT_TOLERANCE": 2,
+    "MAKHRAJ_MIN_FINDINGS": 1,
+    "MADD_DROPPED_MAX": 0
+  },
+  "chosen_scores": {
+    "fit": {
+      "false_positive_rate": 0.4117647058823529,
+      "detection_rate": 0.7935483870967742,
+      "balanced_accuracy": 0.6908918406072106,
+      "n_correct": 102,
+      "n_incorrect": 155
+    },
+    "validation": {
+      "false_positive_rate": 0.3561643835616438,
+      "detection_rate": 0.6304347826086957,
+      "balanced_accuracy": 0.6371351995235259,
+      "n_correct": 73,
+      "n_incorrect": 92
+    },
+    "held_out": {
+      "false_positive_rate": 0.46629213483146065,
+      "detection_rate": 0.7456647398843931,
+      "balanced_accuracy": 0.6396863025264663,
+      "n_correct": 178,
+      "n_incorrect": 173
+    }
+  },
+  "all_candidates": [
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 2,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7935483870967742,
+        "balanced_accuracy": 0.6908918406072106,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5806451612903226,
+        "balanced_accuracy": 0.6873814041745732,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 3,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.4645161290322581,
+        "balanced_accuracy": 0.6587286527514231,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7870967741935484,
+        "balanced_accuracy": 0.6876660341555978,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7870967741935484,
+        "balanced_accuracy": 0.6876660341555978,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5741935483870968,
+        "balanced_accuracy": 0.6841555977229602,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5741935483870968,
+        "balanced_accuracy": 0.6841555977229602,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.45806451612903226,
+        "balanced_accuracy": 0.6555028462998103,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 2,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.45806451612903226,
+        "balanced_accuracy": 0.6555028462998103,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7870967741935484,
+        "balanced_accuracy": 0.6876660341555978,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7870967741935484,
+        "balanced_accuracy": 0.6876660341555978,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5741935483870968,
+        "balanced_accuracy": 0.6841555977229602,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5741935483870968,
+        "balanced_accuracy": 0.6841555977229602,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.45806451612903226,
+        "balanced_accuracy": 0.6555028462998103,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 3,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.45806451612903226,
+        "balanced_accuracy": 0.6555028462998103,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7870967741935484,
+        "balanced_accuracy": 0.6876660341555978,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 1,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.4117647058823529,
+        "detection_rate": 0.7870967741935484,
+        "balanced_accuracy": 0.6876660341555978,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5741935483870968,
+        "balanced_accuracy": 0.6841555977229602,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 2,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.20588235294117646,
+        "detection_rate": 0.5741935483870968,
+        "balanced_accuracy": 0.6841555977229602,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 0
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.45806451612903226,
+        "balanced_accuracy": 0.6555028462998103,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    },
+    {
+      "settings": {
+        "MADD_COUNT_TOLERANCE": 4,
+        "GHUNNAH_COUNT_TOLERANCE": 4,
+        "MAKHRAJ_MIN_FINDINGS": 3,
+        "MADD_DROPPED_MAX": 1
+      },
+      "fit": {
+        "false_positive_rate": 0.14705882352941177,
+        "detection_rate": 0.45806451612903226,
+        "balanced_accuracy": 0.6555028462998103,
+        "n_correct": 102,
+        "n_incorrect": 155
+      }
+    }
+  ]
+}

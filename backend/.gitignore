@@ -1,23 +1,9 @@
 .venv/
 __pycache__/
 *.pyc
-tests/test_clip.wav
-tests/real_*.wav
 
-# Firebase service account credentials -- never commit, ever.
+# Firebase service account credentials -- never commit, ever. This is an admin
+# private key: whoever holds it can read and write the entire Firestore
+# database and mint a token as any user. The repository is public.
 serviceAccountKey.json
 *serviceAccountKey*.json
-
-# Fetched third-party recitation audio -- regenerate with tests/build_rattil_repository.py rather
-# than committing third-party audio into git history without a license review.
-app/static/recitations/
-
-# Third-party model weights. ~78 MB (a 69 MB ONNX checkpoint plus its phoneme
-# tables) that git would carry in every clone forever -- fetched instead, the
-# same way app/static/recitations/ is. See README.md, "Phoneme model".
-models_cache/
-
-# Session scratch: install transcripts, download logs, one-off check output.
-*.log
-check_fail_*.txt
-phoneme_check.txt

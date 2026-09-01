@@ -123,7 +123,7 @@ web/
 linux/
 macos/
 windows/
-# Evaluation corpora. ml/data holds multi-GB audio datasets downloaded from
-# Hugging Face -- reproducible from ml/eval/README.md, never committed.
+# Evaluation corpus. Not a choice: the three parquet shards are ~400 MB each
+# and GitHub rejects any file over 100 MB, so these cannot be pushed without
+# Git LFS. Reproducible from ml/eval/README.md in one command.
 ml/data/
-ml/eval/results/
