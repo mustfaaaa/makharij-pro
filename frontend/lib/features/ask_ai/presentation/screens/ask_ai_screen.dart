@@ -1,17 +1,23 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/errors/app_exception.dart';
+import '../../../../models/qari.dart';
+import '../../../../models/surah.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/animated/pressable.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
 
-/// Rattil AI — the in-app Tajweed coach chat (Ask AI tab), built to match the
-/// provided mockup: gold user bubbles, white AI bubbles with an embedded
-/// reference-audio player, a bordered "Practice Now" card, suggestion chips
-/// and a rounded composer at the bottom.
+/// Rattil AI — real reference-recitation retrieval (FR-15/16/17), not a
+/// general Tajweed-knowledge chatbot. There's no NLP/LLM backend behind this;
+/// matching a typed request to a surah + Qari is done here by name/number,
+/// which is honest about what it actually is (see rattil.py's own docstring:
+/// natural-language parsing, FR-19, is explicitly future work).
 class AskAiScreen extends StatefulWidget {
   const AskAiScreen({super.key});
 
@@ -21,56 +27,55 @@ class AskAiScreen extends StatefulWidget {
 
 class _ChatMessage {
   final bool fromUser;
-  final List<InlineSpan> Function(BuildContext) spans;
-  final bool showAudioCard;
-  final bool showActions;
-  _ChatMessage({
-    required this.fromUser,
-    required this.spans,
-    this.showAudioCard = false,
-    this.showActions = false,
-  });
+  final String text;
+  final RecitationResult? recitation;
+  const _ChatMessage({required this.fromUser, required this.text, this.recitation});
 }
 
 class _AskAiScreenState extends State<AskAiScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  late final List<_ChatMessage> _messages;
+  final List<_ChatMessage> _messages = [];
 
-  static TextSpan _gold(String text) => TextSpan(
-        text: text,
-        style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700),
-      );
+  List<Qari> _qaris = const [];
+  List<Surah> _surahs = const [];
+  bool _ready = false;
 
   @override
   void initState() {
     super.initState();
-    _messages = [
-      _ChatMessage(
-        fromUser: true,
-        spans: (_) => [
-          const TextSpan(text: "How do I make the distinct "),
-          _gold("'ض'"),
-          const TextSpan(text: " (Dhad) sound without merging it into "),
-          _gold("'د'"),
-          const TextSpan(text: " (Dal)?"),
-        ],
-      ),
-      _ChatMessage(
-        fromUser: false,
-        showAudioCard: true,
-        showActions: true,
-        spans: (_) => [
-          const TextSpan(text: 'Excellent question! While '),
-          _gold("'د'"),
-          const TextSpan(text: ' is formed at the tip of the tongue, '),
-          _gold("'ض'"),
-          const TextSpan(
-              text:
-                  ' uses the entire side-edge (حافة اللسان) of the tongue, pressing it against the inner surfaces of the upper molars.'),
-        ],
-      ),
-    ];
+    Future.wait([
+      Services.rattil.getQaris(),
+      Services.surah.getSurahs(),
+    ]).then((results) {
+      if (!mounted) return;
+      setState(() {
+        _qaris = results[0] as List<Qari>;
+        _surahs = results[1] as List<Surah>;
+        _ready = true;
+        final example = _qaris.isEmpty ? '' : ' — try "Al-Fatihah by ${_qaris.first.nameEnglish}"';
+        _messages.add(_ChatMessage(
+          fromUser: false,
+          text: 'Ask for a surah and (optionally) a reciter$example. '
+              '${_availableSurahNames()} are available right now.',
+        ));
+      });
+    }).catchError((_) {
+      if (!mounted) return;
+      setState(() {
+        _ready = true;
+        _messages.add(const _ChatMessage(
+          fromUser: false,
+          text: 'Could not reach the recitation library. Check your connection and try again.',
+        ));
+      });
+    });
+  }
+
+  String _availableSurahNames() {
+    final numbers = _qaris.expand((q) => q.availableSurahs).toSet();
+    final names = _surahs.where((s) => numbers.contains(s.number)).map((s) => s.nameEnglish);
+    return names.isEmpty ? 'A few surahs' : names.join(', ');
   }
 
   @override
@@ -80,22 +85,69 @@ class _AskAiScreenState extends State<AskAiScreen> {
     super.dispose();
   }
 
-  void _send([String? preset]) {
+  Surah? _matchSurah(String text) {
+    final lower = text.toLowerCase();
+    for (final s in _surahs) {
+      if (lower.contains(s.nameEnglish.toLowerCase())) return s;
+    }
+    final numberMatch = RegExp(r'\b(\d{1,3})\b').firstMatch(text);
+    if (numberMatch != null) {
+      final n = int.tryParse(numberMatch.group(1)!);
+      if (n != null) {
+        for (final s in _surahs) {
+          if (s.number == n) return s;
+        }
+      }
+    }
+    return null;
+  }
+
+  Qari? _matchQari(String text) {
+    final lower = text.toLowerCase();
+    for (final q in _qaris) {
+      final firstName = q.nameEnglish.split(' ').first.toLowerCase();
+      if (lower.contains(q.nameEnglish.toLowerCase()) || lower.contains(firstName)) return q;
+    }
+    return null;
+  }
+
+  Future<void> _send([String? preset]) async {
     final text = (preset ?? _controller.text).trim();
     if (text.isEmpty) return;
     HapticFeedback.selectionClick();
-    setState(() {
-      _messages.add(_ChatMessage(fromUser: true, spans: (_) => [TextSpan(text: text)]));
-      _messages.add(_ChatMessage(
-        fromUser: false,
-        spans: (_) => [
-          const TextSpan(
-              text:
-                  'Great question! Rattil AI will answer this with a reference recitation once the backend is connected. For now, try the practice card below for live makhraj feedback.'),
-        ],
-      ));
-      _controller.clear();
-    });
+    _controller.clear();
+    setState(() => _messages.add(_ChatMessage(fromUser: true, text: text)));
+    _scrollToEnd();
+
+    final surah = _matchSurah(text);
+    if (surah == null) {
+      setState(() => _messages.add(_ChatMessage(
+            fromUser: false,
+            text: "I couldn't find a surah in that — try naming one, like \"Al-Ikhlas\" or \"surah 112\".",
+          )));
+      _scrollToEnd();
+      return;
+    }
+    final qari = _matchQari(text) ?? (_qaris.isEmpty ? null : _qaris.first);
+    if (qari == null) {
+      setState(() => _messages.add(const _ChatMessage(fromUser: false, text: 'No reciters are available right now.')));
+      return;
+    }
+
+    try {
+      final result = await Services.rattil.getRecitation(qariId: qari.qariId, surah: surah.number);
+      setState(() => _messages.add(_ChatMessage(
+            fromUser: false,
+            text: '${result.surahNameEnglish}, recited by ${result.qariName}:',
+            recitation: result,
+          )));
+    } on AppException catch (e) {
+      setState(() => _messages.add(_ChatMessage(fromUser: false, text: e.message)));
+    }
+    _scrollToEnd();
+  }
+
+  void _scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -116,7 +168,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
         bottom: false,
         child: Column(
           children: [
-            // ── Header: Rattil AI · Your tajweed coach ───────────────────
+            // ── Header: Rattil AI · Reference recitations ────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 12, AppSpacing.screenPadding, 8),
               child: Row(
@@ -142,35 +194,20 @@ class _AskAiScreenState extends State<AskAiScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Rattil AI',
-                            style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+                        Text('Rattil AI', style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
                         Row(
                           children: [
                             Container(
                               width: 8,
                               height: 8,
-                              decoration: BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
+                              decoration: BoxDecoration(color: _ready ? AppColors.success : AppColors.textMuted, shape: BoxShape.circle),
                             ),
                             const SizedBox(width: 6),
-                            Text('Your tajweed coach',
-                                style: textTheme.bodyMedium?.copyWith(color: AppColors.success)),
+                            Text('Reference recitation library',
+                                style: textTheme.bodyMedium?.copyWith(color: _ready ? AppColors.success : AppColors.textMuted)),
                           ],
                         ),
                       ],
-                    ),
-                  ),
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: const Offset(0, 3))],
-                    ),
-                    child: IconButton(
-                      icon: Icon(Icons.history_rounded, color: AppColors.textSecondary, size: 22),
-                      onPressed: () {},
-                      tooltip: 'Chat history',
                     ),
                   ),
                 ],
@@ -183,21 +220,21 @@ class _AskAiScreenState extends State<AskAiScreen> {
                 padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 8, AppSpacing.screenPadding, 16),
                 children: [
                   for (final m in _messages) _Bubble(message: m),
-                  const SizedBox(height: 4),
-                  const _PracticeNowCard(),
-                  const SizedBox(height: AppSpacing.lg),
-                  Text('Try these questions',
-                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      _QuestionChip(label: 'Explain Sifat of Raa (ر)', onTap: () => _send('Explain Sifat of Raa (ر)')),
-                      _QuestionChip(label: 'Rules of Waqf (stopping)', onTap: () => _send('Rules of Waqf (stopping)')),
-                      _QuestionChip(label: 'Example of Ikhfa', onTap: () => _send('Example of Ikhfa')),
-                    ],
-                  ),
+                  if (_ready) ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    const _PracticeNowCard(),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text('Try these', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final n in const ['Al-Fatihah', 'Al-Ikhlas', 'Al-Kawthar', 'An-Nas'])
+                          _QuestionChip(label: n, onTap: () => _send(n)),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -225,17 +262,12 @@ class _AskAiScreenState extends State<AskAiScreen> {
                         onSubmitted: (_) => _send(),
                         textInputAction: TextInputAction.send,
                         decoration: InputDecoration(
-                          hintText: 'Ask Rattil AI anything...',
+                          hintText: 'Ask for a surah, e.g. "Al-Ikhlas by Alafasy"',
                           hintStyle: TextStyle(color: AppColors.textMuted),
                           border: InputBorder.none,
                           isDense: true,
                         ),
                       ),
-                    ),
-                    IconButton(
-                      onPressed: () {},
-                      icon: Icon(Icons.mic_rounded, color: AppColors.textSecondary),
-                      tooltip: 'Voice input',
                     ),
                     Pressable(
                       onTap: _send,
@@ -284,12 +316,7 @@ class _Bubble extends StatelessWidget {
               bottomRight: Radius.circular(6),
             ),
           ),
-          child: Text.rich(
-            TextSpan(
-              children: message.spans(context),
-              style: textTheme.bodyLarge?.copyWith(color: Colors.white, height: 1.45),
-            ),
-          ),
+          child: Text(message.text, style: textTheme.bodyLarge?.copyWith(color: Colors.white, height: 1.45)),
         ),
       );
     }
@@ -325,56 +352,10 @@ class _Bubble extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text.rich(
-                  TextSpan(
-                    children: message.spans(context),
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5),
-                  ),
-                ),
-                if (message.showAudioCard) ...[
+                Text(message.text, style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5)),
+                if (message.recitation != null) ...[
                   const SizedBox(height: 14),
-                  const _AudioExampleCard(),
-                ],
-                if (message.showActions) ...[
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Pressable(
-                        onTap: () {},
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: AppRadii.pillRadius,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.mic_rounded, color: Colors.white, size: 16),
-                              SizedBox(width: 6),
-                              Text('Try it now',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Pressable(
-                        onTap: () {},
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceAlt,
-                            borderRadius: AppRadii.pillRadius,
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Text('More examples',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 13)),
-                        ),
-                      ),
-                    ],
-                  ),
+                  _AudioExampleCard(recitation: message.recitation!),
                 ],
               ],
             ),
@@ -385,65 +366,121 @@ class _Bubble extends StatelessWidget {
   }
 }
 
-// ── Reference audio player embedded in the AI bubble ─────────────────────────
-class _AudioExampleCard extends StatelessWidget {
-  const _AudioExampleCard();
+// ── Real reference audio player embedded in the AI bubble ────────────────────
+class _AudioExampleCard extends StatefulWidget {
+  final RecitationResult recitation;
+  const _AudioExampleCard({required this.recitation});
+
+  @override
+  State<_AudioExampleCard> createState() => _AudioExampleCardState();
+}
+
+class _AudioExampleCardState extends State<_AudioExampleCard> {
+  final _player = AudioPlayer();
+  bool _playing = false;
+  bool _slow = false;
+  int _clipIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _player.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _playing = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  Future<void> _play() async {
+    final clip = widget.recitation.clips[_clipIndex];
+    await _player.stop();
+    await _player.setPlaybackRate(_slow ? 0.75 : 1.0);
+    await _player.play(UrlSource(clip.url));
+    setState(() => _playing = true);
+  }
+
+  Future<void> _toggle() async {
+    if (_playing) {
+      await _player.pause();
+      setState(() => _playing = false);
+      return;
+    }
+    await _play();
+  }
+
+  Future<void> _toggleSlow() async {
+    setState(() => _slow = !_slow);
+    if (_playing) await _player.setPlaybackRate(_slow ? 0.75 : 1.0);
+  }
+
+  Future<void> _skip(int delta) async {
+    final next = _clipIndex + delta;
+    if (next < 0 || next >= widget.recitation.clips.length) return;
+    setState(() => _clipIndex = next);
+    if (_playing) await _play();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final clip = widget.recitation.clips[_clipIndex];
+    final hasMultiple = widget.recitation.clips.length > 1;
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.primarySurface,
-        borderRadius: AppRadii.mdRadius,
-      ),
+      decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: AppRadii.mdRadius),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
+              if (hasMultiple)
+                IconButton(
+                  icon: const Icon(Icons.skip_previous_rounded),
+                  color: AppColors.primary,
+                  onPressed: _clipIndex > 0 ? () => _skip(-1) : null,
+                  tooltip: 'Previous ayah',
+                ),
+              Pressable(
+                onTap: _toggle,
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                  child: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white, size: 26),
+                ),
               ),
-              const SizedBox(width: 12),
-              const Expanded(child: _MiniWaveform()),
+              if (hasMultiple)
+                IconButton(
+                  icon: const Icon(Icons.skip_next_rounded),
+                  color: AppColors.primary,
+                  onPressed: _clipIndex < widget.recitation.clips.length - 1 ? () => _skip(1) : null,
+                  tooltip: 'Next ayah',
+                ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Ayah ${clip.ayah}${hasMultiple ? ' of ${widget.recitation.clips.length}' : ''}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.replay_rounded),
+                color: AppColors.textSecondary,
+                onPressed: _play,
+                tooltip: 'Repeat',
+              ),
+              IconButton(
+                icon: Icon(Icons.slow_motion_video_rounded, color: _slow ? AppColors.primary : AppColors.textSecondary),
+                onPressed: _toggleSlow,
+                tooltip: _slow ? 'Normal speed' : 'Slow down',
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text('Correct Dhad example · 0:06',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
         ],
       ),
-    );
-  }
-}
-
-/// Static decorative waveform bars — gold on the left fading to muted on the
-/// right, echoing the mockup.
-class _MiniWaveform extends StatelessWidget {
-  const _MiniWaveform();
-
-  @override
-  Widget build(BuildContext context) {
-    const heights = [8.0, 14.0, 9.0, 18.0, 12.0, 16.0, 8.0, 13.0, 10.0, 7.0, 12.0, 9.0, 7.0, 11.0, 8.0, 12.0, 7.0, 10.0, 8.0, 6.0, 9.0, 7.0];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        for (int i = 0; i < heights.length; i++)
-          Container(
-            width: 3.5,
-            height: heights[i],
-            decoration: BoxDecoration(
-              color: i < heights.length * 0.4
-                  ? AppColors.primary
-                  : AppColors.primary.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-      ],
     );
   }
 }
@@ -476,22 +513,19 @@ class _PracticeNowCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Practice Now: Dhad (ض)',
-                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                Text('Ready to practice?', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text('Say "Al-Ardu" (الأَرْض) with the mic for live feedback',
-                    style: textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+                Text('Recite along and get real Tajweed feedback', style: textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
               ],
             ),
           ),
           const SizedBox(width: 8),
           Pressable(
-            onTap: () => context.push(RoutePaths.surahDetailsPath(1)),
+            onTap: () => context.go(RoutePaths.quran),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadii.pillRadius),
-              child: const Text('Practice',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              child: const Text('Practice', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
             ),
           ),
         ],
@@ -518,8 +552,7 @@ class _QuestionChip extends StatelessWidget {
           border: Border.all(color: AppColors.border),
           boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: const Offset(0, 2))],
         ),
-        child: Text(label,
-            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.5)),
+        child: Text(label, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.5)),
       ),
     );
   }

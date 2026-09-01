@@ -1,0 +1,2 @@
+surahs=114 total_ayahs=6236 expected=6236
+output=C:\dev\makharij-pro\frontend\assets\quran\quran_full.json size_bytes=2561516

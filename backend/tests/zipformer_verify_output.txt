@@ -1,0 +1,22 @@
+abdurrahmaan_as_sudais     1:1    dist= 2/32  (  6.2%)
+abdurrahmaan_as_sudais     1:2    dist= 5/36  ( 13.9%)
+abdurrahmaan_as_sudais   112:1    dist= 0/20  (  0.0%)
+abdurrahmaan_as_sudais   112:2    dist= 0/16  (  0.0%)
+abdurrahmaan_as_sudais   108:1    dist= 0/30  (  0.0%)
+yasser_ad_dussary          1:1    dist= 2/32  (  6.2%)
+yasser_ad_dussary        114:1    dist= 0/28  (  0.0%)
+alafasy                  113:1    dist= 0/25  (  0.0%)
+
+=== 8 clips tested ===
+Aggregate: 9/219 chars (4.1% edit-distance error, crude sanity check)
+
+--- Details for any non-exact matches ---
+abdurrahmaan_as_sudais 1:1
+  pred: 'بِسمِللَااهِررَحمَاانِررَحِۦۦم'
+  exp:  'بِسمِللَااهِررَحمَاانِررَحِۦۦۦۦم'
+abdurrahmaan_as_sudais 1:2
+  pred: 'ءَلحَمدُلِللَااهِرَببِلعَاالَمِ'
+  exp:  'ءَلحَمدُلِللَااهِرَببِلعَاالَمِۦۦۦۦن'
+yasser_ad_dussary 1:1
+  pred: 'بِسمِللَااهِررَحمَاانِررَحِۦۦم'
+  exp:  'بِسمِللَااهِررَحمَاانِررَحِۦۦۦۦم'

@@ -4,4 +4,11 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Android 9 (API 28) blocks cleartext traffic by default, which silently
+         kills every call to the local dev backend: the plain-HTTP analysis
+         endpoints and the ws:// live-recitation socket alike. Debug builds
+         only -- release builds keep the secure default, and must talk to the
+         backend over https/wss. See lib/services/api_config.dart for which
+         host to point at (10.0.2.2 on the emulator, LAN IP on a real device). -->
+    <application android:usesCleartextTraffic="true" />
 </manifest>

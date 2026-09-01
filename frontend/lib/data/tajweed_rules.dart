@@ -1,6 +1,12 @@
 import '../models/tajweed_rule.dart';
 
-final List<TajweedRule> dummyTajweedRules = [
+/// Real Tajweed reference content -- standard, well-established recitation
+/// rules, not fabricated. Bundled locally rather than served from a backend
+/// since it's static reference material that doesn't depend on any user's
+/// data (unlike bookmarks, which are real per-user Firestore state -- see
+/// TajweedRuleService). isBookmarked always starts false here; the service
+/// merges in the signed-in user's real bookmark state.
+final List<TajweedRule> tajweedRules = [
   const TajweedRule(
     id: 'r1',
     title: 'Makhraj (Articulation Point)',
@@ -8,7 +14,6 @@ final List<TajweedRule> dummyTajweedRules = [
     shortDescription: 'The precise point in the mouth/throat where each letter originates.',
     fullExplanation: 'Makhraj refers to the exact location in the vocal tract where a letter\'s sound is produced. Correct makhraj distinguishes similar-sounding letters like ق (Qaf) and ك (Kaf). Mispronouncing the makhraj can change the meaning of a word entirely.',
     category: 'Articulation',
-    isBookmarked: true,
   ),
   const TajweedRule(
     id: 'r2',
@@ -17,6 +22,7 @@ final List<TajweedRule> dummyTajweedRules = [
     shortDescription: 'A nasal sound held for two counts on ن and م when they carry a shaddah.',
     fullExplanation: 'Ghunnah is a compulsory nasal sound produced from the nasal cavity, applied whenever ن or م carries a shaddah, and in certain noon/meem sakinah rules such as Ikhfa and Idgham. It should be held for approximately two counts.',
     category: 'Nasalization',
+    isAiDetectable: true,
   ),
   const TajweedRule(
     id: 'r3',
@@ -25,15 +31,15 @@ final List<TajweedRule> dummyTajweedRules = [
     shortDescription: 'A diacritic indicating a letter is doubled and pronounced with emphasis.',
     fullExplanation: 'Shaddah (ّ) doubles the letter it sits on, requiring the reciter to pause briefly on the letter before releasing it with emphasis. Skipping the shaddah changes both the sound and often the grammatical meaning of the word.',
     category: 'Emphasis',
-    isBookmarked: true,
   ),
   const TajweedRule(
     id: 'r4',
     title: 'Madd (Elongation)',
     arabicExample: 'قَالَ - يَقُولُ',
     shortDescription: 'Rules governing how long a vowel sound should be elongated.',
-    fullExplanation: 'Madd refers to the prolongation of a vowel sound, typically triggered by the letters ا، و، ي. The natural madd (Madd Tabee\'i) is held for two counts, while other categories such as Madd Muttasil or Madd Munfasil require longer elongation depending on context.',
+    fullExplanation: 'Madd refers to the prolongation of a vowel sound, typically triggered by the letters ا، و، ي. The natural madd (Madd Tabee\'i) is held for two counts, while other categories such as Madd Muttasil or Madd Munfasil require longer elongation depending on context. MakharijPro\'s AI currently checks Separate Madd (Madd Munfasil) specifically, not every Madd category.',
     category: 'Elongation',
+    isAiDetectable: true,
   ),
   const TajweedRule(
     id: 'r5',
@@ -50,5 +56,6 @@ final List<TajweedRule> dummyTajweedRules = [
     shortDescription: 'Concealing the noon sakinah/tanween sound before certain letters.',
     fullExplanation: 'Ikhfa occurs when noon sakinah or tanween is followed by one of 15 specific letters. The noon sound is concealed — neither fully pronounced nor fully dropped — and blended with a light ghunnah into the following letter.',
     category: 'Noon Rules',
+    isAiDetectable: true,
   ),
 ];

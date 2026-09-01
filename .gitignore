@@ -123,3 +123,7 @@ web/
 linux/
 macos/
 windows/
+# Evaluation corpora. ml/data holds multi-GB audio datasets downloaded from
+# Hugging Face -- reproducible from ml/eval/README.md, never committed.
+ml/data/
+ml/eval/results/

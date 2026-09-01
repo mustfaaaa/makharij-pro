@@ -1,0 +1,245 @@
+{
+  "model_id": "makharijpro_tajweed_model_v1",
+  "experiment": "experiment_003",
+  "exported_at_utc": "2026-08-29T20:36:45.619191+00:00",
+  "architecture": "Shared Conv1D(32,5)->BN->Conv1D(64,5)->BN->GlobalAveragePooling1D, concatenated with a normalized duration scalar, ->Dense(64)->3 sigmoid heads",
+  "framework_versions": {
+    "tensorflow": "2.20.0",
+    "librosa": "0.11.0"
+  },
+  "tasks": {
+    "separate_tide": {
+      "tajweed_rule": "Separate Madd (\u0627\u0644\u0645\u062f \u0627\u0644\u0645\u0646\u0641\u0635\u0644)",
+      "0": "incorrect",
+      "1": "correct"
+    },
+    "the_tight_noon": {
+      "tajweed_rule": "Ghunnah (via An-Noon Al-Mushaddadah)",
+      "0": "incorrect",
+      "1": "correct"
+    },
+    "concealment": {
+      "tajweed_rule": "Ikhfa",
+      "0": "incorrect",
+      "1": "correct"
+    }
+  },
+  "calibrated_thresholds": {
+    "separate_tide": 0.55,
+    "the_tight_noon": 0.4,
+    "concealment": 0.35
+  },
+  "feature_config": {
+    "sample_rate": 16000,
+    "n_mfcc": 13,
+    "frame_length_ms": 25,
+    "hop_length_ms": 10,
+    "frame_length_samples": 400,
+    "hop_length_samples": 160,
+    "delta_order": 1,
+    "trim_top_db": 25,
+    "feature_dim": 26,
+    "librosa_version": "0.11.0",
+    "normalization_mean": [
+      -348.69525146484375,
+      124.31468963623047,
+      -2.2875893115997314,
+      23.3920955657959,
+      -20.470170974731445,
+      -11.121030807495117,
+      -22.10967445373535,
+      -13.860808372497559,
+      -7.870159149169922,
+      -14.525110244750977,
+      -15.426316261291504,
+      -9.568705558776855,
+      -13.5401611328125,
+      0.09500565379858017,
+      0.062675341963768,
+      0.009451166726648808,
+      0.024296877905726433,
+      0.004497491754591465,
+      -0.010631606914103031,
+      -0.01462050061672926,
+      -0.01481712982058525,
+      -0.008828096091747284,
+      -0.004547663498669863,
+      -0.004363679792732,
+      -0.005087994504719973,
+      0.0014137268299236894
+    ],
+    "normalization_std": [
+      86.95475769042969,
+      41.20851516723633,
+      41.950748443603516,
+      29.79860496520996,
+      26.238439559936523,
+      21.25553321838379,
+      20.187368392944336,
+      18.208948135375977,
+      17.799898147583008,
+      15.633576393127441,
+      13.528251647949219,
+      13.4428071975708,
+      12.58549690246582,
+      9.117656707763672,
+      3.380401372909546,
+      3.41049861907959,
+      2.787899971008301,
+      2.6327314376831055,
+      1.9971948862075806,
+      1.895918846130371,
+      1.780530571937561,
+      1.715285301208496,
+      1.5216307640075684,
+      1.4337421655654907,
+      1.398956537246704,
+      1.3545342683792114
+    ],
+    "normalization_fit_on": "train split only, n=922 clips",
+    "duration_normalization_mean": 9.437417030334473,
+    "duration_normalization_std": 2.823244094848633,
+    "model_inputs": [
+      "mfcc_delta: float32 array, shape [T, 26], T variable -- MFCC(13)+delta per FEATURE_CONFIG params",
+      "duration_seconds: float32 scalar, normalized with duration_normalization_mean/std"
+    ]
+  },
+  "training_data": {
+    "source": "obadx/qdat (Hugging Face)",
+    "n_train": 922,
+    "n_val": 195,
+    "n_test": 206,
+    "split_method": "speaker-grouped GroupShuffleSplit, seed=42, leakage-verified by assertion"
+  },
+  "known_limitations": [
+    "Trained and evaluated only on QDAT's own fixed phrase set -- generalization to arbitrary Quran text the app's users actually recite is untested.",
+    "Covers 3 of the SRS's ~4 Tajweed error categories (Separate Madd, Ghunnah, Ikhfa) -- no makhraj or general shaddah coverage; QDAT has no labeled data for those.",
+    "QDAT's 'target' column was excluded -- its exact meaning was never confirmed against the original paper (network access to verify was unavailable).",
+    "108/1,505 QDAT rows were exact-audio duplicates; 74 of those were a cross-speaker data-construction defect (different speaker metadata linked to identical audio), excluded from training entirely.",
+    "Threshold calibration was done on 195 validation clips and confirmed NOT to transfer precisely to test: target was a 10% false-positive-on-correct rate, test came in at 12.1-12.4% for concealment/separate_tide -- a small-sample calibration limitation, documented rather than hidden.",
+    "separate_tide (Separate Madd) is the weakest task (71-74% test accuracy). Root cause investigated: label noise among duplicates was tested and refuted; clip-duration signal was tested and confirmed (elongation duration is what the rule measures), improving accuracy from ~71% to ~74% when added as an input.",
+    "This is a whole-clip classifier, not a real-time per-word detector -- QDAT has no word-level boundaries, so streaming/word-level highlighting (FR-7) needs a separate architectural extension, not just more training on this data."
+  ],
+  "evaluation": {
+    "separate_tide": {
+      "threshold": 0.55,
+      "confusion_matrix": [
+        [
+          56,
+          37
+        ],
+        [
+          15,
+          98
+        ]
+      ],
+      "classification_report": {
+        "0": {
+          "precision": 0.7887323943661971,
+          "recall": 0.6021505376344086,
+          "f1-score": 0.6829268292682927,
+          "support": 93.0
+        },
+        "1": {
+          "precision": 0.725925925925926,
+          "recall": 0.8672566371681416,
+          "f1-score": 0.7903225806451613,
+          "support": 113.0
+        },
+        "accuracy": 0.7475728155339806,
+        "macro avg": {
+          "precision": 0.7573291601460616,
+          "recall": 0.7347035874012751,
+          "f1-score": 0.7366247049567269,
+          "support": 206.0
+        },
+        "weighted avg": {
+          "precision": 0.7542803024547863,
+          "recall": 0.7475728155339806,
+          "f1-score": 0.7418380909458954,
+          "support": 206.0
+        }
+      }
+    },
+    "the_tight_noon": {
+      "threshold": 0.4,
+      "confusion_matrix": [
+        [
+          47,
+          2
+        ],
+        [
+          7,
+          150
+        ]
+      ],
+      "classification_report": {
+        "0": {
+          "precision": 0.8703703703703703,
+          "recall": 0.9591836734693877,
+          "f1-score": 0.912621359223301,
+          "support": 49.0
+        },
+        "1": {
+          "precision": 0.9868421052631579,
+          "recall": 0.9554140127388535,
+          "f1-score": 0.970873786407767,
+          "support": 157.0
+        },
+        "accuracy": 0.9563106796116505,
+        "macro avg": {
+          "precision": 0.9286062378167641,
+          "recall": 0.9572988431041206,
+          "f1-score": 0.941747572815534,
+          "support": 206.0
+        },
+        "weighted avg": {
+          "precision": 0.9591376634682716,
+          "recall": 0.9563106796116505,
+          "f1-score": 0.9570176265435009,
+          "support": 206.0
+        }
+      }
+    },
+    "concealment": {
+      "threshold": 0.35,
+      "confusion_matrix": [
+        [
+          61,
+          29
+        ],
+        [
+          14,
+          102
+        ]
+      ],
+      "classification_report": {
+        "0": {
+          "precision": 0.8133333333333334,
+          "recall": 0.6777777777777778,
+          "f1-score": 0.7393939393939394,
+          "support": 90.0
+        },
+        "1": {
+          "precision": 0.7786259541984732,
+          "recall": 0.8793103448275862,
+          "f1-score": 0.8259109311740891,
+          "support": 116.0
+        },
+        "accuracy": 0.7912621359223301,
+        "macro avg": {
+          "precision": 0.7959796437659032,
+          "recall": 0.778544061302682,
+          "f1-score": 0.7826524352840143,
+          "support": 206.0
+        },
+        "weighted avg": {
+          "precision": 0.7937893722671014,
+          "recall": 0.7912621359223301,
+          "f1-score": 0.7881122454448974,
+          "support": 206.0
+        }
+      }
+    }
+  }
+}
