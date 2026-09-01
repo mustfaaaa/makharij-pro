@@ -71,12 +71,12 @@ class _DetailedFeedbackScreenState extends State<DetailedFeedbackScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text('Errors Breakdown', style: Theme.of(context).textTheme.titleMedium),
+              Text('Worth checking', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: AppSpacing.sm),
               if (session.errors.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                  child: Text('No Tajweed errors detected in this session. Excellent recitation!', style: Theme.of(context).textTheme.bodyMedium),
+                  child: Text('Nothing stood out in this session — everything matched. Excellent recitation!', style: Theme.of(context).textTheme.bodyMedium),
                 )
               else
                 ...session.errors.map((error) {

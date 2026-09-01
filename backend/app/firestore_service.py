@@ -88,6 +88,44 @@ def save_session(uid: str, model_id: str, surah_number: int, from_ayah: int,
     return session_ref.id
 
 
+def record_word_feedback(uid: str, session_id: str, ayah_number: int,
+                         word_index: int, agreed: bool) -> dict:
+    """Records the reciter's own verdict on one flagged word.
+
+    The detector wrongly flags roughly two correct recitations in five
+    (ml/eval/README.md), so the reciter disagreeing is expected, not an edge
+    case. Storing it does two things: it lets the results screen stop insisting,
+    and it accumulates the one kind of data that does not exist anywhere --
+    per-word judgements on real learner recitations. Every published corpus is
+    either labelled per clip or made of deliberately-produced errors.
+
+    Read it as "the reciter disagreed", never as "the app was wrong": someone
+    can reject a correct verdict because they don't know the rule, or don't want
+    to be wrong. It is a signal to weigh, not ground truth.
+    """
+    db = get_firestore_client()
+    session_ref = db.collection("users").document(uid).collection("sessions").document(session_id)
+    session = session_ref.get()
+    if not session.exists:
+        raise KeyError(f"Session {session_id} not found for this user")
+
+    feedback = session.to_dict().get("wordFeedback", [])
+    # One verdict per word: pressing it again replaces, rather than stacking up
+    # contradictory entries for the same word.
+    feedback = [
+        f for f in feedback
+        if not (f.get("ayahNumber") == ayah_number and f.get("wordIndex") == word_index)
+    ]
+    feedback.append({
+        "ayahNumber": ayah_number,
+        "wordIndex": word_index,
+        "agreed": agreed,
+        "at": datetime.now(timezone.utc),
+    })
+    session_ref.update({"wordFeedback": feedback})
+    return {"session_id": session_id, "word_feedback_count": len(feedback)}
+
+
 def _fetch_all_sessions(uid: str) -> list[dict]:
     db = get_firestore_client()
     docs = (

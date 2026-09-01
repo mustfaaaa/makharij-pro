@@ -20,6 +20,8 @@ import '../../../../theme/app_typography.dart';
 import '../../../../theme/tajweed_rule_style.dart';
 import '../bloc/recitation_cubit.dart';
 import '../widgets/mistake_breakdown.dart';
+import '../widgets/reference_playback_button.dart';
+import '../widgets/said_it_right_button.dart';
 import '../widgets/mistake_legend.dart';
 import '../widgets/word_playback_button.dart';
 
@@ -54,6 +56,8 @@ class _ResultScreenState extends State<ResultScreen> {
 
     final color = scoreColor(result.accuracyScore);
     final errorWordSet = {for (final e in result.errors) e.word};
+    final toCheck = result.errors.length;
+    final matched = (result.wordsRecited - toCheck).clamp(0, result.wordsRecited);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Result'), automaticallyImplyLeading: false),
@@ -74,25 +78,42 @@ class _ResultScreenState extends State<ResultScreen> {
                           alignment: Alignment.center,
                           padding: const EdgeInsets.all(AppSpacing.sm),
                           child: FittedBox(
-                            child: TweenAnimationBuilder<double>(
-                              tween: Tween(begin: 0, end: result.accuracyScore),
+                            // A count of what matched, not a percentage graded
+                            // on the reciter. "78% Tajweed Accuracy" reads as a
+                            // verdict on them, and the detector wrongly flags
+                            // roughly two correct recitations in five -- a
+                            // count states what was measured and claims nothing
+                            // more (see ml/eval/README.md).
+                            child: TweenAnimationBuilder<int>(
+                              tween: IntTween(begin: 0, end: matched),
                               duration: const Duration(milliseconds: 900),
                               curve: Curves.easeOutCubic,
                               builder: (context, value, child) {
-                                return Text('${value.toStringAsFixed(0)}%', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: color));
+                                return Text.rich(
+                                  TextSpan(children: [
+                                    TextSpan(text: '$value'),
+                                    TextSpan(
+                                      text: ' / ${result.wordsRecited}',
+                                      style: Theme.of(context).textTheme.titleMedium
+                                          ?.copyWith(color: AppColors.textSecondary),
+                                    ),
+                                  ]),
+                                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: color),
+                                );
                               },
                             ),
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        Text('Tajweed Accuracy Score', style: Theme.of(context).textTheme.bodyMedium),
+                        Text('words matched the expected recitation',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium),
                         if (result.totalWords > 0) ...[
                           const SizedBox(height: 2),
-                          // Accuracy alone is misleading: three words recited
-                          // perfectly is 100%. Coverage is what makes the
-                          // number readable.
                           Text(
-                            'over ${result.wordsRecited} of ${result.totalWords} words',
+                            toCheck == 0
+                                ? 'of ${result.totalWords} in this passage'
+                                : '$toCheck worth listening back to',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
@@ -109,6 +130,8 @@ class _ResultScreenState extends State<ResultScreen> {
                     _RealWordResults(
                       ayahs: ayahs,
                       verdicts: result.wordVerdicts!,
+                      surahNumber: result.surahNumber,
+                      sessionId: result.id,
                       audioPcm: result.audioPcm,
                     )
                   else
@@ -174,7 +197,15 @@ class _RealWordResults extends StatelessWidget {
   final List<Ayah> ayahs;
   final List<WordVerdict> verdicts;
   final Uint8List? audioPcm;
-  const _RealWordResults({required this.ayahs, required this.verdicts, this.audioPcm});
+  final int surahNumber;
+  final String? sessionId;
+  const _RealWordResults({
+    required this.ayahs,
+    required this.verdicts,
+    required this.surahNumber,
+    this.sessionId,
+    this.audioPcm,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -207,8 +238,8 @@ class _RealWordResults extends StatelessWidget {
         ],
         Text(
           flagged.isEmpty
-              ? 'No mistakes found — excellent recitation!'
-              : '${flagged.length} word${flagged.length == 1 ? '' : 's'} need attention',
+              ? 'Everything matched — excellent recitation!'
+              : '${flagged.length} place${flagged.length == 1 ? '' : 's'} worth checking',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -216,7 +247,8 @@ class _RealWordResults extends StatelessWidget {
           stoppedEarly
               ? 'You recited up to ayah $reachedAyah of $lastAyah. '
                   'Everything after that stays greyed out — not counted as a mistake.'
-              : 'Every word you recited was checked against the expected pronunciation.',
+              : 'Each word was compared with the expected recitation. Where they differ, '
+                  'listen back and judge for yourself.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -245,9 +277,15 @@ class _RealWordResults extends StatelessWidget {
         ),
         if (flagged.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
-          Text('What went wrong', style: Theme.of(context).textTheme.titleMedium),
+          Text('Worth checking', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.sm),
-          for (final v in flagged) _MistakeCard(verdict: v, audioPcm: audioPcm),
+          for (final v in flagged)
+            _MistakeCard(
+              verdict: v,
+              surahNumber: surahNumber,
+              sessionId: sessionId,
+              audioPcm: audioPcm,
+            ),
         ],
       ],
     );
@@ -258,8 +296,15 @@ class _RealWordResults extends StatelessWidget {
 /// the chance to hear how you actually said it.
 class _MistakeCard extends StatelessWidget {
   final WordVerdict verdict;
+  final int surahNumber;
+  final String? sessionId;
   final Uint8List? audioPcm;
-  const _MistakeCard({required this.verdict, this.audioPcm});
+  const _MistakeCard({
+    required this.verdict,
+    required this.surahNumber,
+    this.sessionId,
+    this.audioPcm,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -300,18 +345,35 @@ class _MistakeCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            verdict.explanation ?? 'This word did not match the expected pronunciation.',
+            verdict.explanation ?? 'This word sounded different from what was expected.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          if (pcm != null)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: WordPlaybackButton(
-                pcm: pcm,
-                startSec: verdict.startSec,
-                endSec: verdict.endSec,
+          // The reciter's own word beside a Qari saying the same one. Two
+          // recordings to compare beats a sentence telling them who was right.
+          Wrap(
+            spacing: 4,
+            children: [
+              if (pcm != null)
+                WordPlaybackButton(
+                  pcm: pcm,
+                  startSec: verdict.startSec,
+                  endSec: verdict.endSec,
+                ),
+              ReferencePlaybackButton(
+                surahNumber: surahNumber,
+                ayahNumber: verdict.ayahNumber,
+                wordIndex: verdict.wordIndex,
               ),
-            ),
+              // The last word belongs to the reciter. Two correct recitations
+              // in five are flagged wrongly, so a verdict they can't overrule
+              // would be the screen claiming a certainty it doesn't have.
+              SaidItRightButton(
+                sessionId: sessionId,
+                ayahNumber: verdict.ayahNumber,
+                wordIndex: verdict.wordIndex,
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -336,7 +398,7 @@ class _PreviewWordHighlight extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                errorCount == 0 ? 'No errors detected — excellent recitation!' : '$errorCount words need attention',
+                errorCount == 0 ? 'Everything matched — excellent recitation!' : '$errorCount places worth checking',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),

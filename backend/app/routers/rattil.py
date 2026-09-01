@@ -4,7 +4,7 @@ once the frontend chat UI exists to actually need it. No auth required, matching
 pattern -- listening to a reference recitation isn't tied to a user's personal data the way session
 history is.
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 
 from ..firebase_admin_setup import get_firestore_client
 from ..quran_metadata import SURAH_AYAH_COUNTS, SURAH_NAMES
@@ -67,3 +67,43 @@ async def get_recitation(request: Request, qari_id: str, surah: int,
         "surah_name": SURAH_NAMES.get(surah, {}),
         "clips": clips,
     }
+
+
+@router.get("/rattil/word")
+async def get_reference_word(request: Request, surah: int, ayah: int, word_index: int,
+                             qari_id: str = "abdurrahmaan_as_sudais"):
+    """One word of a reference recitation, as a playable WAV.
+
+    Lets the results screen put the reciter's own word next to a Qari saying the
+    same word -- being told an elongation was short means much more beside the
+    sound of it done properly. No auth, matching the rest of this router: a
+    reference recitation isn't anyone's personal data.
+
+    Coverage is the 15 surahs the repository holds audio for (Al-Fatihah and
+    101-114). Anything else gets a 404 that says so.
+    """
+    service = getattr(request.app.state, "reference_words", None)
+    if service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Reference audio isn't available on this server (phoneme model not loaded).",
+        )
+
+    if not service.has(qari_id, surah, ayah):
+        raise HTTPException(
+            status_code=404,
+            detail=f"No reference audio for {qari_id} surah {surah} ayah {ayah}. "
+                   f"Available surahs: {sorted(SURAH_AYAH_COUNTS)}",
+        )
+
+    wav = service.word_wav(qari_id, surah, ayah, word_index)
+    if wav is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Word {word_index} could not be located in surah {surah} ayah {ayah}.",
+        )
+
+    # Immutable: the reference recordings never change, so a client that has
+    # played this word once should never fetch it again.
+    return Response(content=wav, media_type="audio/wav",
+                    headers={"Cache-Control": "public, max-age=31536000, immutable"})

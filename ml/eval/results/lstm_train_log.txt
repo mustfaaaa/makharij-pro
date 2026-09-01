@@ -1,0 +1,100 @@
+2026-09-02 01:31:54.190190: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-09-02 01:31:56.164921: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+clips: 773  (353 correct, 420 with a mistake)
+extracting MFCC(13)+delta ...
+  extracted 150/773  (52 clips/s)
+  extracted 300/773  (84 clips/s)
+  extracted 450/773  (106 clips/s)
+  extracted 600/773  (123 clips/s)
+  extracted 750/773  (135 clips/s)
+2026-09-02 01:32:04.401786: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 AVX512F AVX512_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+  train  288  (65 reciters)
+  val    134  (22 reciters, none shared)
+  test   351  (reciter unknown, never trained or tuned on)
+
+LSTM(48) over MFCC(13)+delta -- 14,449 params
+Epoch 1/60
+2026-09-02 01:32:05.631590: E tensorflow/core/util/util.cc:131] oneDNN supports DT_BOOL only on platforms with AVX-512. Falling back to the default Eigen-based implementation if present.
+18/18 - 5s - 285ms/step - auc: 0.4918 - loss: 0.7121 - val_auc: 0.5237 - val_loss: 0.6943
+Epoch 2/60
+18/18 - 4s - 196ms/step - auc: 0.4592 - loss: 0.7086 - val_auc: 0.5339 - val_loss: 0.6864
+Epoch 3/60
+18/18 - 3s - 192ms/step - auc: 0.5421 - loss: 0.6769 - val_auc: 0.5524 - val_loss: 0.6818
+Epoch 4/60
+18/18 - 4s - 196ms/step - auc: 0.5944 - loss: 0.6674 - val_auc: 0.5579 - val_loss: 0.6793
+Epoch 5/60
+18/18 - 3s - 194ms/step - auc: 0.5259 - loss: 0.6887 - val_auc: 0.5646 - val_loss: 0.6766
+Epoch 6/60
+18/18 - 3s - 192ms/step - auc: 0.5839 - loss: 0.6675 - val_auc: 0.5806 - val_loss: 0.6761
+Epoch 7/60
+18/18 - 4s - 199ms/step - auc: 0.5816 - loss: 0.6708 - val_auc: 0.5760 - val_loss: 0.6741
+Epoch 8/60
+18/18 - 3s - 191ms/step - auc: 0.6372 - loss: 0.6480 - val_auc: 0.5950 - val_loss: 0.6687
+Epoch 9/60
+18/18 - 4s - 197ms/step - auc: 0.6305 - loss: 0.6501 - val_auc: 0.6283 - val_loss: 0.6628
+Epoch 10/60
+18/18 - 5s - 254ms/step - auc: 0.6164 - loss: 0.6580 - val_auc: 0.6269 - val_loss: 0.6641
+Epoch 11/60
+18/18 - 5s - 252ms/step - auc: 0.6408 - loss: 0.6447 - val_auc: 0.6166 - val_loss: 0.6607
+Epoch 12/60
+18/18 - 4s - 237ms/step - auc: 0.6788 - loss: 0.6285 - val_auc: 0.6274 - val_loss: 0.6643
+Epoch 13/60
+18/18 - 4s - 235ms/step - auc: 0.6734 - loss: 0.6349 - val_auc: 0.6180 - val_loss: 0.6660
+Epoch 14/60
+18/18 - 4s - 236ms/step - auc: 0.6550 - loss: 0.6380 - val_auc: 0.6358 - val_loss: 0.6534
+Epoch 15/60
+18/18 - 4s - 242ms/step - auc: 0.6583 - loss: 0.6336 - val_auc: 0.6310 - val_loss: 0.6499
+Epoch 16/60
+18/18 - 4s - 229ms/step - auc: 0.6818 - loss: 0.6235 - val_auc: 0.6559 - val_loss: 0.6431
+Epoch 17/60
+18/18 - 4s - 231ms/step - auc: 0.7307 - loss: 0.6003 - val_auc: 0.6445 - val_loss: 0.6488
+Epoch 18/60
+18/18 - 4s - 230ms/step - auc: 0.6770 - loss: 0.6282 - val_auc: 0.6508 - val_loss: 0.6474
+Epoch 19/60
+18/18 - 4s - 228ms/step - auc: 0.7020 - loss: 0.6159 - val_auc: 0.6488 - val_loss: 0.6488
+Epoch 20/60
+18/18 - 4s - 226ms/step - auc: 0.7706 - loss: 0.5690 - val_auc: 0.6342 - val_loss: 0.6674
+Epoch 21/60
+18/18 - 4s - 229ms/step - auc: 0.7482 - loss: 0.5865 - val_auc: 0.6526 - val_loss: 0.6533
+Epoch 22/60
+18/18 - 4s - 230ms/step - auc: 0.7663 - loss: 0.5579 - val_auc: 0.6741 - val_loss: 0.6314
+Epoch 23/60
+18/18 - 4s - 234ms/step - auc: 0.7425 - loss: 0.5806 - val_auc: 0.6447 - val_loss: 0.6580
+Epoch 24/60
+18/18 - 4s - 237ms/step - auc: 0.8137 - loss: 0.5313 - val_auc: 0.6335 - val_loss: 0.6676
+Epoch 25/60
+18/18 - 4s - 232ms/step - auc: 0.7902 - loss: 0.5471 - val_auc: 0.6745 - val_loss: 0.6348
+Epoch 26/60
+18/18 - 4s - 231ms/step - auc: 0.7945 - loss: 0.5398 - val_auc: 0.6582 - val_loss: 0.6530
+Epoch 27/60
+18/18 - 4s - 226ms/step - auc: 0.8140 - loss: 0.5181 - val_auc: 0.6487 - val_loss: 0.6705
+Epoch 28/60
+18/18 - 4s - 226ms/step - auc: 0.8246 - loss: 0.5134 - val_auc: 0.6362 - val_loss: 0.6689
+Epoch 29/60
+18/18 - 4s - 235ms/step - auc: 0.8419 - loss: 0.4888 - val_auc: 0.6098 - val_loss: 0.7148
+Epoch 30/60
+18/18 - 4s - 245ms/step - auc: 0.8219 - loss: 0.5082 - val_auc: 0.5998 - val_loss: 0.7285
+Epoch 31/60
+18/18 - 4s - 229ms/step - auc: 0.8378 - loss: 0.4904 - val_auc: 0.5887 - val_loss: 0.7453
+Epoch 32/60
+18/18 - 4s - 231ms/step - auc: 0.8634 - loss: 0.4621 - val_auc: 0.6110 - val_loss: 0.7394
+Epoch 33/60
+18/18 - 4s - 228ms/step - auc: 0.8625 - loss: 0.4699 - val_auc: 0.6164 - val_loss: 0.7336
+Epoch 34/60
+18/18 - 4s - 231ms/step - auc: 0.8258 - loss: 0.5074 - val_auc: 0.6306 - val_loss: 0.7137
+Epoch 35/60
+18/18 - 4s - 228ms/step - auc: 0.8395 - loss: 0.4871 - val_auc: 0.6453 - val_loss: 0.6812
+Epoch 36/60
+18/18 - 4s - 231ms/step - auc: 0.8287 - loss: 0.4927 - val_auc: 0.6074 - val_loss: 0.7297
+Epoch 37/60
+18/18 - 4s - 230ms/step - auc: 0.8898 - loss: 0.4357 - val_auc: 0.5925 - val_loss: 0.7513
+
+=== results ===
+  validation AUC   : 0.675
+  HELD-OUT AUC     : 0.553     (Track A on the same clips: 0.527)
+  HELD-OUT accuracy: 52.4%     (majority class: 50.7%)
+  confusion (test) : TP=134  FP=128  FN=39  TN=50
+
+  no better than chance -- reported as a negative result
+  written to C:\dev\makharij-pro\ml\models\makharijpro_clip_lstm_v1

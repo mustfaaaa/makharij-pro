@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from .firebase_admin_setup import init_firebase
 from .model_service import TajweedModelService
 from .phoneme_analysis_service import PhonemeAnalysisService
+from .reference_words import ReferenceWordAudio
 from .routers import inference, live, rattil, sessions
 
 logging.basicConfig(level=logging.INFO)
@@ -34,9 +35,13 @@ async def lifespan(app: FastAPI):
     # download that never finished. Non-fatal like Firebase above.
     try:
         app.state.phoneme_analysis_service = PhonemeAnalysisService()
+        # Locating a word inside a Qari's recitation uses the same recognizer,
+        # so this rides on the analysis service and is unavailable without it.
+        app.state.reference_words = ReferenceWordAudio(app.state.phoneme_analysis_service)
         logging.info("Phoneme analysis service loaded -- word-level analysis available")
     except Exception as exc:
         app.state.phoneme_analysis_service = None
+        app.state.reference_words = None
         logging.warning(f"Phoneme analysis service not available, word-level analysis will 503: {exc}")
 
     yield
