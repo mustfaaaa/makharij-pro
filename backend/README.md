@@ -159,10 +159,19 @@ behavior is reproducible.
 
 Word-level analysis and live word tracking both run on the Quran-Lab streaming
 zipformer. Its weights are **not** in this repository: the checkpoint alone is
-69 MB, and git would carry it in every clone forever. Fetch it into
-`backend/models_cache/quran-lab-zipformer/` from
-[obadx/quran-phonetic-asr](https://huggingface.co/obadx) — the files the app
-loads are:
+69 MB, and git would carry it in every clone forever.
+
+Source: [`Quran-Lab/zipformer_p-arabic-v3`](https://huggingface.co/Quran-Lab/zipformer_p-arabic-v3).
+**That repository is gated** — you need a Hugging Face account and have to
+accept its terms on the model page before the files will download. Anonymous
+requests get a 401, not a 404, which is easy to misread as "the file moved".
+
+```
+hf auth login
+hf download Quran-Lab/zipformer_p-arabic-v3   zipformer_p_arabic_v3.1.int8.onnx tokens.txt ordered_quran_phonemes.json   --local-dir models_cache/quran-lab-zipformer
+```
+
+The three files the app loads:
 
 | file | used for |
 |---|---|
@@ -174,7 +183,7 @@ Without them the server still starts, but `POST /api/v1/sessions/analyze_word_le
 and the `/api/v1/sessions/stream` socket return 503 — startup logs
 `Phoneme analysis service not available` rather than failing silently.
 
-Install the Python side with:
+## Python dependencies
 
 ```
 pip install -r requirements.txt
