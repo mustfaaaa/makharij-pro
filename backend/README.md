@@ -148,34 +148,3 @@ it's the model's own documented real-error-recall limits (60.2% / 95.9% / 67.8% 
 bug, now fixed: `predict_from_waveform` crashed on stereo audio (QDAT's source files are stereo
 even though training's decode path auto-downmixed) instead of downmixing defensively.
 
-## Environment note
-
-This machine only had Python 3.14 installed, which has no TensorFlow wheel yet. Installed Python
-3.12.10 via `py install 3.12` and built the venv against that — matches the exact Python version
-(3.12.13) and TensorFlow version (2.20.0) the model was trained with on Kaggle, so inference
-behavior is reproducible.
-
-## Phoneme model
-
-Word-level analysis and live word tracking both run on the Quran-Lab streaming
-zipformer. Its weights are **not** in this repository: the checkpoint alone is
-69 MB, and git would carry it in every clone forever. Fetch it into
-`backend/models_cache/quran-lab-zipformer/` from
-[obadx/quran-phonetic-asr](https://huggingface.co/obadx) — the files the app
-loads are:
-
-| file | used for |
-|---|---|
-| `zipformer_p_arabic_v3.1.int8.onnx` | the recognizer itself |
-| `tokens.txt` | its token inventory |
-| `ordered_quran_phonemes.json` | the expected phoneme sequence per ayah, all 6,236 |
-
-Without them the server still starts, but `POST /api/v1/sessions/analyze_word_level`
-and the `/api/v1/sessions/stream` socket return 503 — startup logs
-`Phoneme analysis service not available` rather than failing silently.
-
-Install the Python side with:
-
-```
-pip install -r requirements.txt
-```
