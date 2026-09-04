@@ -102,7 +102,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                               border: Border.all(color: AppColors.accent.withValues(alpha: 0.5), width: 1.5),
                             ),
                             alignment: Alignment.center,
-                            child: Text('م', style: AppTypography.arabicVerse(fontSize: 44, color: AppColors.primary)),
+                            child: Text('م', style: AppTypography.arabicVerse(fontSize: 44, color: AppColors.primaryDark)),
                           ),
                         ),
                       ),
@@ -126,7 +126,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       children: [
                         Text(
                           'MakharijPro AI',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: AppColors.primary),
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: AppColors.primaryDark),
                         ),
                         const SizedBox(height: 8),
                         Text(

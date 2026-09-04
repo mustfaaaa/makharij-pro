@@ -5,6 +5,7 @@ import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/app_icon_button.dart';
 import '../../../../shared/widgets/loading/app_loading_indicator.dart';
 import '../../../../shared/widgets/tajweed_color_guide.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
@@ -57,9 +58,9 @@ class _RuleDetailsScreenState extends State<RuleDetailsScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.xl),
-            decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(18)),
+            decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(AppRadii.lg)),
             alignment: Alignment.center,
-            child: Text(rule.arabicExample, style: AppTypography.arabicVerse(fontSize: 34, color: AppColors.primary), textAlign: TextAlign.center),
+            child: Text(rule.arabicExample, style: AppTypography.arabicVerse(fontSize: 34, color: AppColors.primaryDark), textAlign: TextAlign.center),
           ),
           const SizedBox(height: AppSpacing.lg),
           Wrap(
@@ -68,14 +69,14 @@ class _RuleDetailsScreenState extends State<RuleDetailsScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: AppColors.accentSurface, borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(color: AppColors.accentSurface, borderRadius: BorderRadius.circular(AppRadii.lg)),
                 child: Text(rule.category, style: TextStyle(color: AppColors.textOnAccent, fontWeight: FontWeight.w600, fontSize: 12)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: rule.isAiDetectable ? AppColors.successLight : AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
                 ),
                 child: Text(
                   rule.isAiDetectable ? 'Checked by AI when you recite' : 'Reference only — not yet AI-checked',

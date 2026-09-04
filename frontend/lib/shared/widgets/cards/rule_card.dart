@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/tajweed_rule.dart';
+import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_typography.dart';
 import 'app_card.dart';
@@ -21,7 +22,7 @@ class RuleCard extends StatelessWidget {
           Container(
             width: 48,
             height: 48,
-            decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(AppRadii.md)),
             alignment: Alignment.center,
             child: Text(rule.arabicExample, style: AppTypography.arabicWord(fontSize: 16), textAlign: TextAlign.center),
           ),

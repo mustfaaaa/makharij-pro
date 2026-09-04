@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_typography.dart';
 
@@ -188,7 +189,7 @@ class AuthField extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
             border: Border.all(color: errorText != null ? AppColors.error : AppColors.border),
           ),
           child: TextField(
@@ -241,22 +242,26 @@ class AuthGoldButton extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.primaryLight, AppColors.primaryDark],
+            colors: AppColors.brandControlGradient,
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
           boxShadow: [
             BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 14, offset: const Offset(0, 6)),
           ],
         ),
         child: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                child: CircularProgressIndicator(
+                    strokeWidth: 2.4, color: AppColors.textOnPrimary),
               )
             : Text(
                 label,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+                style: TextStyle(
+                    color: AppColors.textOnPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18),
               ),
       ),
     );

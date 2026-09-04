@@ -42,7 +42,7 @@ class AchievementCard extends StatelessWidget {
           if (!unlocked) ...[
             const SizedBox(height: 8),
             ClipRRect(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadii.sm),
               child: LinearProgressIndicator(
                 value: achievement.progress,
                 minHeight: 5,

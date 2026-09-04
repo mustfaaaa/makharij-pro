@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_theme.dart';
@@ -50,7 +51,7 @@ class SectionCard extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(
                     color: badgeColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadii.md),
                   ),
                   alignment: Alignment.center,
                   child: Icon(icon, color: badgeColor, size: 20),

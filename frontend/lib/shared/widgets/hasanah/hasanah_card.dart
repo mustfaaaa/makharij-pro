@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/number_format.dart';
+import '../../../theme/app_shadows.dart';
+import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 import '../feedback/app_dialogs.dart';
 
@@ -33,11 +35,9 @@ class HasanahCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(color: AppColors.cardShadow, blurRadius: 18, offset: const Offset(0, 8)),
-        ],
+        boxShadow: AppShadows.lg,
       ),
       child: Row(
         children: [
@@ -145,7 +145,7 @@ class _CountUpNumber extends StatelessWidget {
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppRadii.sm),
             ),
             child: Text(
               formatWithCommas(value.round()),

@@ -9,6 +9,7 @@ import '../../../../shared/widgets/cards/statistics_card.dart';
 import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
 import '../../../../shared/widgets/responsive_center.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../bloc/sessions_cubit.dart';
@@ -54,7 +55,7 @@ class StatisticsScreen extends StatelessWidget {
                 Container(
                   height: 200,
                   padding: const EdgeInsets.fromLTRB(8, 20, 16, 8),
-                  decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+                  decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppRadii.md), border: Border.all(color: AppColors.border)),
                   child: BarChart(
                     BarChartData(
                       gridData: const FlGridData(show: false),
@@ -75,7 +76,7 @@ class StatisticsScreen extends StatelessWidget {
                                 toY: sessions[i].accuracyScore,
                                 color: AppColors.primary,
                                 width: 22,
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(AppRadii.sm),
                               ),
                             ],
                           ),

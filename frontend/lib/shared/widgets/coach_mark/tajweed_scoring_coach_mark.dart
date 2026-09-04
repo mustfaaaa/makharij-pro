@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../buttons/primary_button.dart';
@@ -54,7 +55,7 @@ class TajweedScoringCoachMark extends StatelessWidget {
                   padding: const EdgeInsets.all(AppSpacing.cardPadding),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
                     border: Border.all(
                       color: AppColors.primary.withValues(alpha: 0.3),
                     ),
@@ -86,7 +87,7 @@ class TajweedScoringCoachMark extends StatelessWidget {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(p.icon, size: 18, color: AppColors.primary),
+                              Icon(p.icon, size: 18, color: AppColors.primaryDark),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(

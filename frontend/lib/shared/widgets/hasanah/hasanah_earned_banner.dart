@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/number_format.dart';
+import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 
 /// Reveals the hasanah just earned from a completed recitation session,
@@ -28,7 +29,7 @@ class HasanahEarnedBanner extends StatelessWidget {
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         ),
         child: Row(

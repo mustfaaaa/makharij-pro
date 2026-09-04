@@ -72,14 +72,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Center(
                     child: Stack(
                       children: [
-                        CircleAvatar(radius: 48, backgroundColor: AppColors.primarySurface, child: Icon(Icons.person, size: 48, color: AppColors.primary)),
+                        CircleAvatar(radius: 48, backgroundColor: AppColors.primarySurface, child: Icon(Icons.person, size: 48, color: AppColors.primaryDark)),
                         Positioned(
                           bottom: 0,
                           right: 0,
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                            child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.white),
+                            child: Icon(Icons.camera_alt_rounded, size: 16, color: AppColors.textOnPrimary),
                           ),
                         ),
                       ],

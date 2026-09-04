@@ -8,6 +8,7 @@ import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
 import '../../../../shared/widgets/responsive_center.dart';
 import '../../../../shared/widgets/states/empty_state_widget.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../bloc/notifications_cubit.dart';
@@ -53,7 +54,7 @@ class NotificationsScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(AppSpacing.cardPadding),
                   decoration: BoxDecoration(
                     color: n.isRead ? AppColors.surface : AppColors.primarySurface,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppRadii.md),
                     border: Border.all(color: AppColors.border),
                   ),
                   child: Row(
@@ -64,7 +65,7 @@ class NotificationsScreen extends StatelessWidget {
                         height: 36,
                         decoration: BoxDecoration(color: AppColors.surface, shape: BoxShape.circle),
                         alignment: Alignment.center,
-                        child: Icon(_iconFor(n.type), size: 18, color: AppColors.primary),
+                        child: Icon(_iconFor(n.type), size: 18, color: AppColors.primaryDark),
                       ),
                       const SizedBox(width: 12),
                       Expanded(

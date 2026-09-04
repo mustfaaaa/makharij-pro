@@ -6,6 +6,7 @@ import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/google_sign_in_button.dart';
 import '../../../../shared/widgets/feedback/app_snackbar.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../widgets/arch_auth_shell.dart';
 
@@ -152,7 +153,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   height: 26,
                   decoration: BoxDecoration(
                     color: _agreedToTerms ? AppColors.primary : AppColors.surface,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
                     border: Border.all(color: _agreedToTerms ? AppColors.primary : AppColors.border, width: 1.5),
                   ),
                   child: _agreedToTerms

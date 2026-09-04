@@ -5,6 +5,7 @@ import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../../../shared/widgets/inputs/custom_text_field.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../widgets/auth_shell.dart';
@@ -89,7 +90,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: AppColors.successLight,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadii.md),
                 border: Border.all(
                   color: AppColors.success.withValues(alpha: 0.25),
                 ),

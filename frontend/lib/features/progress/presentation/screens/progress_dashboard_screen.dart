@@ -11,6 +11,7 @@ import '../../../../models/progress_point.dart';
 import '../../../../models/progress_summary.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
+import '../../../../theme/app_shadows.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
@@ -18,7 +19,9 @@ import '../../../../theme/app_spacing.dart';
 // ── Tajweed Mastery: dot colors cycle across the rules the model actually
 // covers (3 of them -- see model_card.json known_limitations) rather than
 // naming a fixed rule list, since which rules have session history varies.
-const _masteryDotColors = [Color(0xFFB08F4F), Color(0xFF8B6914), Color(0xFFCE6A1B)];
+/// Mastery dots are read against a light card, so these are the ink golds
+/// rather than the fill golds -- the old set sat between 2.4:1 and 3.1:1.
+const _masteryDotColors = [Color(0xFF806839), Color(0xFF6F5622), Color(0xFF9C5218)];
 
 /// Drops the Arabic parenthetical from a backend rule label (e.g. "Separate
 /// Madd (المد المنفصل)" -> "Separate Madd") so it fits the bar row's fixed
@@ -89,8 +92,8 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                   alignment: Alignment.center,
                   child: Text(
                     currentUserInitial(),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppColors.textOnPrimary,
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
                     ),
@@ -126,13 +129,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: AppRadii.pillRadius,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.cardShadow,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    boxShadow: AppShadows.sm,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -510,10 +507,10 @@ class _PerformanceHero extends StatelessWidget {
                                         color: AppColors.primaryDark,
                                       ),
                                       const SizedBox(width: 4),
-                                      const Text(
+                                      Text(
                                         'Intermediate',
                                         style: TextStyle(
-                                          color: Color(0xFF2D2A26),
+                                          color: AppColors.textOnPrimary,
                                           fontWeight: FontWeight.w700,
                                           fontSize: 12,
                                         ),
@@ -528,7 +525,7 @@ class _PerformanceHero extends StatelessWidget {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF1F6E4E),
+                                    color: AppColors.successSurface,
                                     borderRadius: AppRadii.pillRadius,
                                   ),
                                   child: const Row(
@@ -586,13 +583,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        boxShadow: AppShadows.sm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -653,13 +644,7 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: AppShadows.md,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -719,7 +704,7 @@ class _MasteryBar extends StatelessWidget {
             height: 10,
             decoration: BoxDecoration(
               color: AppColors.creamDark,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadii.sm),
             ),
           ),
           Container(
@@ -727,9 +712,9 @@ class _MasteryBar extends StatelessWidget {
             width: constraints.maxWidth * pct / 100,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primaryLight, const Color(0xFF8B6914)],
+                colors: AppColors.brandCardGradient,
               ),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadii.sm),
             ),
           ),
         ],
@@ -861,7 +846,7 @@ class _ActivityHeatmap extends StatelessWidget {
       case 3:
         return AppColors.primary;
       default:
-        return const Color(0xFF8B6914);
+        return AppColors.primaryDark;
     }
   }
 
@@ -884,7 +869,7 @@ class _ActivityHeatmap extends StatelessWidget {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: _shade(heatmap[week][day]),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(AppRadii.sm),
                         ),
                       ),
                     ),
@@ -909,7 +894,7 @@ class _ActivityHeatmap extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 4),
                 decoration: BoxDecoration(
                   color: _shade(i),
-                  borderRadius: BorderRadius.circular(3.5),
+                  borderRadius: BorderRadius.circular(AppRadii.xs),
                 ),
               ),
             ],

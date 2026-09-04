@@ -14,6 +14,7 @@ import '../../../../shared/widgets/buttons/outlined_app_button.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/hasanah/hasanah_earned_banner.dart';
 import '../../../../shared/widgets/score_badge.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
@@ -256,7 +257,7 @@ class _RealWordResults extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.cardPadding),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadii.md),
             border: Border.all(color: AppColors.border),
           ),
           child: Column(
@@ -319,7 +320,7 @@ class _MistakeCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.cardPadding),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -331,7 +332,7 @@ class _MistakeCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
                 ),
                 child: Text(label,
                     style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
@@ -404,7 +405,7 @@ class _PreviewWordHighlight extends StatelessWidget {
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(20)),
+              decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(AppRadii.lg)),
               child: Text('Preview', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
             ),
           ],
@@ -417,7 +418,7 @@ class _PreviewWordHighlight extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         Container(
           padding: const EdgeInsets.all(AppSpacing.cardPadding),
-          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.border)),
+          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppRadii.md), border: Border.all(color: AppColors.border)),
           child: Wrap(
             alignment: WrapAlignment.end,
             textDirection: TextDirection.rtl,
@@ -429,7 +430,7 @@ class _PreviewWordHighlight extends StatelessWidget {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: isError
-                      ? BoxDecoration(color: AppColors.errorHighlightBg, borderRadius: BorderRadius.circular(6))
+                      ? BoxDecoration(color: AppColors.errorHighlightBg, borderRadius: BorderRadius.circular(AppRadii.sm))
                       : null,
                   child: Text(
                     word,

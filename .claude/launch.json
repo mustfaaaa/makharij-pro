@@ -32,6 +32,20 @@
       ],
       "port": 8000,
       "autoPort": false
+    },
+    {
+      "name": "flutter-web-build",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5174",
+        "--directory",
+        "frontend/build/web",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "port": 5174
     }
   ]
 }

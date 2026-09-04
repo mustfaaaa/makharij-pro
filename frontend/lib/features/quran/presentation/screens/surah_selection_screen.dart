@@ -8,6 +8,7 @@ import '../../../../models/surah.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/animated/pressable.dart';
+import '../../../../theme/app_shadows.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
@@ -233,7 +234,7 @@ class _QuranHeroCard extends StatelessWidget {
                 filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  color: Colors.white.withValues(alpha: 0.82),
+                  color: AppColors.glassSurfaceStrong,
                   child: Row(
                     children: [
                       Container(
@@ -255,13 +256,15 @@ class _QuranHeroCard extends StatelessWidget {
                                     fontSize: 10.5,
                                     letterSpacing: 1.8)),
                             Text(lastSession?.surahName ?? 'Al-Fatihah',
-                                style: const TextStyle(
-                                    color: Color(0xFF2D2A26), fontWeight: FontWeight.w700, fontSize: 16)),
+                                style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16)),
                             Text(
                               lastSession == null
                                   ? 'Recite your first surah'
                                   : '${lastSession!.accuracyScore.toStringAsFixed(0)}% accuracy',
-                              style: const TextStyle(color: Color(0xFF8A8378), fontSize: 12),
+                              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                             ),
                           ],
                         ),
@@ -272,9 +275,11 @@ class _QuranHeroCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                           decoration:
                               BoxDecoration(color: AppColors.primary, borderRadius: AppRadii.pillRadius),
-                          child: const Text('Continue',
-                              style:
-                                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5)),
+                          child: Text('Continue',
+                              style: TextStyle(
+                                  color: AppColors.textOnPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13.5)),
                         ),
                       ),
                     ],
@@ -317,7 +322,7 @@ class _FilterTab extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             height: 3,
             width: selected ? 26 : 0,
-            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2)),
+            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(AppRadii.xs)),
           ),
         ],
       ),
@@ -341,7 +346,7 @@ class _SurahListCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: AppRadii.lgRadius,
-          boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: const Offset(0, 3))],
+          boxShadow: AppShadows.sm,
         ),
         child: Row(
           children: [
@@ -351,7 +356,10 @@ class _SurahListCard extends StatelessWidget {
               decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
               alignment: Alignment.center,
               child: Text('${surah.number}',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+                  style: TextStyle(
+                      color: AppColors.textOnPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14)),
             ),
             const SizedBox(width: 12),
             Expanded(

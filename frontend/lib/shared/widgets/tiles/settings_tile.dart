@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 
 class SettingsTile extends StatelessWidget {
@@ -28,7 +29,7 @@ class SettingsTile extends StatelessWidget {
       leading: Container(
         width: 38,
         height: 38,
-        decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(AppRadii.sm)),
         alignment: Alignment.center,
         child: Icon(icon, size: 19, color: iconColor ?? AppColors.textPrimary),
       ),

@@ -12,6 +12,7 @@ import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/animated/pressable.dart';
 import '../../../../shared/widgets/feedback/app_dialogs.dart';
+import '../../../../theme/app_shadows.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
@@ -145,10 +146,7 @@ class ProfileScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                            color: AppColors.cardShadow, blurRadius: 10, offset: const Offset(0, 3))
-                      ],
+                      boxShadow: AppShadows.sm,
                     ),
                     child: Icon(Icons.settings_rounded, color: AppColors.textSecondary, size: 22),
                   ),
@@ -162,9 +160,7 @@ class ProfileScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: AppRadii.lgRadius,
-                boxShadow: [
-                  BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))
-                ],
+                boxShadow: AppShadows.md,
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,14 +189,15 @@ class ProfileScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                       decoration:
                           BoxDecoration(color: AppColors.primary, borderRadius: AppRadii.lgRadius),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.edit_rounded, color: Colors.white, size: 15),
-                          SizedBox(width: 6),
+                          Icon(Icons.edit_rounded,
+                              color: AppColors.textOnPrimary, size: 15),
+                          const SizedBox(width: 6),
                           Text('Edit\nProfile',
                               style: TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textOnPrimary,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 14,
                                   height: 1.2)),
@@ -229,12 +226,7 @@ class ProfileScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppColors.surface,
                           borderRadius: AppRadii.lgRadius,
-                          boxShadow: [
-                            BoxShadow(
-                                color: AppColors.cardShadow,
-                                blurRadius: 12,
-                                offset: const Offset(0, 4))
-                          ],
+                          boxShadow: AppShadows.md,
                         ),
                         child: Row(
                           children: [
@@ -278,7 +270,7 @@ class ProfileScreen extends StatelessWidget {
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [AppColors.primaryLight, const Color(0xFF8B6914)],
+                          colors: AppColors.brandCardGradient,
                         ),
                         borderRadius: AppRadii.lgRadius,
                         boxShadow: [
@@ -313,7 +305,7 @@ class ProfileScreen extends StatelessWidget {
                                 alignment: Alignment.center,
                                 child: Text('ح',
                                     style: TextStyle(
-                                        color: const Color(0xFF8B6914),
+                                        color: AppColors.primaryDark,
                                         fontWeight: FontWeight.w800,
                                         fontSize: 18)),
                               ),
@@ -356,9 +348,7 @@ class ProfileScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: AppRadii.lgRadius,
-                boxShadow: [
-                  BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))
-                ],
+                boxShadow: AppShadows.md,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,11 +410,11 @@ class ProfileScreen extends StatelessWidget {
                                 children: [
                                   Text(surah,
                                       style: TextStyle(
-                                          color: const Color(0xFF8B6914),
+                                          color: AppColors.primaryDark,
                                           fontWeight: FontWeight.w800,
                                           fontSize: 15)),
                                   const SizedBox(width: 6),
-                                  const Icon(Icons.close_rounded, size: 15, color: Color(0xFF8B6914)),
+                                  Icon(Icons.close_rounded, size: 15, color: AppColors.primaryDark),
                                 ],
                               ),
                             ),
@@ -519,9 +509,7 @@ class _ToolCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: AppRadii.lgRadius,
-          boxShadow: [
-            BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: const Offset(0, 3))
-          ],
+          boxShadow: AppShadows.sm,
         ),
         child: Row(
           children: [

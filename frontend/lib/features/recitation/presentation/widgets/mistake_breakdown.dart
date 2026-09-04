@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../models/tajweed_error.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/tajweed_rule_style.dart';
 
@@ -72,7 +73,7 @@ class _Tile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(AppRadii.sm),
           border: Border.all(color: AppColors.border),
         ),
         child: Column(

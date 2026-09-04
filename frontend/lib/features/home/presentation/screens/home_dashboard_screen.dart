@@ -11,6 +11,7 @@ import '../../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../../../shared/widgets/navigation/app_drawer.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
+import '../../../../theme/app_shadows.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
 
@@ -269,8 +270,8 @@ class _HeaderImage extends StatelessWidget {
                       alignment: Alignment.center,
                       child: Text(
                         firstName.isNotEmpty ? firstName[0].toUpperCase() : 'M',
-                        style: const TextStyle(
-                            color: Color(0xFF3A2C1B),
+                        style: TextStyle(
+                            color: AppColors.textOnPrimary,
                             fontWeight: FontWeight.w800,
                             fontSize: 18),
                       ),
@@ -347,7 +348,7 @@ class _LastReadCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: AppShadows.md,
       ),
       child: Row(
         children: [
@@ -381,8 +382,9 @@ class _LastReadCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
               decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadii.pillRadius),
-              child: const Text('Continue',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              child: Text('Continue',
+                  style: TextStyle(
+                      color: AppColors.textOnPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
             ),
           ),
         ],
@@ -404,7 +406,7 @@ class _NextPrayerCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: AppShadows.md,
       ),
       child: Row(
         children: [
@@ -453,7 +455,7 @@ class _NextPrayerCard extends StatelessWidget {
               Text(countdown,
                   style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.5)),
               const SizedBox(height: 6),
-              Icon(Icons.nightlight_round, color: AppColors.primary, size: 22),
+              Icon(Icons.nightlight_round, color: AppColors.primaryDark, size: 22),
             ],
           ),
         ],
@@ -492,7 +494,7 @@ class _PrayerChip extends StatelessWidget {
         color: highlighted ? AppColors.primarySurface : AppColors.surface,
         borderRadius: AppRadii.mdRadius,
         border: Border.all(color: highlighted ? AppColors.primary : AppColors.border, width: highlighted ? 1.5 : 1),
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: AppShadows.sm,
       ),
       child: Column(
         children: [
@@ -526,9 +528,9 @@ class _TodaysGoalCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.cardPadding),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F6E4E),
+        color: AppColors.successSurface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: AppShadows.md,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -561,7 +563,7 @@ class _TodaysGoalCard extends StatelessWidget {
               style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 14)),
           const SizedBox(height: 14),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppRadii.xsRadius,
             child: LinearProgressIndicator(
               value: pct,
               minHeight: 8,
@@ -596,7 +598,7 @@ class _QuickAccessCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: AppShadows.md,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,7 +653,7 @@ class _InviteFriendsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: AppShadows.md,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/ayah.dart';
 import '../../../../models/tajweed_error.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/tajweed_rule_style.dart';
 import '../../../../theme/app_spacing.dart';
@@ -72,7 +73,10 @@ class MushafAyah extends StatelessWidget {
   Color _colorFor(WordMark mark) {
     switch (mark.tone) {
       case WordTone.pending:
-        return AppColors.textMuted;
+        // Its own token, not `textMuted`: this is the resting state of the
+        // whole mushaf page, so it carries the full 4.5:1 text requirement
+        // even though its job is to look quiet.
+        return AppColors.verseResting;
       case WordTone.recited:
         return AppColors.textPrimary;
       case WordTone.flagged:
@@ -196,7 +200,7 @@ class MushafSurahHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
         color: AppColors.cream,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
       ),
       child: Column(

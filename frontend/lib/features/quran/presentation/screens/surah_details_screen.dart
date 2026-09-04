@@ -13,6 +13,7 @@ import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/loading/app_loading_indicator.dart';
 import '../../../../shared/widgets/pickers/verse_text_size_picker.dart';
+import '../../../../theme/app_shadows.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
@@ -387,7 +388,7 @@ class _TapToSpeakControl extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [AppColors.primaryLight, AppColors.primaryDark],
+                  colors: AppColors.brandControlGradient,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -396,7 +397,7 @@ class _TapToSpeakControl extends StatelessWidget {
                       offset: const Offset(0, 8)),
                 ],
               ),
-              child: const Icon(Icons.mic_rounded, color: Colors.white, size: 34),
+              child: Icon(Icons.mic_rounded, color: AppColors.textOnPrimary, size: 34),
             ),
           ),
           const SizedBox(width: 20),
@@ -440,9 +441,7 @@ class _RecordingControls extends StatelessWidget {
               color: AppColors.surface,
               borderRadius: AppRadii.pillRadius,
               border: Border.all(color: AppColors.border),
-              boxShadow: [
-                BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))
-              ],
+              boxShadow: AppShadows.md,
             ),
             child: AnimatedBuilder(
               animation: waveController,
@@ -496,7 +495,7 @@ class _RecordingControls extends StatelessWidget {
                     width: 30,
                     height: 30,
                     decoration:
-                        BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(8)),
+                        BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(AppRadii.sm)),
                   ),
                 ),
               ),
@@ -570,12 +569,12 @@ class _AyahRangeChip extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             color: AppColors.primarySurface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
             border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
           ),
           child: Row(

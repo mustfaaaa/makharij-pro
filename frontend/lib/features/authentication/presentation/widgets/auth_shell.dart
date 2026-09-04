@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/buttons/frosted_back_button.dart';
 import '../../../../shared/widgets/illustrations/auth_background.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 
@@ -147,7 +148,7 @@ class _AuthTabs extends StatelessWidget {
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadii.md),
       ),
       child: Row(
         children: [
@@ -171,7 +172,7 @@ class _AuthTabs extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? AppColors.surface : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadii.md),
             boxShadow: selected
                 ? [
                     BoxShadow(

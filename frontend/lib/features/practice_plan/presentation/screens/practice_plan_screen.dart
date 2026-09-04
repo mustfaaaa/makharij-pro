@@ -9,6 +9,7 @@ import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
 import '../../../../shared/widgets/responsive_center.dart';
 import '../../../../shared/widgets/states/empty_state_widget.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
@@ -62,7 +63,7 @@ class _PlanTile extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.cardPadding),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -79,8 +80,8 @@ class _PlanTile extends StatelessWidget {
                     if (item.errorCount != null)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(20)),
-                        child: Text('${item.errorCount}x', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                        decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(AppRadii.lg)),
+                        child: Text('${item.errorCount}x', style: TextStyle(fontSize: 11, color: AppColors.primaryDark, fontWeight: FontWeight.w600)),
                       ),
                   ],
                 ),
@@ -101,7 +102,7 @@ class _PlanTile extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: AppColors.surfaceAlt,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(AppRadii.sm),
                             ),
                             child: Text(
                               e.word,
@@ -116,7 +117,7 @@ class _PlanTile extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.play_circle_outline, color: AppColors.primary),
+            icon: Icon(Icons.play_circle_outline, color: AppColors.primaryDark),
             // Recommendations now carry the surah each flagged word came from,
             // so this can open exactly where the mistake happened rather than
             // dropping the user at the Quran tab to go find it.

@@ -22,7 +22,7 @@ class AboutScreen extends StatelessWidget {
                   height: 88,
                   decoration: BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
                   alignment: Alignment.center,
-                  child: Text('م', style: AppTypography.arabicVerse(fontSize: 38, color: AppColors.primary)),
+                  child: Text('م', style: AppTypography.arabicVerse(fontSize: 38, color: AppColors.primaryDark)),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text('MakharijPro AI', style: Theme.of(context).textTheme.headlineSmall),
