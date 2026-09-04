@@ -56,36 +56,6 @@ class HomeDashboardScreen extends StatefulWidget {
 }
 
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
-  Timer? _ticker;
-  Duration _untilNext = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _computeCountdown();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _computeCountdown());
-  }
-
-  void _computeCountdown() {
-    final now = DateTime.now();
-    var maghrib = DateTime(now.year, now.month, now.day, 19, 21);
-    if (maghrib.isBefore(now)) maghrib = maghrib.add(const Duration(days: 1));
-    if (mounted) setState(() => _untilNext = maghrib.difference(now));
-  }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    super.dispose();
-  }
-
-  String get _countdownText {
-    final h = _untilNext.inHours;
-    final m = (_untilNext.inMinutes % 60).toString().padLeft(2, '0');
-    final s = (_untilNext.inSeconds % 60).toString().padLeft(2, '0');
-    return '$h:$m:$s';
-  }
-
   @override
   Widget build(BuildContext context) {
     final firstName = currentUserName();
@@ -116,10 +86,17 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 children: [
                   Text('Prayer times',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-                  GestureDetector(
-                    onTap: () {},
+                  // Was `onTap: () {}` -- a control that looked live and did
+                  // nothing. Until the monthly view exists it says so, rather
+                  // than silently swallowing the tap.
+                  TextButton(
+                    onPressed: () => AppSnackbar.show(
+                        context, 'Monthly prayer view is coming in a later release.'),
                     child: Text('Monthly view',
-                        style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w600, fontSize: 14)),
+                        style: TextStyle(
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14)),
                   ),
                 ],
               ),
@@ -127,7 +104,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             const SizedBox(height: AppSpacing.md),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
-              child: _NextPrayerCard(countdown: _countdownText),
+              child: const _NextPrayerCard(),
             ),
             const SizedBox(height: AppSpacing.md),
             const Padding(
@@ -250,6 +227,7 @@ class _HeaderImage extends StatelessWidget {
                     Builder(
                       builder: (context) => _GlassCircleButton(
                         icon: Icons.menu_rounded,
+                        label: 'Open menu',
                         onTap: () => Scaffold.of(context).openDrawer(),
                       ),
                     ),
@@ -299,6 +277,7 @@ class _HeaderImage extends StatelessWidget {
                     ),
                     _GlassCircleButton(
                       icon: Icons.notifications_none_rounded,
+                      label: 'Notifications',
                       onTap: () => context.push(RoutePaths.notifications),
                     ),
                   ],
@@ -317,21 +296,40 @@ class _HeaderImage extends StatelessWidget {
 class _GlassCircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _GlassCircleButton({required this.icon, required this.onTap});
+  final String label;
+  const _GlassCircleButton({required this.icon, required this.onTap, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.35),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+    // The visible circle stays 42dp to match the mockup, but the *tap target*
+    // is padded out to Android's 48dp floor, and the control now carries a
+    // name and press feedback -- as a bare GestureDetector it had neither.
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            width: 48,
+            height: 48,
+            alignment: Alignment.center,
+            child: Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.35),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+          ),
         ),
-        child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }
@@ -394,9 +392,48 @@ class _LastReadCard extends StatelessWidget {
 }
 
 // ── Next-prayer card with live countdown ─────────────────────────────────────
-class _NextPrayerCard extends StatelessWidget {
-  final String countdown;
-  const _NextPrayerCard({required this.countdown});
+/// Owns the per-second countdown itself.
+///
+/// The tick used to live on the screen's State, so once a second the whole
+/// dashboard rebuilt -- including the 440px `Image.asset` header. Scoping it
+/// here means the clock repaints one card.
+class _NextPrayerCard extends StatefulWidget {
+  const _NextPrayerCard();
+
+  @override
+  State<_NextPrayerCard> createState() => _NextPrayerCardState();
+}
+
+class _NextPrayerCardState extends State<_NextPrayerCard> {
+  Timer? _ticker;
+  Duration _untilNext = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _computeCountdown();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _computeCountdown());
+  }
+
+  void _computeCountdown() {
+    final now = DateTime.now();
+    var maghrib = DateTime(now.year, now.month, now.day, 19, 21);
+    if (maghrib.isBefore(now)) maghrib = maghrib.add(const Duration(days: 1));
+    if (mounted) setState(() => _untilNext = maghrib.difference(now));
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  String get countdown {
+    final h = _untilNext.inHours;
+    final m = (_untilNext.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (_untilNext.inSeconds % 60).toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
 
   @override
   Widget build(BuildContext context) {

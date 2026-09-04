@@ -50,7 +50,7 @@ class WordMark {
 /// ayah-number medallion. Words are individually coloured so recitation
 /// progress and mistakes can be shown in place, without breaking the line
 /// flow the way per-word boxes would.
-class MushafAyah extends StatelessWidget {
+class MushafAyah extends StatefulWidget {
   final Ayah ayah;
   final double fontSize;
 
@@ -67,6 +67,46 @@ class MushafAyah extends StatelessWidget {
     this.showTranslation = false,
     this.onTap,
   });
+
+  @override
+  State<MushafAyah> createState() => _MushafAyahState();
+}
+
+/// Stateful only to own the tap recognizer.
+///
+/// [TapGestureRecognizer] is a disposable: it registers with the gesture
+/// arena and holds a callback. It used to be constructed inline in `build`,
+/// so every rebuild leaked one per ayah -- and on the reading page, where a
+/// per-second recording timer rebuilt the whole surah, that was hundreds of
+/// live recognizers a minute for a long surah.
+class _MushafAyahState extends State<MushafAyah> {
+  TapGestureRecognizer? _recognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncRecognizer();
+  }
+
+  @override
+  void didUpdateWidget(MushafAyah oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The closure captures the old callback, so refresh it when it changes.
+    if (oldWidget.onTap != widget.onTap) _syncRecognizer();
+  }
+
+  void _syncRecognizer() {
+    _recognizer?.dispose();
+    _recognizer = widget.onTap == null
+        ? null
+        : (TapGestureRecognizer()..onTap = () => widget.onTap!());
+  }
+
+  @override
+  void dispose() {
+    _recognizer?.dispose();
+    super.dispose();
+  }
 
   /// The rule's own colour when a word is flagged, so the page distinguishes a
   /// short madd from a missed ghunnah instead of painting both the same red.
@@ -90,7 +130,7 @@ class MushafAyah extends StatelessWidget {
   /// rule. The shape is what keeps this readable without colour.
   TextStyle _styleFor(WordMark mark) {
     final base = AppTypography.arabicVerse(
-      fontSize: fontSize,
+      fontSize: widget.fontSize,
       color: _colorFor(mark),
       height: 2.1,
     );
@@ -106,8 +146,8 @@ class MushafAyah extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final words = ayah.arabicText.split(' ');
-    final recognizer = onTap == null ? null : (TapGestureRecognizer()..onTap = onTap);
+    final words = widget.ayah.arabicText.split(' ');
+    final recognizer = _recognizer;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -119,23 +159,23 @@ class MushafAyah extends StatelessWidget {
               for (var i = 0; i < words.length; i++)
                 TextSpan(
                   text: i == words.length - 1 ? words[i] : '${words[i]} ',
-                  style: _styleFor(marks[i] ?? WordMark.pending),
+                  style: _styleFor(widget.marks[i] ?? WordMark.pending),
                   recognizer: recognizer,
                 ),
               const TextSpan(text: ' '),
               WidgetSpan(
                 alignment: PlaceholderAlignment.middle,
-                child: _AyahMedallion(number: ayah.number, size: fontSize * 1.15),
+                child: _AyahMedallion(number: widget.ayah.number, size: widget.fontSize * 1.15),
               ),
             ]),
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.justify,
           ),
-          if (showTranslation)
+          if (widget.showTranslation)
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.xs),
               child: Text(
-                ayah.translation,
+                widget.ayah.translation,
                 style: Theme.of(context)
                     .textTheme
                     .bodyMedium

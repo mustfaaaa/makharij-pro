@@ -10,6 +10,7 @@ import '../../../../models/surah.dart';
 import '../../../../models/user_profile.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
+import '../../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../../../shared/widgets/animated/pressable.dart';
 import '../../../../shared/widgets/feedback/app_dialogs.dart';
 import '../../../../theme/app_shadows.dart';
@@ -458,7 +459,9 @@ class ProfileScreen extends StatelessWidget {
                     icon: Icons.schedule_rounded,
                     title: 'Reminders',
                     subtitle: 'Daily at 7:00 PM',
-                    onTap: () {},
+                    // Was `onTap: () {}` -- looked interactive, did nothing.
+                    onTap: () => AppSnackbar.show(
+                        context, 'Practice reminders are coming in a later release.'),
                   ),
                 ),
                 const SizedBox(width: 12),

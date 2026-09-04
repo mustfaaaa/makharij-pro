@@ -39,9 +39,15 @@ class SurahDetailsScreen extends StatefulWidget {
 class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTickerProviderStateMixin {
   Surah? _surah;
   List<Ayah> _ayahs = const [];
-  Duration _elapsed = Duration.zero;
-  Timer? _timer;
   late final AnimationController _waveController;
+
+  /// Word offset of each ayah into the selected range, cached per ayah list.
+  /// The live cursor reports a whole-surah word index, so every ayah needs to
+  /// know how many words precede it. Recomputing that by splitting every
+  /// ayah's text on each build is O(surah) per frame -- fine once, wasteful
+  /// at 60fps.
+  List<int> _wordOffsets = const [];
+  List<Ayah>? _offsetsFor;
 
   int? _expandedAyah;
 
@@ -63,9 +69,21 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTick
 
   @override
   void dispose() {
-    _timer?.cancel();
     _waveController.dispose();
     super.dispose();
+  }
+
+  List<int> _offsets(List<Ayah> ayahs) {
+    if (identical(_offsetsFor, ayahs)) return _wordOffsets;
+    final offsets = <int>[];
+    var running = 0;
+    for (final a in ayahs) {
+      offsets.add(running);
+      running += a.arabicText.split(' ').length;
+    }
+    _offsetsFor = ayahs;
+    _wordOffsets = offsets;
+    return offsets;
   }
 
   void _toggleBookmark() async {
@@ -76,30 +94,53 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTick
   void _startRecording() async {
     HapticFeedback.mediumImpact();
     setState(() {
-      _elapsed = Duration.zero;
       _expandedAyah = null;
       _scrolledToAyah = null;
     });
-    _waveController.repeat(reverse: true);
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _elapsed += const Duration(seconds: 1));
-    });
+    // The waveform is decoration on top of the real recording state, so it is
+    // safe to hold still when the user has asked for less motion.
+    if (mounted && !MediaQuery.of(context).disableAnimations) {
+      _waveController.repeat(reverse: true);
+    }
     await context.read<RecitationCubit>().startListening();
   }
 
   void _stopRecording() {
     HapticFeedback.mediumImpact();
-    _timer?.cancel();
     _waveController.stop();
     // Hand off to the existing processing animation + result flow.
     context.read<RecitationCubit>().stopAndProcess();
     context.push(RoutePaths.processingPath(widget.surahNumber));
   }
 
-  String get _elapsedText {
-    final m = _elapsed.inMinutes;
-    final s = (_elapsed.inSeconds % 60).toString().padLeft(2, '0');
-    return '$m:$s';
+  /// Leaving mid-recitation used to discard the recording with no warning --
+  /// and a back-swipe is easy to trigger by accident while holding the phone
+  /// up to read from.
+  Future<void> _confirmDiscard() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Stop recording?'),
+        content: const Text(
+            'You are part-way through reciting. Leaving now discards this recording.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep reciting'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    if (leave == true && mounted) {
+      _waveController.stop();
+      context.read<RecitationCubit>().reset();
+      if (mounted) context.pop();
+    }
   }
 
   /// Lets the user practise part of a surah. Al-Baqarah is 286 ayahs; reciting
@@ -257,35 +298,24 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTick
           return const Scaffold(body: AppLoadingIndicator());
         }
         final recording = state.status == RecitationStatus.listening;
+        final offsets = _offsets(ayahs);
 
-        // Running count so each ayah knows its offset into the surah, which is
-        // what the live cursor's whole-surah word index is measured against.
-        var wordsBefore = 0;
-        final blocks = <Widget>[];
-        for (final ayah in ayahs) {
-          final before = wordsBefore;
-          wordsBefore += ayah.arabicText.split(' ').length;
-          final key = _ayahKeys.putIfAbsent(ayah.number, GlobalKey.new);
-          blocks.add(MushafAyah(
-            key: key,
-            ayah: ayah,
-            fontSize: 26 * verseScale,
-            marks: _marksFor(ayah, state, before),
-            showTranslation: _expandedAyah == ayah.number,
-            onTap: () => setState(
-              () => _expandedAyah = _expandedAyah == ayah.number ? null : ayah.number,
-            ),
-          ));
-        }
-
-        return Scaffold(
+        return PopScope(
+          // While recording, a system back gesture must not silently throw the
+          // recitation away -- intercept it and ask.
+          canPop: !recording,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _confirmDiscard();
+          },
+          child: Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
             backgroundColor: AppColors.background,
             elevation: 0,
             leading: IconButton(
+              tooltip: 'Back',
               icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-              onPressed: () => context.pop(),
+              onPressed: () => recording ? _confirmDiscard() : context.pop(),
             ),
             title: Text(surah.nameEnglish),
             actions: [
@@ -307,35 +337,60 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTick
           body: Column(
             children: [
               Expanded(
-                child: ListView(
+                // .builder, not a children: list. Al-Baqarah is 286 ayahs, and
+                // eagerly constructing every MushafAyah -- each one a rich
+                // TextSpan tree per word -- cost that on every single frame.
+                // Now only the visible ayahs are built.
+                child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(
                       AppSpacing.screenPadding, 0, AppSpacing.screenPadding, AppSpacing.lg),
-                  children: [
-                    MushafSurahHeader(
-                      nameArabic: surah.nameArabic,
-                      subtitle: '${surah.meaning} · ${surah.ayahCount} Ayahs · ${surah.revelationPlace}',
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    if (!recording) ...[
-                      _AyahRangeChip(
-                        state: state,
-                        totalAyahs: state.ayahs.length,
-                        onTap: () => _pickAyahRange(state),
+                  itemCount: ayahs.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          MushafSurahHeader(
+                            nameArabic: surah.nameArabic,
+                            subtitle:
+                                '${surah.meaning} · ${surah.ayahCount} Ayahs · ${surah.revelationPlace}',
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          if (!recording) ...[
+                            _AyahRangeChip(
+                              state: state,
+                              totalAyahs: state.ayahs.length,
+                              onTap: () => _pickAyahRange(state),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                              child: Text(
+                                'Tap any ayah to see its translation.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: AppColors.textMuted),
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    }
+                    final ayah = ayahs[index - 1];
+                    final key = _ayahKeys.putIfAbsent(ayah.number, GlobalKey.new);
+                    return MushafAyah(
+                      key: key,
+                      ayah: ayah,
+                      fontSize: 26 * verseScale,
+                      marks: _marksFor(ayah, state, offsets[index - 1]),
+                      showTranslation: _expandedAyah == ayah.number,
+                      onTap: () => setState(
+                        () => _expandedAyah =
+                            _expandedAyah == ayah.number ? null : ayah.number,
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: Text(
-                          'Tap any ayah to see its translation.',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: AppColors.textMuted),
-                        ),
-                      ),
-                    ],
-                    ...blocks,
-                  ],
+                    );
+                  },
                 ),
               ),
               SafeArea(
@@ -345,7 +400,6 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTick
                   child: recording
                       ? _RecordingControls(
                           key: const ValueKey('recording'),
-                          elapsedText: _elapsedText,
                           waveController: _waveController,
                           wordsRecited: state.liveWordsRecited,
                           currentAyah: state.livePosition?.ayah,
@@ -360,6 +414,7 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTick
               ),
             ],
           ),
+        ),
         );
       },
     );
@@ -375,43 +430,63 @@ class _TapToSpeakControl extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 8, AppSpacing.screenPadding, 18),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          GestureDetector(
+      // One control, not a circle plus an inert label beside it: the words
+      // "Tap to Speak" are the instruction, so they belong inside the tap
+      // target. InkWell also gives the press feedback a bare GestureDetector
+      // never did.
+      child: Semantics(
+        button: true,
+        label: 'Start reciting',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
             onTap: onTap,
-            child: Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: AppColors.brandControlGradient,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.45),
-                      blurRadius: 22,
-                      offset: const Offset(0, 8)),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: AppColors.brandControlGradient,
+                      ),
+                      boxShadow: AppShadows.brandGlow,
+                    ),
+                    child: ExcludeSemantics(
+                      child: Icon(Icons.mic_rounded,
+                          color: AppColors.textOnPrimary, size: 34),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Text('Tap to Speak',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800)),
                 ],
               ),
-              child: Icon(Icons.mic_rounded, color: AppColors.textOnPrimary, size: 34),
             ),
           ),
-          const SizedBox(width: 20),
-          Text('Tap to Speak',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-        ],
+        ),
       ),
     );
   }
 }
 
 // ── Recording state: waveform + live progress + red Stop ────────────────────
-class _RecordingControls extends StatelessWidget {
-  final String elapsedText;
+/// The recording bar, which keeps its own elapsed clock.
+///
+/// The per-second tick used to live on the screen's State, so every second of
+/// recitation rebuilt the entire page -- surah header, ayah list and all.
+/// Scoping the timer here means a tick repaints one line of text.
+class _RecordingControls extends StatefulWidget {
   final AnimationController waveController;
   final int wordsRecited;
   final int? currentAyah;
@@ -419,13 +494,40 @@ class _RecordingControls extends StatelessWidget {
   final VoidCallback onStop;
   const _RecordingControls({
     super.key,
-    required this.elapsedText,
     required this.waveController,
     required this.wordsRecited,
     required this.currentAyah,
     required this.liveConnected,
     required this.onStop,
   });
+
+  @override
+  State<_RecordingControls> createState() => _RecordingControlsState();
+}
+
+class _RecordingControlsState extends State<_RecordingControls> {
+  Duration _elapsed = Duration.zero;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsed += const Duration(seconds: 1));
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String get _elapsedText {
+    final m = _elapsed.inMinutes;
+    final sec = (_elapsed.inSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$sec';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -444,11 +546,11 @@ class _RecordingControls extends StatelessWidget {
               boxShadow: AppShadows.md,
             ),
             child: AnimatedBuilder(
-              animation: waveController,
+              animation: widget.waveController,
               builder: (context, _) => CustomPaint(
                 size: const Size(double.infinity, 30),
                 painter: _LiveWaveformPainter(
-                  phase: waveController.value,
+                  phase: widget.waveController.value,
                   activeColor: AppColors.primary,
                   mutedColor: AppColors.primary.withValues(alpha: 0.3),
                 ),
@@ -459,53 +561,77 @@ class _RecordingControls extends StatelessWidget {
           // Without this line a failed socket looks identical to a working
           // one that hasn't heard anything yet: text stays grey either way.
           Text(
-            !liveConnected
+            !widget.liveConnected
                 ? 'Recording — live word tracking unavailable, your recitation will still be scored'
-                : currentAyah == null
+                : widget.currentAyah == null
                     ? 'Listening — begin reciting'
-                    : 'Ayah $currentAyah · $wordsRecited word${wordsRecited == 1 ? '' : 's'} recited',
+                    : 'Ayah ${widget.currentAyah} · ${widget.wordsRecited} word${widget.wordsRecited == 1 ? '' : 's'} recited',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: liveConnected ? AppColors.textSecondary : AppColors.warning,
+                  color: widget.liveConnected ? AppColors.textSecondary : AppColors.warning,
                 ),
           ),
           const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
-                child: Text(elapsedText,
+                child: Text(_elapsedText,
                     textAlign: TextAlign.center,
                     style: Theme.of(context)
                         .textTheme
                         .headlineMedium
                         ?.copyWith(fontWeight: FontWeight.w800)),
               ),
-              GestureDetector(
-                onTap: onStop,
-                child: Container(
-                  width: 84,
-                  height: 84,
-                  decoration: BoxDecoration(
-                    color: AppColors.errorLight,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.error, width: 3),
-                  ),
-                  alignment: Alignment.center,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration:
-                        BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(AppRadii.sm)),
+              Semantics(
+                button: true,
+                label: 'Stop recording',
+                child: Material(
+                  color: Colors.transparent,
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: widget.onStop,
+                    child: Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        color: AppColors.errorLight,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.error, width: 3),
+                      ),
+                      alignment: Alignment.center,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                            color: AppColors.error,
+                            borderRadius: BorderRadius.circular(AppRadii.sm)),
+                      ),
+                    ),
                   ),
                 ),
               ),
+              // The word is part of the same control, and already announced by
+              // the button above, so it is hidden from the semantics tree
+              // rather than read out a second time.
               Expanded(
-                child: GestureDetector(
-                  onTap: onStop,
-                  child: Text('Stop',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: AppColors.error, fontWeight: FontWeight.w800, fontSize: 20)),
+                child: ExcludeSemantics(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: widget.onStop,
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Text('Stop',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 20)),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -570,8 +696,12 @@ class _AyahRangeChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.lg),
+        // 48dp minimum: the chip's own text is only ~18dp tall, so the tap
+        // area is padded out to Android's floor rather than left at 32dp.
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          constraints: const BoxConstraints(minHeight: 48),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: AppColors.primarySurface,
             borderRadius: BorderRadius.circular(AppRadii.lg),

@@ -102,50 +102,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 20),
           const AuthOrDivider(label: 'Or sign up with email'),
           const SizedBox(height: 20),
-          AuthField(
-            hint: 'Full Name',
-            icon: Icons.person_rounded,
-            controller: _nameController,
-            errorText: _nameError,
-            onChanged: (_) {
-              if (_nameError != null) setState(() => _nameError = null);
-            },
-          ),
-          const SizedBox(height: 16),
-          AuthField(
-            hint: 'Email',
-            icon: Icons.mail_rounded,
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            errorText: _emailError,
-            onChanged: (_) {
-              if (_emailError != null) setState(() => _emailError = null);
-            },
-          ),
-          const SizedBox(height: 16),
-          AuthField(
-            hint: 'Create Password',
-            icon: Icons.lock_rounded,
-            controller: _passwordController,
-            obscureText: _obscure,
-            errorText: _passwordError,
-            onChanged: (_) {
-              if (_passwordError != null) setState(() => _passwordError = null);
-            },
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                size: 20,
-                color: AppColors.textMuted,
-              ),
-              onPressed: () => setState(() => _obscure = !_obscure),
+          // Grouped so a password manager sees one sign-up form and offers to
+          // save the new credentials; the hints tell it which field is which.
+          AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AuthField(
+                  hint: 'Full Name',
+                  icon: Icons.person_rounded,
+                  controller: _nameController,
+                  autofillHints: const [AutofillHints.name],
+                  textInputAction: TextInputAction.next,
+                  errorText: _nameError,
+                  onChanged: (_) {
+                    if (_nameError != null) setState(() => _nameError = null);
+                  },
+                ),
+                const SizedBox(height: 16),
+                AuthField(
+                  hint: 'Email',
+                  icon: Icons.mail_rounded,
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.username, AutofillHints.email],
+                  textInputAction: TextInputAction.next,
+                  errorText: _emailError,
+                  onChanged: (_) {
+                    if (_emailError != null) setState(() => _emailError = null);
+                  },
+                ),
+                const SizedBox(height: 16),
+                AuthField(
+                  hint: 'Create Password',
+                  icon: Icons.lock_rounded,
+                  controller: _passwordController,
+                  obscureText: _obscure,
+                  autofillHints: const [AutofillHints.newPassword],
+                  textInputAction: TextInputAction.done,
+                  errorText: _passwordError,
+                  onChanged: (_) {
+                    if (_passwordError != null) setState(() => _passwordError = null);
+                  },
+                  suffixIcon: IconButton(
+                    tooltip: _obscure ? 'Show password' : 'Hide password',
+                    icon: Icon(
+                      _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
           // ── Terms of Service checkbox row ────────────────────────────
           Row(
             children: [
-              GestureDetector(
+              Semantics(
+                checked: _agreedToTerms,
+                label: 'Agree to the Terms of Service',
+                child: GestureDetector(
                 onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
@@ -157,9 +176,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     border: Border.all(color: _agreedToTerms ? AppColors.primary : AppColors.border, width: 1.5),
                   ),
                   child: _agreedToTerms
-                      ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
+                      ? Icon(Icons.check_rounded, size: 18, color: AppColors.textOnPrimary)
                       : null,
                 ),
+              ),
               ),
               const SizedBox(width: 10),
               Text('I agree to the ',

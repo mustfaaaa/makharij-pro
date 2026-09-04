@@ -12,6 +12,7 @@ import '../../../../models/word_verdict.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/buttons/outlined_app_button.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../shared/widgets/states/empty_state_widget.dart';
 import '../../../../shared/widgets/hasanah/hasanah_earned_banner.dart';
 import '../../../../shared/widgets/score_badge.dart';
 import '../../../../theme/app_radii.dart';
@@ -43,9 +44,22 @@ class _ResultScreenState extends State<ResultScreen> {
     final result = recitationState.result;
     final ayahs = recitationState.selectedAyahs;
     if (result == null) {
-      // Guards against a direct deep-link to this route without going
-      // through the recitation -> processing flow first.
-      return const Scaffold(body: Center(child: Text('No result available for this session.')));
+      // Guards against a direct deep-link to this route without going through
+      // the recitation -> processing flow first. This used to be a bare
+      // centred sentence with no app bar and no back button -- a dead end the
+      // user could only escape by killing the app.
+      return Scaffold(
+        appBar: AppBar(title: const Text('Result')),
+        body: EmptyStateWidget(
+          icon: Icons.mic_none_rounded,
+          title: 'No result to show',
+          message:
+              'This page shows the feedback for a recitation you just finished. '
+              'Pick a surah and recite to get one.',
+          actionLabel: 'Choose a surah',
+          onAction: () => context.go(RoutePaths.quran),
+        ),
+      );
     }
 
     if (!_hasanahCredited) {
@@ -61,7 +75,23 @@ class _ResultScreenState extends State<ResultScreen> {
     final matched = (result.wordsRecited - toCheck).clamp(0, result.wordsRecited);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Result'), automaticallyImplyLeading: false),
+      appBar: AppBar(
+        title: const Text('Result'),
+        automaticallyImplyLeading: false,
+        actions: [
+          // The flow arrives here via pushReplacement, so there is no back
+          // stack to pop -- an explicit way home is the only exit besides the
+          // buttons at the bottom.
+          IconButton(
+            tooltip: 'Close',
+            icon: const Icon(Icons.close_rounded),
+            onPressed: () {
+              context.read<RecitationCubit>().reset();
+              context.go(RoutePaths.home);
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -326,7 +356,14 @@ class _MistakeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // Wrap, not Row: the rule label, the "Ayah N · word M" locator and
+          // the Arabic word together overflow a 375px screen -- and overflow
+          // sooner at a large system text size. Wrapping reflows instead of
+          // painting the yellow-and-black overflow stripes.
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -337,10 +374,8 @@ class _MistakeCard extends StatelessWidget {
                 child: Text(label,
                     style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
               ),
-              const SizedBox(width: AppSpacing.sm),
               Text('Ayah ${verdict.ayahNumber} · word ${verdict.wordIndex + 1}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-              const Spacer(),
               Text(verdict.word, style: AppTypography.arabicWord(fontSize: 20, color: color)),
             ],
           ),

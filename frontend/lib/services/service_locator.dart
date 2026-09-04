@@ -2,6 +2,7 @@ import 'achievement_service.dart';
 import 'auth_service.dart';
 import 'notification_service.dart';
 import 'practice_plan_service.dart';
+import 'preferences_service.dart';
 import 'progress_service.dart';
 import 'rattil_service.dart';
 import 'session_service.dart';
@@ -25,4 +26,8 @@ abstract class Services {
   static final ProgressService progress = ApiProgressService();
   static final AuthService auth = FirebaseAuthService();
   static final RattilService rattil = ApiRattilService();
+
+  /// On-device user preferences (theme, verse size, notifications).
+  /// `main()` awaits [PreferencesService.load] before the first frame.
+  static final PreferencesService prefs = PreferencesService();
 }

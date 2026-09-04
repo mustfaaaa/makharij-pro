@@ -189,7 +189,11 @@ class _NavButton extends StatelessWidget {
               ),
               child: AnimatedScale(
                 scale: selected ? 1.12 : 1.0,
-                duration: const Duration(milliseconds: 400),
+                // elasticOut overshoots and bounces; under "reduce motion"
+                // collapse it to an instant, non-animated change.
+                duration: MediaQuery.of(context).disableAnimations
+                    ? Duration.zero
+                    : const Duration(milliseconds: 400),
                 curve: Curves.elasticOut,
                 child: Icon(selected ? item.selectedIcon : item.icon, size: 22, color: color),
               ),

@@ -763,8 +763,18 @@ class _TrendChart extends StatelessWidget {
           topTitles: const AxisTitles(
             sideTitles: SideTitles(showTitles: false),
           ),
-          leftTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
+          // Without a value axis the line showed a shape but no numbers --
+          // it could have been 40% or 90% and looked identical.
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 34,
+              interval: ((maxY - minY) / 2).clamp(1, 100),
+              getTitlesWidget: (value, meta) => Text(
+                '${value.round()}%',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 10),
+              ),
+            ),
           ),
           rightTitles: const AxisTitles(
             sideTitles: SideTitles(showTitles: false),
@@ -792,7 +802,19 @@ class _TrendChart extends StatelessWidget {
             ),
           ),
         ),
-        lineTouchData: const LineTouchData(enabled: false),
+        lineTouchData: LineTouchData(
+          enabled: true,
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (_) => AppColors.textPrimary,
+            getTooltipItems: (spots) => spots
+                .map((s) => LineTooltipItem(
+                      '${s.y.round()}%',
+                      TextStyle(
+                          color: AppColors.textOnInverse, fontWeight: FontWeight.w700),
+                    ))
+                .toList(),
+          ),
+        ),
         lineBarsData: [
           LineChartBarData(
             spots: [
@@ -831,24 +853,41 @@ class _TrendChart extends StatelessWidget {
 }
 
 // ── 10-week practice heatmap grid ─────────────────────────────────────────────
+const _weekdayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
 class _ActivityHeatmap extends StatelessWidget {
   final List<List<int>> heatmap;
   const _ActivityHeatmap({required this.heatmap});
 
+  /// A deliberately monotonic five-step ramp.
+  ///
+  /// The previous set was drawn from unrelated brand tokens and did not get
+  /// darker as the value rose: level 3 (`primary`) was *lighter* than level 2
+  /// (`accentLight`) -- 0.386 vs 0.343 relative luminance -- so a busier week
+  /// could render paler than a quieter one. These five step down evenly, with
+  /// every neighbouring pair at least 1.3:1 apart so adjacent levels stay
+  /// distinguishable.
   Color _shade(int level) {
-    switch (level) {
-      case 0:
-        return AppColors.creamDark;
-      case 1:
-        return AppColors.accentLight.withValues(alpha: 0.55);
-      case 2:
-        return AppColors.accentLight;
-      case 3:
-        return AppColors.primary;
-      default:
-        return AppColors.primaryDark;
-    }
+    final dark = AppColors.brightness == Brightness.dark;
+    const light = [
+      Color(0xFFEDE5D5),
+      Color(0xFFE0C98F),
+      Color(0xFFC9A94F),
+      Color(0xFFA5822F),
+      Color(0xFF6F5622),
+    ];
+    const night = [
+      Color(0xFF241E14),
+      Color(0xFF4A3C1F),
+      Color(0xFF7A6330),
+      Color(0xFFAD8C45),
+      Color(0xFFE0BD4A),
+    ];
+    final ramp = dark ? night : light;
+    return ramp[level.clamp(0, ramp.length - 1)];
   }
+
+  static const _levelLabels = ['no practice', 'light', 'moderate', 'active', 'heavy'];
 
   @override
   Widget build(BuildContext context) {
@@ -866,10 +905,17 @@ class _ActivityHeatmap extends StatelessWidget {
                   Expanded(
                     child: AspectRatio(
                       aspectRatio: 1,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: _shade(heatmap[week][day]),
-                          borderRadius: BorderRadius.circular(AppRadii.sm),
+                      // Colour is the only visual signal here, so each cell
+                      // carries the same information as text for anyone who
+                      // cannot read the shade.
+                      child: Semantics(
+                        label:
+                            '${_weekdayNames[day]}, week ${week + 1}: ${_levelLabels[heatmap[week][day].clamp(0, 4)]}',
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: _shade(heatmap[week][day]),
+                            borderRadius: BorderRadius.circular(AppRadii.sm),
+                          ),
                         ),
                       ),
                     ),

@@ -34,7 +34,13 @@ class _IslamicRefreshIndicatorState extends State<IslamicRefreshIndicator>
     _spinController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
-    )..repeat();
+    );
+    // Was `..repeat()` unconditionally, so the star span forever whether or
+    // not a refresh was happening -- wasted frames, and motion the user may
+    // have asked to reduce. It now spins only while a refresh is in flight.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !MediaQuery.of(context).disableAnimations) _spinController.repeat();
+    });
   }
 
   @override

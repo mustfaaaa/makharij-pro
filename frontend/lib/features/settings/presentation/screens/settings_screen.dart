@@ -11,6 +11,7 @@ import '../../../../shared/widgets/pickers/verse_text_size_picker.dart';
 import '../../../../shared/widgets/responsive_center.dart';
 import '../../../../shared/widgets/tiles/settings_tile.dart';
 import '../../../../theme/app_colors.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -21,11 +22,65 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notifications = true;
+  late bool _notifications = Services.prefs.notificationsEnabled;
+
+  static String _themeLabel(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Light';
+      case ThemeMode.dark:
+        return 'Dark';
+      case ThemeMode.system:
+        return 'Match device';
+    }
+  }
+
+  Future<void> _pickThemeMode(BuildContext context, ThemeMode current) async {
+    final cubit = context.read<ThemeCubit>();
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.lg)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenPadding, AppSpacing.lg, AppSpacing.screenPadding, AppSpacing.sm),
+              child: Text('Appearance', style: Theme.of(sheetContext).textTheme.titleMedium),
+            ),
+            for (final mode in ThemeMode.values)
+              ListTile(
+                leading: Icon(
+                  mode == current ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: mode == current ? AppColors.primaryDark : AppColors.textMuted,
+                ),
+                title: Text(_themeLabel(mode)),
+                subtitle: mode == ThemeMode.system
+                    ? Text(
+                        'Follows the light or dark setting on your phone',
+                        style: Theme.of(sheetContext).textTheme.bodySmall,
+                      )
+                    : null,
+                onTap: () {
+                  cubit.setMode(mode);
+                  Navigator.of(sheetContext).pop();
+                },
+              ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<ThemeCubit>().state == ThemeMode.dark;
+    final themeMode = context.watch<ThemeCubit>().state;
     final verseSize = context.watch<VerseTextSizeCubit>().state;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -37,16 +92,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SettingsTile(
             icon: Icons.notifications_outlined,
             title: 'Notifications',
-            trailing: Switch(value: _notifications, onChanged: (v) => setState(() => _notifications = v), activeThumbColor: AppColors.primary),
-          ),
-          SettingsTile(
-            icon: Icons.dark_mode_outlined,
-            title: 'Dark Mode',
             trailing: Switch(
-              value: isDark,
-              onChanged: (_) => context.read<ThemeCubit>().toggle(),
+              value: _notifications,
+              onChanged: (v) async {
+                setState(() => _notifications = v);
+                await Services.prefs.setNotificationsEnabled(v);
+              },
               activeThumbColor: AppColors.primary,
             ),
+          ),
+          // Three-way, not a switch: "System" has to be reachable, otherwise
+          // a phone in dark mode still opens this app bright white.
+          SettingsTile(
+            icon: Icons.dark_mode_outlined,
+            title: 'Appearance',
+            subtitle: _themeLabel(themeMode),
+            onTap: () => _pickThemeMode(context, themeMode),
           ),
           SettingsTile(
             icon: Icons.format_size_rounded,

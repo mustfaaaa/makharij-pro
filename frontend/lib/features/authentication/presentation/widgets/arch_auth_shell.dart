@@ -169,6 +169,17 @@ class AuthField extends StatelessWidget {
   final String? errorText;
   final ValueChanged<String>? onChanged;
 
+  /// Autofill hints, so a password manager can recognise and fill the field.
+  /// WCAG 2.2 SC 3.3.8 wants authentication not to depend on the user
+  /// recalling a secret unaided; without these the OS never offers to fill.
+  final List<String>? autofillHints;
+
+  /// Keyboard action, so the email field advances to the password field
+  /// instead of dead-ending on a "done" key.
+  final TextInputAction? textInputAction;
+  final FocusNode? focusNode;
+  final VoidCallback? onSubmitted;
+
   const AuthField({
     super.key,
     required this.hint,
@@ -179,11 +190,20 @@ class AuthField extends StatelessWidget {
     this.suffixIcon,
     this.errorText,
     this.onChanged,
+    this.autofillHints,
+    this.textInputAction,
+    this.focusNode,
+    this.onSubmitted,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Semantics(
+      textField: true,
+      label: hint,
+      value: controller.text,
+      hint: errorText,
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
@@ -194,11 +214,18 @@ class AuthField extends StatelessWidget {
           ),
           child: TextField(
             controller: controller,
+            focusNode: focusNode,
             obscureText: obscureText,
             keyboardType: keyboardType,
             onChanged: onChanged,
+            autofillHints: autofillHints,
+            textInputAction: textInputAction,
+            onSubmitted: onSubmitted == null ? null : (_) => onSubmitted!(),
             style: Theme.of(context).textTheme.bodyLarge,
             decoration: InputDecoration(
+              // The hint doubles as the field's name for a screen reader --
+              // a placeholder alone leaves the control unlabelled.
+              labelText: null,
               hintText: hint,
               hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 16),
               prefixIcon: Icon(icon, color: AppColors.primaryDark, size: 22),
@@ -214,6 +241,7 @@ class AuthField extends StatelessWidget {
             child: Text(errorText!, style: TextStyle(color: AppColors.error, fontSize: 12)),
           ),
       ],
+    ),
     );
   }
 }
@@ -233,7 +261,11 @@ class AuthGoldButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      enabled: !isLoading,
+      label: isLoading ? '$label, in progress' : label,
+      child: GestureDetector(
       onTap: isLoading ? null : onPressed,
       child: Container(
         height: 58,
@@ -264,6 +296,7 @@ class AuthGoldButton extends StatelessWidget {
                     fontSize: 18),
               ),
       ),
+    ),
     );
   }
 }

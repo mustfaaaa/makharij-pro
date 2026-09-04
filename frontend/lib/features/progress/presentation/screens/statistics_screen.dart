@@ -56,31 +56,93 @@ class StatisticsScreen extends StatelessWidget {
                   height: 200,
                   padding: const EdgeInsets.fromLTRB(8, 20, 16, 8),
                   decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppRadii.md), border: Border.all(color: AppColors.border)),
-                  child: BarChart(
-                    BarChartData(
-                      gridData: const FlGridData(show: false),
-                      borderData: FlBorderData(show: false),
-                      maxY: 100,
-                      titlesData: const FlTitlesData(
-                        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      ),
-                      barGroups: [
-                        for (int i = 0; i < sessions.length; i++)
-                          BarChartGroupData(
-                            x: i,
-                            barRods: [
-                              BarChartRodData(
-                                toY: sessions[i].accuracyScore,
-                                color: AppColors.primary,
-                                width: 22,
-                                borderRadius: BorderRadius.circular(AppRadii.sm),
-                              ),
-                            ],
+                  // Every axis used to be hidden and touch disabled, so not a
+                  // single number could be read off this chart -- it was a
+                  // picture of bars. Y labels give it a scale, X labels say
+                  // which session, and a tooltip gives the exact value.
+                  child: Semantics(
+                    label: 'Accuracy for the last ${sessions.length} sessions, '
+                        'oldest first: ${sessions.map((e) => '${e.accuracyScore.round()} percent').join(', ')}',
+                    child: ExcludeSemantics(
+                      child: BarChart(
+                        BarChartData(
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: false,
+                            horizontalInterval: 25,
+                            getDrawingHorizontalLine: (v) =>
+                                FlLine(color: AppColors.divider, strokeWidth: 1),
                           ),
-                      ],
+                          borderData: FlBorderData(show: false),
+                          maxY: 100,
+                          barTouchData: BarTouchData(
+                            enabled: true,
+                            touchTooltipData: BarTouchTooltipData(
+                              getTooltipColor: (_) => AppColors.textPrimary,
+                              getTooltipItem: (group, groupIndex, rod, rodIndex) => BarTooltipItem(
+                                '${rod.toY.round()}%',
+                                TextStyle(
+                                    color: AppColors.textOnInverse,
+                                    fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ),
+                          titlesData: FlTitlesData(
+                            topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 25,
+                                reservedSize: 34,
+                                getTitlesWidget: (value, meta) => Text(
+                                  '${value.round()}%',
+                                  style: TextStyle(
+                                      color: AppColors.textMuted, fontSize: 10),
+                                ),
+                              ),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 22,
+                                interval: 1,
+                                getTitlesWidget: (value, meta) {
+                                  final i = value.toInt();
+                                  // Label only the ends on a crowded axis.
+                                  if (i != 0 && i != sessions.length - 1) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Text(
+                                      i == 0 ? 'oldest' : 'latest',
+                                      style: TextStyle(
+                                          color: AppColors.textMuted, fontSize: 10),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          barGroups: [
+                            for (int i = 0; i < sessions.length; i++)
+                              BarChartGroupData(
+                                x: i,
+                                barRods: [
+                                  BarChartRodData(
+                                    toY: sessions[i].accuracyScore,
+                                    color: AppColors.primary,
+                                    width: 22,
+                                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),

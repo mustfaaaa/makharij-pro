@@ -49,6 +49,8 @@ class TajweedScoringCoachMark extends StatelessWidget {
               alignment: Alignment.bottomCenter,
               child: GestureDetector(
                 // Swallow taps on the card itself so they don't dismiss.
+                // Absorbs taps so they do not fall through to the scrim
+                // behind and dismiss the coach mark by accident.
                 onTap: () {},
                 child: Container(
                   margin: const EdgeInsets.all(AppSpacing.screenPadding),

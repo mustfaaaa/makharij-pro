@@ -45,10 +45,21 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       CurvedAnimation(parent: _controller, curve: const Interval(0.6, 1.0, curve: Curves.easeOut)),
     );
 
-    _controller.forward();
-    Timer(const Duration(milliseconds: 2100), () {
+    // Honour "reduce motion": jump the choreography to its end state rather
+    // than playing it, and cut the hold to the minimum needed to avoid a
+    // jarring flash.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.go(Services.auth.currentUser != null ? RoutePaths.home : RoutePaths.onboarding);
+      final reduceMotion = MediaQuery.of(context).disableAnimations;
+      if (reduceMotion) {
+        _controller.value = 1.0;
+      } else {
+        _controller.forward();
+      }
+      Timer(Duration(milliseconds: reduceMotion ? 400 : 2100), () {
+        if (!mounted) return;
+        context.go(Services.auth.currentUser != null ? RoutePaths.home : RoutePaths.onboarding);
+      });
     });
   }
 

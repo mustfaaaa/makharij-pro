@@ -35,12 +35,27 @@ class _ProcessingScreenState extends State<ProcessingScreen> with TickerProvider
   ];
   int _stepIndex = 0;
   Timer? _stepTimer;
+  Timer? _elapsedTimer;
+  Duration _elapsed = Duration.zero;
+
+  /// After this long the wait stops being ordinary and the screen says so,
+  /// and offers a way out. Analysis normally lands well inside it.
+  static const _slowAfter = Duration(seconds: 20);
+
+  bool get _isSlow => _elapsed >= _slowAfter;
 
   @override
   void initState() {
     super.initState();
-    _motion = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat();
+    _motion = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
     _phase = AnimationController(vsync: this, lowerBound: 0, upperBound: 3, duration: const Duration(milliseconds: 700));
+
+    // A continuously repeating animation is exactly what "reduce motion" is
+    // meant to stop, so only spin it up when the user has not asked for less.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!MediaQuery.of(context).disableAnimations) _motion.repeat();
+    });
 
     _stepTimer = Timer.periodic(const Duration(milliseconds: 650), (timer) {
       if (_stepIndex < _steps.length - 1) {
@@ -50,6 +65,15 @@ class _ProcessingScreenState extends State<ProcessingScreen> with TickerProvider
         timer.cancel();
       }
     });
+
+    // The step captions are a rough narration of the pipeline, not a progress
+    // bar -- they always reach the last step in about two seconds regardless
+    // of how long the backend actually takes. This clock is the honest signal:
+    // it keeps counting, and after [_slowAfter] the screen admits the wait is
+    // longer than usual instead of sitting on "Generating feedback..." forever.
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsed += const Duration(seconds: 1));
+    });
   }
 
   @override
@@ -57,7 +81,17 @@ class _ProcessingScreenState extends State<ProcessingScreen> with TickerProvider
     _motion.dispose();
     _phase.dispose();
     _stepTimer?.cancel();
+    _elapsedTimer?.cancel();
     super.dispose();
+  }
+
+  void _cancel() {
+    context.read<RecitationCubit>().reset();
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(RoutePaths.home);
+    }
   }
 
   @override
@@ -96,13 +130,35 @@ class _ProcessingScreenState extends State<ProcessingScreen> with TickerProvider
                 const SizedBox(height: AppSpacing.xl),
                 Text('Analyzing Your Recitation', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: AppSpacing.sm),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: Text(
-                    _steps[_stepIndex],
-                    key: ValueKey(_stepIndex),
-                    style: Theme.of(context).textTheme.bodyMedium,
+                // liveRegion: a screen reader otherwise announces this once
+                // and stays silent through every later step.
+                Semantics(
+                  liveRegion: true,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: Text(
+                      _steps[_stepIndex],
+                      key: ValueKey(_stepIndex),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  _isSlow
+                      ? 'Still working — this is taking longer than usual (${_elapsed.inSeconds}s).'
+                      : '${_elapsed.inSeconds}s',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: _isSlow ? AppColors.warning : AppColors.textMuted,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                // Always reachable: without it a hung request left the user on
+                // a screen with no back button and no way out.
+                TextButton(
+                  onPressed: _cancel,
+                  child: Text(_isSlow ? 'Cancel and go back' : 'Cancel'),
                 ),
               ],
             ),

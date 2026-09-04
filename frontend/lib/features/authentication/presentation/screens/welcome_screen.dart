@@ -29,7 +29,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     _breathController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2600),
-    )..repeat(reverse: true);
+    );
+    // A permanently pulsing halo is exactly the kind of motion "reduce
+    // motion" exists to stop; hold it at rest instead of looping.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MediaQuery.of(context).disableAnimations) {
+        _breathController.value = 0;
+      } else {
+        _breathController.repeat(reverse: true);
+      }
+    });
   }
 
   @override
