@@ -133,13 +133,6 @@ GET   /api/v1/progress · /achievements · /practice-plan · /rattil/*
 
 ---
 
-## 🔬 Honest limitations
-
-*Measured, not assumed — see [`ml/eval/README.md`](ml/eval/README.md). These numbers are published because a Quran app that overstates its certainty is worse than one that admits it.*
-
-- **On professional Qari recordings, 1.0% of words are wrongly flagged. On 773 labelled recordings of ordinary learners, 42.8% of correctly recited clips get flagged for something.** The pipeline compares recognised phonemes against a canonical sequence, so it cannot separate a *mistake* from a *misrecognition* — and on learner voices the recogniser's own error rate is comparable to the signal. This is why "I said it right" exists.
-- **Threshold calibration was fitted properly against that labelled data and did not improve on the shipped setting.** The limitation is the recogniser, not where the decision line sits.
-- `ml/models/makharijpro_tajweed_model_v1` is a whole-clip classifier trained on ~9-second single-phrase clips. It is **out of distribution** for continuous recitation and no longer scores sessions; it stays reachable at `GET /api/v1/model-info` and `POST /api/v1/analyze`.
 
 ### Recently measured and fixed
 
@@ -154,28 +147,4 @@ Harnesses: [`measure_recited_spill.py`](ml/eval/crossmodel/measure_recited_spill
 
 ---
 
-## ⚖️ License — this matters
 
-The recogniser is **not ours**. It is the [Quran-Lab streaming zipformer](https://huggingface.co/Quran-Lab/zipformer_p-arabic-v3), pre-trained, and it is distributed under the **Quran-Lab No-Profit License v1.2 (NPL-1.2)** — retained at [`backend/models_cache/quran-lab-zipformer/LICENSE`](backend/models_cache/quran-lab-zipformer/LICENSE).
-
-That license governs this project, and its terms are strict. Read them before building on this:
-
-> **§3 — Not for sale.** Neither the Work nor any feature it powers may be placed behind a payment, a subscription, a paywall, or advertising.
->
-> **§5 — Hosted service: cost recovery only.** You may recover documented direct costs (compute, storage, bandwidth) and *no more*. Not development time, expertise, support, or a service fee.
->
-> **§7 — Share-alike.** Every Derivative must be distributed under this same license, with no additional or different terms.
->
-> **§9 — No commercial license.** The right to charge is not available for a fee, a revenue share, or any other arrangement — and never will be.
-
-**"Derivative" is defined broadly** — it includes any dataset, label set, or artifact produced from the Work, and any model trained, fine-tuned, *or even evaluated* using it. In this repository that covers the Tajweed reference table and the per-word session records, among others.
-
-**In plain terms: this app can be used, taught with, forked, and self-hosted freely — but it can never be sold, subscribed to, or monetised through ads.** If that is not what you want, you would need to replace the recogniser first.
-
-NPL-1.2 **§6 requires no attribution.** The credit below is given anyway.
-
-### Credits
-
-- **Recogniser** — [Quran-Lab / Muno459](https://huggingface.co/Quran-Lab/zipformer_p-arabic-v3), `zipformer_p-arabic-v3.1`
-- **Reference recitations** — Abdurrahmaan as-Sudais, Mishary Alafasy, Yasser ad-Dussary
-- **Everything else in this repository** — the app, the analysis pipeline, the word mapping, the Tajweed reference extraction, and the evaluation harnesses — is the work of this project, and is bound by NPL-1.2 share-alike as described above.
