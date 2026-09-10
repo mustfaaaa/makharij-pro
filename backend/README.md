@@ -158,13 +158,19 @@ behavior is reproducible.
 ## Phoneme model
 
 Word-level analysis and live word tracking both run on the Quran-Lab streaming
-zipformer. Its weights are **not** in this repository: the checkpoint alone is
-69 MB, and git would carry it in every clone forever.
+zipformer. **The weights are committed to this repository** at
+`models_cache/quran-lab-zipformer/` — a fresh clone needs no model download and
+no Hugging Face account.
 
-Source: [`Quran-Lab/zipformer_p-arabic-v3`](https://huggingface.co/Quran-Lab/zipformer_p-arabic-v3).
-**That repository is gated** — you need a Hugging Face account and have to
-accept its terms on the model page before the files will download. Anonymous
-requests get a 401, not a 404, which is easy to misread as "the file moved".
+Source: [`Quran-Lab/zipformer_p-arabic-v3`](https://huggingface.co/Quran-Lab/zipformer_p-arabic-v3),
+under the Quran-Lab No-Profit License v1.2, retained beside the weights at
+`models_cache/quran-lab-zipformer/LICENSE`. That license forbids charging for
+the Work or for any feature it powers, and requires every Derivative to carry
+the same terms — see the License section of the root [README](../README.md).
+
+Re-downloading from the source (only needed to update the model) requires an
+account, because the repository is gated: anonymous requests get a 401, not a
+404, which is easy to misread as "the file moved".
 
 ```
 hf auth login
