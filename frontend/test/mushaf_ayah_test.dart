@@ -132,6 +132,76 @@ void main() {
     });
   });
 
+  group('gestures', () {
+    // The gestures sit on the text, not on the whole widget: inside a plain
+    // Scaffold body MushafAyah's Column fills the height while the verse
+    // occupies only the top, so the widget's centre is empty space. Target
+    // the RichText, which is what a reader actually touches.
+    Finder verseText() => find
+        .descendant(of: find.byType(MushafAyah), matching: find.byType(RichText))
+        .first;
+
+    // Tap and long-press live in different places now: the ayah tap is on a
+    // GestureDetector wrapping the whole block, while each word span carries
+    // its own long-press recognizer. A TextSpan holds only one recognizer, so
+    // they cannot both sit on the span -- which makes the gesture arena the
+    // thing worth pinning, not the callbacks in isolation.
+    testWidgets('tapping the ayah fires onTap', (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: MushafAyah(ayah: _ayah, fontSize: 24, onTap: () => taps++),
+        ),
+      ));
+
+      await tester.tap(verseText());
+      await tester.pumpAndSettle();
+      expect(taps, 1);
+    });
+
+    testWidgets('long-pressing a word fires onWordLongPress', (tester) async {
+      final pressed = <int>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: MushafAyah(
+            ayah: _ayah,
+            fontSize: 24,
+            onWordLongPress: pressed.add,
+          ),
+        ),
+      ));
+
+      await tester.longPress(verseText());
+      await tester.pumpAndSettle();
+
+      expect(pressed, hasLength(1));
+      // Whichever word was hit, it has to be a real index into this ayah --
+      // an off-by-one here would look plausible and open the wrong word.
+      expect(pressed.single, inInclusiveRange(0, _ayah.arabicText.split(' ').length - 1));
+    });
+
+    testWidgets('a long-press does not also fire the ayah tap', (tester) async {
+      var taps = 0;
+      final pressed = <int>[];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: MushafAyah(
+            ayah: _ayah,
+            fontSize: 24,
+            onTap: () => taps++,
+            onWordLongPress: pressed.add,
+          ),
+        ),
+      ));
+
+      await tester.longPress(verseText());
+      await tester.pumpAndSettle();
+
+      expect(pressed, hasLength(1));
+      expect(taps, 0, reason: 'holding a word must not also toggle the translation');
+    });
+  });
+
   group('ayah numbering', () {
     test('renders Arabic-Indic digits, as a printed mushaf does', () {
       expect(arabicNumber(1), '١');

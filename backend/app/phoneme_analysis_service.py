@@ -50,6 +50,35 @@ SAMPLE_RATE = 16000
 HEARD_MATCH_RATIO = 0.5
 HEARD_MATCH_MIN_CHARS = 3
 
+# A word may only *extend* the recited span on stronger evidence than a word
+# sitting inside it. Measured over 213 stop points built from reference Qari
+# recitations (ml/eval/crossmodel/measure_recited_spill.py): 25.4% of them
+# reported words the recording did not contain, 4.5 on average, and the first
+# spilled word was *always* the opening word of the next ayah. That is the tail
+# of the real recitation being attributed forward across the boundary.
+#
+# The asymmetry decides the thresholds. A weak match inside the span is a
+# mispronunciation worth reporting. A weak match at the very end is usually
+# audio that does not exist, and showing a reciter words they never said as
+# "recited" costs far more trust than greying out one genuinely-final word that
+# was cut short. So the tail is judged strictly and the interior is not.
+#
+# 0.75 was the first value tried and it left a clear failure behind: stopping
+# Al-Fatihah at "al-'aalameen" still dragged three words of ayah 4 in, because
+# ad-deen scored exactly 0.75 off the tail of al-'aalameen -- the two share
+# their whole ending. Re-measured over the same 213 stop points, with the
+# zero-evidence rule below also in force:
+#
+#     tail 0.75 -> 17/213 cases spill, 45 words wrong
+#     tail 0.85 ->  9/213 cases spill, 27 words wrong
+#
+# and the full-surah control was *identical* at both (300 words missed across
+# 42 cases), so the stricter bar buys the reduction without costing any extra
+# under-detection. That control number is itself a known separate defect and is
+# not caused by this bar.
+TAIL_EXTEND_RATIO = 0.85
+TAIL_EXTEND_MIN_CHARS = 4
+
 # How many words past the last confidently-heard one to keep in view when
 # re-aligning. A word the user only got halfway through never clears the
 # "heard" bar itself, so trimming exactly at the last heard word would push its
@@ -72,6 +101,23 @@ LIVE_RESYNC_TAIL_CHARS = 20
 # Just enough slack for the word currently being spoken, no more -- see
 # live_advance for what a wide window does to a short tail.
 LIVE_WINDOW_SLACK = 1.5
+# The word at the *frontier* of a live advance -- the one the cursor is about
+# to claim the reciter has just finished -- is judged by the same stricter bar
+# the final analysis uses for the end of its span, and for the same reason.
+#
+# Live it matters more, not less. The frontier word is by construction still
+# being spoken: audio for it is only half-arrived, so half its phonemes match,
+# so the lenient interior bar (HEARD_MATCH_RATIO, 0.5) clears it and the
+# highlight steps onto a word the reciter has not reached. That is what makes
+# the highlight run a word -- and at an ayah boundary, a whole line -- ahead of
+# the voice.
+#
+# Holding a word back costs nothing here: the cursor is retried a few times a
+# second, so a word withheld now is claimed ~0.35s later once its audio has
+# actually arrived. The unconsumed phonemes stay in the tail and are re-matched
+# on the next round, so nothing is lost by waiting.
+LIVE_FRONTIER_RATIO = TAIL_EXTEND_RATIO
+LIVE_FRONTIER_MIN_CHARS = TAIL_EXTEND_MIN_CHARS
 
 # How much of the recording's opening is compared against the optional Basmala
 # prefix, as a multiple of the Basmala's own phoneme length.
@@ -227,8 +273,8 @@ class PhonemeAnalysisService:
         if not window:
             return None
 
-        pred_by_word, matched, _errors = self._attribute(pred_tail, window)
-        heard = self._heard_flags(matched, window)
+        pred_by_word, matched_counts, _errors = self._attribute(pred_tail, window)
+        heard = self._heard_flags(matched_counts, window)
 
         # Advance only over the *contiguous* run of heard words starting at the
         # cursor. Taking the furthest heard word in the window instead let the
@@ -250,6 +296,29 @@ class PhonemeAnalysisService:
             if resync is None:
                 return None
             advanced = resync + 1
+
+        # Trim the frontier back to the last word that is strongly matched, not
+        # merely heard. Interior words of the run keep the lenient bar -- there
+        # a weak match means the reciter said the word poorly, and the cursor
+        # should still move past it. See LIVE_FRONTIER_RATIO.
+        while advanced > 0:
+            expected = window[advanced - 1][3]
+            if not expected:
+                # A waqf mark is silent, so it is no evidence that the reciter
+                # has reached it. Never let one anchor the frontier.
+                advanced -= 1
+                continue
+            matched = matched_counts[advanced - 1]
+            if (matched >= min(LIVE_FRONTIER_MIN_CHARS, len(expected))
+                    and matched / max(len(expected), 1) >= LIVE_FRONTIER_RATIO):
+                break
+            advanced -= 1
+
+        if advanced == 0:
+            # Nothing in the run is confirmed yet. Consume nothing: those
+            # phonemes stay in the tail and are re-matched next round, when
+            # more of the word has been decoded.
+            return None
 
         last = advanced - 1
         # Consume every tail character attributed to any confirmed word, not
@@ -338,8 +407,35 @@ class PhonemeAnalysisService:
         heard_idxs = [i for i, h in enumerate(heard) if h]
         if not heard_idxs:
             return None, None
+
+        # Walk the trailing heard words back to the last one that clears the
+        # stricter tail bar. Only the end of the span moves: an interior word
+        # that matched weakly stays in, because there it means the reciter said
+        # something wrong rather than nothing at all.
+        last = heard_idxs[-1]
+        while True:
+            expected = considered[last][3]
+            if not expected:
+                # A waqf mark carries no phonemes, so it is no evidence either
+                # way -- keep looking further back rather than trusting it.
+                strong = False
+            else:
+                matched = word_matched[last]
+                strong = (matched >= min(TAIL_EXTEND_MIN_CHARS, len(expected))
+                          and matched / max(len(expected), 1) >= TAIL_EXTEND_RATIO)
+            if strong:
+                break
+            earlier = [i for i in heard_idxs if i < last]
+            if not earlier:
+                # Nothing in the whole span clears the tail bar. Rather than
+                # collapse the span to nothing, keep the original end: a
+                # uniformly weak recitation is still a recitation.
+                last = heard_idxs[-1]
+                break
+            last = earlier[-1]
+
         touched = [heard[i] or bool(word_pred_chars[i]) for i in range(len(considered))]
-        return next(i for i, t in enumerate(touched) if t), heard_idxs[-1]
+        return next(i for i, t in enumerate(touched) if t), last
 
     def analyze_range(
         self, audio_bytes: bytes, surah: int, from_ayah: int = 1, to_ayah: int | None = None
@@ -466,6 +562,20 @@ class PhonemeAnalysisService:
                 continue
 
             pred_idxs = word_pred_chars[i]
+
+            # Inside the span, but the aligner consumed no audio here at all.
+            #
+            # The span deliberately keeps weakly-matched interior words,
+            # because there a poor match means the reciter said the word
+            # wrong. Zero is different in kind, not in degree: no audio was
+            # spent on this word, so there is no recitation of it to judge.
+            # Reporting it as recited-and-skipped tells the user they got a
+            # word wrong that they never actually reached -- Al-Fatihah ayah 3
+            # after stopping at "al-'aalameen" is exactly this case, and both
+            # of its words score a flat 0.
+            if expected_word and not pred_idxs:
+                results.append(self._unrecited(considered[i]))
+                continue
             predicted_word = "".join(pred_chars[p] for p in pred_idxs)
 
             if pred_idxs:

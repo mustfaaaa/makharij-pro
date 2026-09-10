@@ -19,6 +19,7 @@ import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../recitation/presentation/bloc/recitation_cubit.dart';
 import '../../../recitation/presentation/bloc/recitation_state.dart';
+import '../../../tajweed_rules/presentation/widgets/word_tajweed_sheet.dart';
 import '../widgets/mushaf_ayah.dart';
 
 /// The surah reading page, and the one place recitation happens.
@@ -366,7 +367,8 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTick
                             Padding(
                               padding: const EdgeInsets.only(bottom: AppSpacing.md),
                               child: Text(
-                                'Tap any ayah to see its translation.',
+                                'Tap an ayah for its translation, or hold a word to '
+                          'see its Makhraj and Tajweed.',
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodySmall
@@ -389,6 +391,20 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTick
                         () => _expandedAyah =
                             _expandedAyah == ayah.number ? null : ayah.number,
                       ),
+                      // Available on every word, not only flagged ones, and
+                      // before anything has been recorded: this is reference
+                      // data about the text, so it does not need a recitation
+                      // to have happened first.
+                      onWordLongPress: recording
+                          ? null
+                          : (wordIndex) => WordTajweedSheet.show(
+                                context,
+                                surah: widget.surahNumber,
+                                ayah: ayah.number,
+                                displayWordIndex: wordIndex,
+                                displayWord:
+                                    ayah.arabicText.split(' ')[wordIndex],
+                              ),
                     );
                   },
                 ),

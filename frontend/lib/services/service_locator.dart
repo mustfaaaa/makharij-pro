@@ -7,6 +7,7 @@ import 'progress_service.dart';
 import 'rattil_service.dart';
 import 'session_service.dart';
 import 'surah_service.dart';
+import 'tajweed_reference_service.dart';
 import 'tajweed_rule_service.dart';
 import 'user_service.dart';
 
@@ -26,6 +27,11 @@ abstract class Services {
   static final ProgressService progress = ApiProgressService();
   static final AuthService auth = FirebaseAuthService();
   static final RattilService rattil = ApiRattilService();
+
+  /// Per-word Tajweed reference -- what a word *is*, not how it was recited.
+  /// Unauthenticated and model-free, so it works on the reading page before
+  /// anything has been recorded and on a server with no recogniser loaded.
+  static final TajweedReferenceService tajweedReference = ApiTajweedReferenceService();
 
   /// On-device user preferences (theme, verse size, notifications).
   /// `main()` awaits [PreferencesService.load] before the first frame.

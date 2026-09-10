@@ -14,6 +14,7 @@ import '../../../../shared/widgets/buttons/outlined_app_button.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/states/empty_state_widget.dart';
 import '../../../../shared/widgets/hasanah/hasanah_earned_banner.dart';
+import '../../../../features/tajweed_rules/presentation/widgets/word_tajweed_sheet.dart';
 import '../../../../shared/widgets/score_badge.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
@@ -377,6 +378,25 @@ class _MistakeCard extends StatelessWidget {
               Text('Ayah ${verdict.ayahNumber} · word ${verdict.wordIndex + 1}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
               Text(verdict.word, style: AppTypography.arabicWord(fontSize: 20, color: color)),
+              // What this word *is*, beside what the detector thought of it.
+              // Reference data carries no confidence caveat, so it can be
+              // stated plainly on a screen where the verdict cannot.
+              TextButton.icon(
+                onPressed: () => WordTajweedSheet.show(
+                  context,
+                  surah: surahNumber,
+                  ayah: verdict.ayahNumber,
+                  displayWordIndex: verdict.wordIndex,
+                  displayWord: verdict.word,
+                ),
+                icon: const Icon(Icons.school_outlined, size: 16),
+                label: const Text('About this word'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primaryDark,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),

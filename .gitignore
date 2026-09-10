@@ -127,3 +127,12 @@ windows/
 # and GitHub rejects any file over 100 MB, so these cannot be pushed without
 # Git LFS. Reproducible from ml/eval/README.md in one command.
 ml/data/
+
+# Cross-model eval working directory: word-slice WAVs (thousands, regenerable
+# from the stage1_*.py scripts) and run logs. The harness scripts and their
+# small JSON summaries are kept; the audio and logs are not.
+ml/eval/crossmodel/out/
+ml/eval/crossmodel/out_qari/
+ml/eval/crossmodel/out_qari_left*/
+ml/eval/crossmodel/*.log
+ml/eval/crossmodel/log_*.txt

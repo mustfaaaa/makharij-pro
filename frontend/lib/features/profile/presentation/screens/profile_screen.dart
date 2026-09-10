@@ -196,12 +196,23 @@ class ProfileScreen extends StatelessWidget {
                           Icon(Icons.edit_rounded,
                               color: AppColors.textOnPrimary, size: 15),
                           const SizedBox(width: 6),
-                          Text('Edit\nProfile',
+                          // "Edit", not "Edit Profile", and no hardcoded
+                          // newline. The newline forced a two-line button so it
+                          // would stay narrow, which read as a broken label;
+                          // but the full phrase on one line takes ~167dp and
+                          // leaves the "Account Details" heading 143dp, which
+                          // is under the ~148dp it needs -- so the heading
+                          // wrapped instead. The pencil icon inside a card
+                          // titled "Account Details" already says what is being
+                          // edited, so the shorter label costs no clarity and
+                          // gives the heading room at every text size.
+                          Text('Edit',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                   color: AppColors.textOnPrimary,
                                   fontWeight: FontWeight.w800,
-                                  fontSize: 14,
-                                  height: 1.2)),
+                                  fontSize: 14)),
                         ],
                       ),
                     ),
@@ -214,129 +225,132 @@ class ProfileScreen extends StatelessWidget {
             Text('Your Practice & Plan',
                 style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.md),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Practice Plan card
-                  Expanded(
-                    child: Pressable(
-                      onTap: () => context.push(RoutePaths.practicePlan),
-                      child: Container(
-                        padding: const EdgeInsets.all(AppSpacing.cardPadding),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: AppRadii.lgRadius,
-                          boxShadow: AppShadows.md,
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 46,
-                              height: 46,
-                              decoration: BoxDecoration(
-                                  color: AppColors.primarySurface,
-                                  borderRadius: AppRadii.mdRadius),
-                              child: Icon(Icons.checklist_rounded,
-                                  color: AppColors.primaryDark, size: 22),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Practice Plan',
-                                      style: textTheme.titleMedium
-                                          ?.copyWith(fontWeight: FontWeight.w800)),
-                                  Text('View your weekly plan',
-                                      style: textTheme.bodySmall
-                                          ?.copyWith(color: AppColors.textSecondary)),
-                                ],
-                              ),
-                            ),
-                            Icon(Icons.chevron_right_rounded,
-                                color: AppColors.textMuted, size: 22),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Hasanah Balance card
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+            // Two full-width cards, not a two-up row.
+            //
+            // Side by side, each card had ~170dp: minus its own padding, a
+            // 46dp icon and a chevron, the label was left with about 60dp and
+            // "Practice Plan" broke mid-word into "Pract / ice / Plan". The
+            // rule is to reflow rather than clamp meaning to keep cards
+            // uniform, and stacking is the reflow that survives a large system
+            // font instead of merely postponing the break.
+            Pressable(
+              onTap: () => context.push(RoutePaths.practicePlan),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.cardPadding),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: AppRadii.lgRadius,
+                  boxShadow: AppShadows.md,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: AppColors.brandCardGradient,
-                        ),
-                        borderRadius: AppRadii.lgRadius,
-                        boxShadow: [
-                          BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.35),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4))
-                        ],
-                      ),
+                          color: AppColors.primarySurface,
+                          borderRadius: AppRadii.mdRadius),
+                      child: Icon(Icons.checklist_rounded,
+                          color: AppColors.primaryDark, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Hasanah\nBalance',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 16,
-                                  height: 1.25)),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.accentLight,
-                                  border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.7), width: 2),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text('ح',
-                                    style: TextStyle(
-                                        color: AppColors.primaryDark,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 18)),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: BlocBuilder<HasanahCubit, int>(
-                                  builder: (context, hasanah) => Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        child: Text(formatWithCommas(hasanah),
-                                            style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w800,
-                                                fontSize: 22,
-                                                height: 1.0)),
-                                      ),
-                                      Text('pts',
-                                          style: TextStyle(
-                                              color: Colors.white.withValues(alpha: 0.85),
-                                              fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          Text('Practice Plan',
+                              style: textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 2),
+                          Text('View your weekly plan',
+                              style: textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.textSecondary)),
                         ],
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.chevron_right_rounded,
+                        color: AppColors.textMuted, size: 22),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Hasanah balance, also full width. Laid out along the row rather
+            // than stacked inside a narrow column, so the figure has room to
+            // read as the number it is.
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.cardPadding),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: AppColors.brandCardGradient,
+                ),
+                borderRadius: AppRadii.lgRadius,
+                boxShadow: AppShadows.md,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.accentLight,
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.7), width: 2),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text('ح',
+                        style: TextStyle(
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('HASANAH BALANCE',
+                            style: TextStyle(
+                                color: AppColors.textOnBrandCard
+                                    .withValues(alpha: 0.85),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10.5,
+                                letterSpacing: 1.4)),
+                        const SizedBox(height: 3),
+                        BlocBuilder<HasanahCubit, int>(
+                          builder: (context, hasanah) => Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              // Shrinks rather than wraps: a balance can grow
+                              // several digits and must stay one number.
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(formatWithCommas(hasanah),
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                          color: AppColors.textOnBrandCard,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 26,
+                                          height: 1.0)),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text('pts',
+                                  style: TextStyle(
+                                      color: AppColors.textOnBrandCard
+                                          .withValues(alpha: 0.85),
+                                      fontSize: 12.5)),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -430,8 +444,10 @@ class ProfileScreen extends StatelessWidget {
             Text('App Tools & Info',
                 style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 Expanded(
                   child: _ToolCard(
                     icon: Icons.bookmark_rounded,
@@ -450,10 +466,13 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
               ],
+              ),
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 Expanded(
                   child: _ToolCard(
                     icon: Icons.schedule_rounded,
@@ -475,6 +494,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
               ],
+              ),
             ),
           ],
         ),
@@ -514,30 +534,35 @@ class _ToolCard extends StatelessWidget {
           borderRadius: AppRadii.lgRadius,
           boxShadow: AppShadows.sm,
         ),
-        child: Row(
+        // Icon above the label rather than beside it. Side by side these
+        // cards are half the screen, and an icon plus a gap took 56 of the
+        // ~138dp inside -- enough for "Logout" at the default text size and
+        // not enough for "Reminders" once the system font grows. Stacking
+        // gives the label the card's full width at every scale.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 46,
-              height: 46,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(color: iconBg, borderRadius: AppRadii.mdRadius),
-              child: Icon(icon, color: iconColor, size: 22),
+              child: Icon(icon, color: iconColor, size: 21),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      style: TextStyle(
-                          color: titleColor, fontWeight: FontWeight.w800, fontSize: 15.5)),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                ],
-              ),
-            ),
+            const SizedBox(height: 10),
+            Text(title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: titleColor, fontWeight: FontWeight.w800, fontSize: 15.5)),
+            const SizedBox(height: 2),
+            Text(subtitle,
+                // Two lines here, not one: "Notifications, qari" needs the
+                // second line at a large text size, and there is room for it
+                // now that the icon is not competing for the same row.
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           ],
         ),
       ),

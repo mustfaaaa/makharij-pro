@@ -59,6 +59,13 @@ class MushafAyah extends StatefulWidget {
   final bool showTranslation;
   final VoidCallback? onTap;
 
+  /// Long-press on a single word, with its index inside this ayah.
+  ///
+  /// Long-press rather than tap because tap already means "show the
+  /// translation" here, and the reading page tells the user so. Taking that
+  /// gesture over would break a documented behaviour to add a new one.
+  final void Function(int wordIndex)? onWordLongPress;
+
   const MushafAyah({
     super.key,
     required this.ayah,
@@ -66,6 +73,7 @@ class MushafAyah extends StatefulWidget {
     this.marks = const {},
     this.showTranslation = false,
     this.onTap,
+    this.onWordLongPress,
   });
 
   @override
@@ -80,31 +88,48 @@ class MushafAyah extends StatefulWidget {
 /// per-second recording timer rebuilt the whole surah, that was hundreds of
 /// live recognizers a minute for a long surah.
 class _MushafAyahState extends State<MushafAyah> {
-  TapGestureRecognizer? _recognizer;
+  /// One long-press recognizer per word. Like the tap recognizer before it,
+  /// these are disposables that register with the gesture arena, so they are
+  /// owned by the State and rebuilt only when the word count or the callback
+  /// actually changes -- never inside `build`.
+  List<LongPressGestureRecognizer> _wordRecognizers = const [];
 
   @override
   void initState() {
     super.initState();
-    _syncRecognizer();
+    _syncRecognizers();
   }
 
   @override
   void didUpdateWidget(MushafAyah oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // The closure captures the old callback, so refresh it when it changes.
-    if (oldWidget.onTap != widget.onTap) _syncRecognizer();
+    if (oldWidget.onWordLongPress != widget.onWordLongPress ||
+        oldWidget.ayah.arabicText != widget.ayah.arabicText) {
+      _syncRecognizers();
+    }
   }
 
-  void _syncRecognizer() {
-    _recognizer?.dispose();
-    _recognizer = widget.onTap == null
-        ? null
-        : (TapGestureRecognizer()..onTap = () => widget.onTap!());
+  void _syncRecognizers() {
+    for (final recognizer in _wordRecognizers) {
+      recognizer.dispose();
+    }
+    final handler = widget.onWordLongPress;
+    if (handler == null) {
+      _wordRecognizers = const [];
+      return;
+    }
+    final wordCount = widget.ayah.arabicText.split(' ').length;
+    _wordRecognizers = [
+      for (var i = 0; i < wordCount; i++)
+        LongPressGestureRecognizer()..onLongPress = () => handler(i),
+    ];
   }
 
   @override
   void dispose() {
-    _recognizer?.dispose();
+    for (final recognizer in _wordRecognizers) {
+      recognizer.dispose();
+    }
     super.dispose();
   }
 
@@ -147,20 +172,25 @@ class _MushafAyahState extends State<MushafAyah> {
   @override
   Widget build(BuildContext context) {
     final words = widget.ayah.arabicText.split(' ');
-    final recognizer = _recognizer;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text.rich(
+          GestureDetector(
+            // Ayah-level tap lives here rather than on the spans: each word
+            // span can hold only one recognizer, and that slot is now the
+            // long-press. A tap that no word claims falls through to this.
+            onTap: widget.onTap,
+            behavior: HitTestBehavior.opaque,
+            child: Text.rich(
             TextSpan(children: [
               for (var i = 0; i < words.length; i++)
                 TextSpan(
                   text: i == words.length - 1 ? words[i] : '${words[i]} ',
                   style: _styleFor(widget.marks[i] ?? WordMark.pending),
-                  recognizer: recognizer,
+                  recognizer: i < _wordRecognizers.length ? _wordRecognizers[i] : null,
                 ),
               const TextSpan(text: ' '),
               WidgetSpan(
@@ -170,6 +200,7 @@ class _MushafAyahState extends State<MushafAyah> {
             ]),
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.justify,
+            ),
           ),
           if (widget.showTranslation)
             Padding(
