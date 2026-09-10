@@ -33,6 +33,15 @@ abstract class SessionService {
     int? toAyah,
     Duration durationRecorded = Duration.zero,
   });
+
+  /// Records the reciter's own verdict on a word the analysis flagged --
+  /// `agreed: false` meaning "I said this correctly".
+  Future<void> recordWordFeedback({
+    required String sessionId,
+    required int ayahNumber,
+    required int wordIndex,
+    required bool agreed,
+  });
 }
 
 /// Word-highlighting preview data for [DummySessionService] only -- it has no
@@ -59,7 +68,7 @@ List<TajweedError> _errorsFromVerdicts(List<WordVerdict> verdicts) {
             word: v.word,
             ayahNumber: v.ayahNumber,
             type: v.errorType ?? TajweedErrorType.makhraj,
-            explanation: v.explanation ?? 'This word did not match the expected pronunciation.',
+            explanation: v.explanation ?? 'This word sounded different from what was expected.',
           ))
       .toList();
 }
@@ -105,21 +114,31 @@ int _countArabicLetters(String text) {
 String _explanationFor(TajweedErrorType type) {
   switch (type) {
     case TajweedErrorType.makhraj:
-      return 'The articulation point of this letter was slightly off target.';
+      return 'This letter sounded slightly off its articulation point — listen back.';
     case TajweedErrorType.ghunnah:
-      return 'The nasal sound (ghunnah) was too short — hold it for a full two counts.';
+      return 'The nasal hum (ghunnah) sounded shorter than the two counts expected.';
     case TajweedErrorType.shaddah:
-      return 'The doubled letter was not emphasized enough.';
+      return 'This letter should sound doubled (shaddah) — listen back and check.';
     case TajweedErrorType.madd:
-      return 'The elongation was shorter than the required count.';
+      return 'The elongation sounded shorter than the count expected here.';
     case TajweedErrorType.skipped:
-      return 'This word was not recited.';
+      return 'This word wasn’t picked up — did you recite it?';
   }
 }
 
 class DummySessionService implements SessionService {
   final List<SessionResult> _sessions = List.of(dummySessions);
   final _random = Random();
+
+  /// Nothing to record against: this implementation's sessions are generated,
+  /// not stored, so there is no document for the verdict to attach to.
+  @override
+  Future<void> recordWordFeedback({
+    required String sessionId,
+    required int ayahNumber,
+    required int wordIndex,
+    required bool agreed,
+  }) async {}
 
   @override
   Future<List<SessionResult>> getSessions() async {
@@ -233,6 +252,29 @@ class ApiSessionService implements SessionService {
     );
     _lastResult = result;
     return result;
+  }
+
+  /// Records that the reciter disagrees with one flagged word.
+  ///
+  /// The detector wrongly flags roughly two correct recitations in five
+  /// (ml/eval/README.md), so this is not an escape hatch for a rare bug -- it is
+  /// the honest response to a known limit, and the only source of per-word
+  /// judgement on real learner audio that exists.
+  @override
+  Future<void> recordWordFeedback({
+    required String sessionId,
+    required int ayahNumber,
+    required int wordIndex,
+    required bool agreed,
+  }) async {
+    await _client.postForm(
+      '/api/v1/sessions/$sessionId/word-feedback',
+      fields: {
+        'ayah_number': ayahNumber.toString(),
+        'word_index': wordIndex.toString(),
+        'agreed': agreed.toString(),
+      },
+    );
   }
 
   SessionResult _sessionFromHistoryJson(Map<String, dynamic> json) {

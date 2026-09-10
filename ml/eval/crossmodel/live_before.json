@@ -1,0 +1,144 @@
+{
+  "what": "live cursor reporting an ayah later than the one being recited",
+  "audio": "reference Qari recitations streamed through the live loop",
+  "recitations": 45,
+  "recitations_with_overrun": 5,
+  "recitations_with_overrun_pct": 11.1,
+  "progress_updates": 735,
+  "overrun_updates": 13,
+  "overrun_updates_pct": 1.8,
+  "how_far_ahead_in_ayahs": {
+    "1": 13
+  },
+  "per_surah": {
+    "S1": {
+      "recitations": 3,
+      "updates": 70,
+      "overruns": 2
+    },
+    "S101": {
+      "recitations": 3,
+      "updates": 84,
+      "overruns": 1
+    },
+    "S102": {
+      "recitations": 3,
+      "updates": 54,
+      "overruns": 6
+    },
+    "S103": {
+      "recitations": 3,
+      "updates": 24,
+      "overruns": 0
+    },
+    "S104": {
+      "recitations": 3,
+      "updates": 60,
+      "overruns": 4
+    },
+    "S105": {
+      "recitations": 3,
+      "updates": 53,
+      "overruns": 0
+    },
+    "S106": {
+      "recitations": 3,
+      "updates": 37,
+      "overruns": 0
+    },
+    "S107": {
+      "recitations": 3,
+      "updates": 59,
+      "overruns": 0
+    },
+    "S108": {
+      "recitations": 3,
+      "updates": 25,
+      "overruns": 0
+    },
+    "S109": {
+      "recitations": 3,
+      "updates": 64,
+      "overruns": 0
+    },
+    "S110": {
+      "recitations": 3,
+      "updates": 39,
+      "overruns": 0
+    },
+    "S111": {
+      "recitations": 3,
+      "updates": 51,
+      "overruns": 0
+    },
+    "S112": {
+      "recitations": 3,
+      "updates": 25,
+      "overruns": 0
+    },
+    "S113": {
+      "recitations": 3,
+      "updates": 46,
+      "overruns": 0
+    },
+    "S114": {
+      "recitations": 3,
+      "updates": 44,
+      "overruns": 0
+    }
+  },
+  "examples": [
+    {
+      "qari": "abdurrahmaan_as_sudais",
+      "surah": 1,
+      "at_second": 10.5,
+      "reciter_was_on_ayah": 3,
+      "highlight_jumped_to_ayah": 4,
+      "updates_ahead_in_this_recitation": 2
+    },
+    {
+      "qari": "abdurrahmaan_as_sudais",
+      "surah": 101,
+      "at_second": 46.9,
+      "reciter_was_on_ayah": 10,
+      "highlight_jumped_to_ayah": 11,
+      "updates_ahead_in_this_recitation": 1
+    },
+    {
+      "qari": "abdurrahmaan_as_sudais",
+      "surah": 102,
+      "at_second": 23.3,
+      "reciter_was_on_ayah": 6,
+      "highlight_jumped_to_ayah": 7,
+      "updates_ahead_in_this_recitation": 2
+    },
+    {
+      "qari": "alafasy",
+      "surah": 102,
+      "at_second": 30.9,
+      "reciter_was_on_ayah": 6,
+      "highlight_jumped_to_ayah": 7,
+      "updates_ahead_in_this_recitation": 4
+    },
+    {
+      "qari": "alafasy",
+      "surah": 104,
+      "at_second": 29.3,
+      "reciter_was_on_ayah": 5,
+      "highlight_jumped_to_ayah": 6,
+      "updates_ahead_in_this_recitation": 4
+    }
+  ],
+  "control_coverage": {
+    "mean_share_of_surah_highlighted": 0.992,
+    "recitations_below_90pct": 0,
+    "recitations": 45,
+    "note": "whole surah recited, so the cursor should reach the last word; anything short is the cost of holding the frontier"
+  },
+  "thresholds_in_force": {
+    "HEARD_MATCH_RATIO": 0.5,
+    "LIVE_LOOKAHEAD_WORDS": 12,
+    "LIVE_FRONTIER_RATIO": 0.0,
+    "LIVE_FRONTIER_MIN_CHARS": 0
+  }
+}

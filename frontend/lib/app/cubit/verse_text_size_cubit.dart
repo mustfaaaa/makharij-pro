@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../services/service_locator.dart';
+
 /// User-adjustable verse text size, applied on recitation screens so the
 /// Arabic text stays legible when the phone is propped up at a distance.
 enum VerseTextSize { small, medium, large }
@@ -29,7 +31,11 @@ extension VerseTextSizeX on VerseTextSize {
 }
 
 class VerseTextSizeCubit extends Cubit<VerseTextSize> {
-  VerseTextSizeCubit() : super(VerseTextSize.medium);
+  VerseTextSizeCubit() : super(Services.prefs.verseTextSize);
 
-  void setSize(VerseTextSize size) => emit(size);
+  Future<void> setSize(VerseTextSize size) async {
+    if (size == state) return;
+    emit(size);
+    await Services.prefs.setVerseTextSize(size);
+  }
 }

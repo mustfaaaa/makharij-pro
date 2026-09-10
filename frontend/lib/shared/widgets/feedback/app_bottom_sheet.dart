@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 
@@ -24,7 +25,7 @@ class AppBottomSheet {
                     width: 40,
                     height: 4,
                     margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                    decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(4)),
+                    decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(AppRadii.xs)),
                   ),
                 ),
                 Text(title, style: Theme.of(ctx).textTheme.titleLarge),

@@ -11,6 +11,8 @@ import '../../../../models/progress_point.dart';
 import '../../../../models/progress_summary.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
+import '../../../../theme/app_shadows.dart';
+import '../widgets/performance_hero.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
@@ -18,7 +20,9 @@ import '../../../../theme/app_spacing.dart';
 // ── Tajweed Mastery: dot colors cycle across the rules the model actually
 // covers (3 of them -- see model_card.json known_limitations) rather than
 // naming a fixed rule list, since which rules have session history varies.
-const _masteryDotColors = [Color(0xFFB08F4F), Color(0xFF8B6914), Color(0xFFCE6A1B)];
+/// Mastery dots are read against a light card, so these are the ink golds
+/// rather than the fill golds -- the old set sat between 2.4:1 and 3.1:1.
+const _masteryDotColors = [Color(0xFF806839), Color(0xFF6F5622), Color(0xFF9C5218)];
 
 /// Drops the Arabic parenthetical from a backend rule label (e.g. "Separate
 /// Madd (المد المنفصل)" -> "Separate Madd") so it fits the bar row's fixed
@@ -89,8 +93,8 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                   alignment: Alignment.center,
                   child: Text(
                     currentUserInitial(),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppColors.textOnPrimary,
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
                     ),
@@ -126,13 +130,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: AppRadii.pillRadius,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.cardShadow,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    boxShadow: AppShadows.sm,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -158,7 +156,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             // ── Performance dashboard hero ───────────────────────────────
-            _PerformanceHero(overallAccuracy: _summary?.overallAccuracy ?? 0),
+            PerformanceHero(overallAccuracy: _summary?.overallAccuracy ?? 0),
             const SizedBox(height: AppSpacing.md),
             // ── Stat cards ───────────────────────────────────────────────
             Row(
@@ -363,211 +361,6 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
   }
 }
 
-// ── Dark performance hero: the photo fills a fixed-height card so the
-// full glowing mushaf is visible, with content centered over it. ─────────────
-class _PerformanceHero extends StatelessWidget {
-  final double overallAccuracy;
-  const _PerformanceHero({required this.overallAccuracy});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: AppRadii.lgRadius,
-      child: Stack(
-        children: [
-          // Fixed height so the image fully fills the card.
-          const SizedBox(height: 220, width: double.infinity),
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/quran_dark.jpg',
-              fit: BoxFit.cover,
-              alignment: const Alignment(0, 0.35),
-            ),
-          ),
-          // Scrim: lightest over the book so it stays prominent, deeper at
-          // the edges for readable gold text.
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.0, 0.5, 1.0],
-                  colors: [
-                    Colors.black.withValues(alpha: 0.42),
-                    Colors.black.withValues(alpha: 0.16),
-                    Colors.black.withValues(alpha: 0.48),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'PERFORMANCE DASHBOARD',
-                    style: TextStyle(
-                      color: AppColors.primaryLight,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                      letterSpacing: 2.2,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      // Gold accuracy ring.
-                      SizedBox(
-                        width: 96,
-                        height: 96,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            SizedBox(
-                              width: 96,
-                              height: 96,
-                              child: CircularProgressIndicator(
-                                value: overallAccuracy / 100,
-                                strokeWidth: 7,
-                                strokeCap: StrokeCap.round,
-                                backgroundColor: Colors.white.withValues(
-                                  alpha: 0.18,
-                                ),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.primaryLight,
-                                ),
-                              ),
-                            ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '${overallAccuracy.round()}%',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 24,
-                                    height: 1.0,
-                                  ),
-                                ),
-                                Text(
-                                  'accuracy',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 18),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Overall Accuracy',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 20,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Great progress \u2014 you're improving steadily.",
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.82),
-                                fontSize: 13.5,
-                                height: 1.35,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: AppRadii.pillRadius,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.workspace_premium_rounded,
-                                        size: 14,
-                                        color: AppColors.primaryDark,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Text(
-                                        'Intermediate',
-                                        style: TextStyle(
-                                          color: Color(0xFF2D2A26),
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1F6E4E),
-                                    borderRadius: AppRadii.pillRadius,
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.trending_up_rounded,
-                                        size: 14,
-                                        color: Colors.white,
-                                      ),
-                                      SizedBox(width: 3),
-                                      Text(
-                                        '+4%',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ── Small stat card ───────────────────────────────────────────────────────────
 class _StatCard extends StatelessWidget {
   final IconData icon;
@@ -586,13 +379,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        boxShadow: AppShadows.sm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -653,13 +440,7 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: AppShadows.md,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -719,7 +500,7 @@ class _MasteryBar extends StatelessWidget {
             height: 10,
             decoration: BoxDecoration(
               color: AppColors.creamDark,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadii.sm),
             ),
           ),
           Container(
@@ -727,9 +508,9 @@ class _MasteryBar extends StatelessWidget {
             width: constraints.maxWidth * pct / 100,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primaryLight, const Color(0xFF8B6914)],
+                colors: AppColors.brandCardGradient,
               ),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadii.sm),
             ),
           ),
         ],
@@ -778,8 +559,18 @@ class _TrendChart extends StatelessWidget {
           topTitles: const AxisTitles(
             sideTitles: SideTitles(showTitles: false),
           ),
-          leftTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
+          // Without a value axis the line showed a shape but no numbers --
+          // it could have been 40% or 90% and looked identical.
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 34,
+              interval: ((maxY - minY) / 2).clamp(1, 100),
+              getTitlesWidget: (value, meta) => Text(
+                '${value.round()}%',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 10),
+              ),
+            ),
           ),
           rightTitles: const AxisTitles(
             sideTitles: SideTitles(showTitles: false),
@@ -807,7 +598,19 @@ class _TrendChart extends StatelessWidget {
             ),
           ),
         ),
-        lineTouchData: const LineTouchData(enabled: false),
+        lineTouchData: LineTouchData(
+          enabled: true,
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (_) => AppColors.textPrimary,
+            getTooltipItems: (spots) => spots
+                .map((s) => LineTooltipItem(
+                      '${s.y.round()}%',
+                      TextStyle(
+                          color: AppColors.textOnInverse, fontWeight: FontWeight.w700),
+                    ))
+                .toList(),
+          ),
+        ),
         lineBarsData: [
           LineChartBarData(
             spots: [
@@ -846,24 +649,41 @@ class _TrendChart extends StatelessWidget {
 }
 
 // ── 10-week practice heatmap grid ─────────────────────────────────────────────
+const _weekdayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
 class _ActivityHeatmap extends StatelessWidget {
   final List<List<int>> heatmap;
   const _ActivityHeatmap({required this.heatmap});
 
+  /// A deliberately monotonic five-step ramp.
+  ///
+  /// The previous set was drawn from unrelated brand tokens and did not get
+  /// darker as the value rose: level 3 (`primary`) was *lighter* than level 2
+  /// (`accentLight`) -- 0.386 vs 0.343 relative luminance -- so a busier week
+  /// could render paler than a quieter one. These five step down evenly, with
+  /// every neighbouring pair at least 1.3:1 apart so adjacent levels stay
+  /// distinguishable.
   Color _shade(int level) {
-    switch (level) {
-      case 0:
-        return AppColors.creamDark;
-      case 1:
-        return AppColors.accentLight.withValues(alpha: 0.55);
-      case 2:
-        return AppColors.accentLight;
-      case 3:
-        return AppColors.primary;
-      default:
-        return const Color(0xFF8B6914);
-    }
+    final dark = AppColors.brightness == Brightness.dark;
+    const light = [
+      Color(0xFFEDE5D5),
+      Color(0xFFE0C98F),
+      Color(0xFFC9A94F),
+      Color(0xFFA5822F),
+      Color(0xFF6F5622),
+    ];
+    const night = [
+      Color(0xFF241E14),
+      Color(0xFF4A3C1F),
+      Color(0xFF7A6330),
+      Color(0xFFAD8C45),
+      Color(0xFFE0BD4A),
+    ];
+    final ramp = dark ? night : light;
+    return ramp[level.clamp(0, ramp.length - 1)];
   }
+
+  static const _levelLabels = ['no practice', 'light', 'moderate', 'active', 'heavy'];
 
   @override
   Widget build(BuildContext context) {
@@ -881,10 +701,17 @@ class _ActivityHeatmap extends StatelessWidget {
                   Expanded(
                     child: AspectRatio(
                       aspectRatio: 1,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: _shade(heatmap[week][day]),
-                          borderRadius: BorderRadius.circular(6),
+                      // Colour is the only visual signal here, so each cell
+                      // carries the same information as text for anyone who
+                      // cannot read the shade.
+                      child: Semantics(
+                        label:
+                            '${_weekdayNames[day]}, week ${week + 1}: ${_levelLabels[heatmap[week][day].clamp(0, 4)]}',
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: _shade(heatmap[week][day]),
+                            borderRadius: BorderRadius.circular(AppRadii.sm),
+                          ),
                         ),
                       ),
                     ),
@@ -909,7 +736,7 @@ class _ActivityHeatmap extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 4),
                 decoration: BoxDecoration(
                   color: _shade(i),
-                  borderRadius: BorderRadius.circular(3.5),
+                  borderRadius: BorderRadius.circular(AppRadii.xs),
                 ),
               ),
             ],

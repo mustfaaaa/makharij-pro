@@ -35,7 +35,7 @@ class _ContactScreenState extends State<ContactScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.mail_outline, color: AppColors.primary, size: 18),
+                Icon(Icons.mail_outline, color: AppColors.primaryDark, size: 18),
                 SizedBox(width: 8),
                 Text('support@makharijpro.ai'),
               ],

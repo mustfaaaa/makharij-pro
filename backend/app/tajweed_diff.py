@@ -165,7 +165,7 @@ def classify(display_word: str, expected: str, predicted: str) -> list[Finding]:
     if not expected:
         return []
     if not predicted.strip():
-        return [Finding(SKIPPED, f"You skipped “{display_word}” — it was not recited.")]
+        return [Finding(SKIPPED, f"“{display_word}” wasn’t picked up at all — did you recite it?")]
 
     exp_runs, pred_runs = runs(expected), runs(predicted)
     _dist, pairs = align(pred_runs, exp_runs)
@@ -181,7 +181,8 @@ def classify(display_word: str, expected: str, predicted: str) -> list[Finding]:
             if p_ch not in MARK_CHARS and p_ch not in ELONGATION_CHARS and p_n >= 2:
                 findings.append(Finding(
                     MAKHRAJ,
-                    f"An extra “{p_ch}” sound was added in “{display_word}”.",
+                    f"An extra “{p_ch}” sound came through in “{display_word}” — "
+                    f"listen back and check.",
                 ))
             continue
 
@@ -192,31 +193,32 @@ def classify(display_word: str, expected: str, predicted: str) -> list[Finding]:
             if kind == MADD:
                 findings.append(Finding(
                     MADD,
-                    f"The elongation (madd) in “{display_word}” was not held at all — "
-                    f"it needs about {e_n} counts.",
+                    f"“{display_word}” expects about {e_n} counts of elongation (madd). "
+                    f"None came through — listen back and compare.",
                 ))
             elif kind == GHUNNAH:
                 findings.append(Finding(
                     GHUNNAH,
-                    f"The ghunnah (nasal hum) in “{display_word}” was missing — "
-                    f"hold the nasal sound for about two counts.",
+                    f"“{display_word}” expects a nasal hum (ghunnah) of about two counts. "
+                    f"It didn’t come through — listen back.",
                 ))
             elif kind == SHADDAH:
                 findings.append(Finding(
                     SHADDAH,
-                    f"The shaddah on “{e_ch}” in “{display_word}” was not pronounced — "
-                    f"the letter must be doubled.",
+                    f"The “{e_ch}” in “{display_word}” should sound doubled (shaddah). "
+                    f"It didn’t come through that way — listen back.",
                 ))
             elif kind == "ikhfa":
                 findings.append(Finding(
                     GHUNNAH,
-                    f"The ikhfa in “{display_word}” was not applied — the noon/meem should be "
-                    f"hidden into the next letter with a nasal hum.",
+                    f"“{display_word}” expects an ikhfa — the noon/meem hidden into the next "
+                    f"letter with a nasal hum. That didn’t come through — listen back.",
                 ))
             elif e_ch not in MARK_CHARS:
                 findings.append(Finding(
                     MAKHRAJ,
-                    f"The letter “{e_ch}” in “{display_word}” was not pronounced.",
+                    f"The “{e_ch}” in “{display_word}” didn’t come through — "
+                    f"listen back and check.",
                 ))
             continue
 
@@ -228,8 +230,8 @@ def classify(display_word: str, expected: str, predicted: str) -> list[Finding]:
                 continue
             findings.append(Finding(
                 MAKHRAJ,
-                f"In “{display_word}” the letter “{e_ch}” came out closer to “{p_ch}” — "
-                f"check its articulation point (makhraj).",
+                f"In “{display_word}”, “{e_ch}” sounded closer to “{p_ch}” — listen back "
+                f"and check its articulation point (makhraj).",
             ))
             continue
 
@@ -237,27 +239,25 @@ def classify(display_word: str, expected: str, predicted: str) -> list[Finding]:
         if p_n == e_n:
             continue
         if kind == MADD:
-            too_short = p_n < e_n
-            dropped = too_short and e_n >= 4 and p_n <= MADD_DROPPED_MAX
+            dropped = p_n < e_n and e_n >= 4 and p_n <= MADD_DROPPED_MAX
             if dropped or abs(p_n - e_n) > MADD_COUNT_TOLERANCE:
-                how = "too short" if too_short else "too long"
                 findings.append(Finding(
                     MADD,
-                    f"The elongation (madd) in “{display_word}” was {how} — about {p_n} "
-                    f"counts were held where roughly {e_n} are required.",
+                    f"“{display_word}” expects about {e_n} counts of elongation (madd). "
+                    f"About {p_n} came through — listen back and compare.",
                 ))
         elif kind == GHUNNAH:
             if p_n <= GHUNNAH_DROPPED_MAX or abs(p_n - e_n) > GHUNNAH_COUNT_TOLERANCE:
                 findings.append(Finding(
                     GHUNNAH,
-                    f"The ghunnah (nasal hum) on “{e_ch}” in “{display_word}” was too short — "
-                    f"hold it for about two counts.",
+                    f"The nasal hum (ghunnah) on “{e_ch}” in “{display_word}” sounded shorter "
+                    f"than the two counts expected — listen back.",
                 ))
         elif kind == SHADDAH and p_n < e_n:
             findings.append(Finding(
                 SHADDAH,
-                f"The shaddah on “{e_ch}” in “{display_word}” was not held — "
-                f"the letter must sound doubled.",
+                f"The “{e_ch}” in “{display_word}” should sound doubled (shaddah) — that "
+                f"didn’t come through clearly. Listen back.",
             ))
 
     return findings
@@ -277,8 +277,8 @@ def summarize(display_word: str, findings: list[Finding]) -> Finding | None:
     if len(findings) >= GARBLED_FINDING_COUNT:
         return Finding(
             MAKHRAJ,
-            f"Most of “{display_word}” did not match the expected pronunciation — "
-            f"recite it again slowly, letter by letter.",
+            f"Most of “{display_word}” didn’t match what was expected — listen back, "
+            f"then try it again slowly.",
         )
     ranked = sorted(findings, key=lambda f: SEVERITY_ORDER.index(f.error_type)
                     if f.error_type in SEVERITY_ORDER else len(SEVERITY_ORDER))

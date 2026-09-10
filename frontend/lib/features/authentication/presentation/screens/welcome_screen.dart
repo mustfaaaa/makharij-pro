@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/utils/hijri_date.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/animated/staggered_fade_slide.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
@@ -28,7 +29,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     _breathController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2600),
-    )..repeat(reverse: true);
+    );
+    // A permanently pulsing halo is exactly the kind of motion "reduce
+    // motion" exists to stop; hold it at rest instead of looping.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MediaQuery.of(context).disableAnimations) {
+        _breathController.value = 0;
+      } else {
+        _breathController.repeat(reverse: true);
+      }
+    });
   }
 
   @override
@@ -211,7 +222,7 @@ class _GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
@@ -219,7 +230,7 @@ class _GlassCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           decoration: BoxDecoration(
             color: AppColors.glassSurface,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
             border: Border.all(color: AppColors.glassBorder),
           ),
           child: child,
@@ -272,13 +283,13 @@ class _WelcomeButtonState extends State<_WelcomeButton> {
           decoration: BoxDecoration(
             gradient: widget.filled
                 ? LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryDark],
+                    colors: AppColors.brandControlGradient,
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
                 : null,
             color: widget.filled ? null : AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadii.md),
             border: widget.filled
                 ? null
                 : Border.all(color: AppColors.border, width: 1.4),
@@ -298,7 +309,7 @@ class _WelcomeButtonState extends State<_WelcomeButton> {
             widget.label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: widget.filled ? Colors.white : AppColors.textPrimary,
+              color: widget.filled ? AppColors.textOnPrimary : AppColors.textPrimary,
               fontWeight: FontWeight.w700,
               fontSize: 15,
             ),

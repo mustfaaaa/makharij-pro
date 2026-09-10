@@ -133,6 +133,29 @@ async def analyze_word_level(
     }
 
 
+@router.post("/sessions/{session_id}/word-feedback")
+async def word_feedback(
+    session_id: str,
+    ayah_number: int = Form(...),
+    word_index: int = Form(...),
+    agreed: bool = Form(False),
+    uid: str = Depends(get_current_uid),
+):
+    """The reciter's own verdict on a word the app flagged.
+
+    `agreed=false` means "I said this correctly" -- the app was wrong here.
+    Given the measured false-alarm rate, offering this is honesty rather than a
+    courtesy, and what it collects is per-word judgement on real learner
+    recitation, which no published dataset holds.
+    """
+    try:
+        return firestore_service.record_word_feedback(
+            uid, session_id, ayah_number, word_index, agreed
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
 @router.get("/progress")
 async def get_progress(uid: str = Depends(get_current_uid)):
     """FR-13: day streak, average score, chart-ready daily history, activity heatmap, and

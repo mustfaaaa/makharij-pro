@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_radii.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 
-/// The signature colour for each Tajweed rule, reused by the legend, the
-/// colour-coded verse, and (ideally) the feedback badges.
+/// The signature colour for each Tajweed rule, shared with the results screen
+/// so a rule looks the same wherever the learner meets it.
+///
+/// These now come from AppColors.rule* rather than from primary/accent/warning.
+/// The old set drew Madd, Ghunnah and Shaddah from three shades of the app's
+/// gold -- #C2A366, #C9A227, #CE8A1B -- which read as one colour at verse size,
+/// so three of the four rules could not be told apart on the page.
 Map<String, Color> get tajweedRuleColors => {
-  'Makhraj': AppColors.info,
-  'Ghunnah': AppColors.accent,
-  'Shaddah': AppColors.warning,
-  'Madd': AppColors.primary,
+  'Makhraj': AppColors.ruleMakhraj,
+  'Ghunnah': AppColors.ruleGhunnah,
+  'Shaddah': AppColors.ruleShaddah,
+  'Madd': AppColors.ruleMadd,
   'Qalqalah': AppColors.error,
 };
 
@@ -38,7 +44,7 @@ class TajweedColorGuide extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadii.md),
             border: Border.all(color: AppColors.border),
           ),
           child: Wrap(

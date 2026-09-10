@@ -20,7 +20,7 @@ class SectionHeader extends StatelessWidget {
             onTap: onActionTap,
             child: Text(
               actionLabel!,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.w600),
             ),
           ),
       ],

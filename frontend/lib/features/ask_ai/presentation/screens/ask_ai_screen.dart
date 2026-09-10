@@ -9,6 +9,7 @@ import '../../../../models/surah.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/animated/pressable.dart';
+import '../../../../theme/app_shadows.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
@@ -181,13 +182,13 @@ class _AskAiScreenState extends State<AskAiScreen> {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [AppColors.primaryLight, AppColors.primaryDark],
+                        colors: AppColors.brandControlGradient,
                       ),
                       boxShadow: [
                         BoxShadow(color: AppColors.primary.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4)),
                       ],
                     ),
-                    child: const Icon(Icons.auto_awesome, color: Colors.white, size: 24),
+                    child: Icon(Icons.auto_awesome, color: AppColors.textOnPrimary, size: 24),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -250,9 +251,9 @@ class _AskAiScreenState extends State<AskAiScreen> {
                 padding: const EdgeInsets.fromLTRB(18, 4, 6, 4),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(AppRadii.xl),
                   border: Border.all(color: AppColors.border),
-                  boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+                  boxShadow: AppShadows.md,
                 ),
                 child: Row(
                   children: [
@@ -275,7 +276,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                        child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 22),
+                        child: Icon(Icons.arrow_upward_rounded, color: AppColors.textOnPrimary, size: 22),
                       ),
                     ),
                   ],
@@ -307,7 +308,7 @@ class _Bubble extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [AppColors.primaryLight, AppColors.primaryDark],
+              colors: AppColors.brandControlGradient,
             ),
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20),
@@ -316,7 +317,7 @@ class _Bubble extends StatelessWidget {
               bottomRight: Radius.circular(6),
             ),
           ),
-          child: Text(message.text, style: textTheme.bodyLarge?.copyWith(color: Colors.white, height: 1.45)),
+          child: Text(message.text, style: textTheme.bodyLarge?.copyWith(color: AppColors.textOnPrimary, height: 1.45)),
         ),
       );
     }
@@ -332,7 +333,7 @@ class _Bubble extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(color: AppColors.primary, width: 1.5),
           ),
-          child: Icon(Icons.auto_awesome, size: 15, color: AppColors.primary),
+          child: Icon(Icons.auto_awesome, size: 15, color: AppColors.primaryDark),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -347,7 +348,7 @@ class _Bubble extends StatelessWidget {
                 bottomLeft: Radius.circular(20),
                 bottomRight: Radius.circular(20),
               ),
-              boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: const Offset(0, 3))],
+              boxShadow: AppShadows.sm,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,7 +450,7 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                  child: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white, size: 26),
+                  child: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: AppColors.textOnPrimary, size: 26),
                 ),
               ),
               if (hasMultiple)
@@ -498,7 +499,7 @@ class _PracticeNowCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
         border: Border.all(color: AppColors.primary, width: 1.5),
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: AppShadows.md,
       ),
       child: Row(
         children: [
@@ -506,7 +507,7 @@ class _PracticeNowCard extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: AppRadii.mdRadius),
-            child: Icon(Icons.mic_rounded, color: AppColors.primary, size: 24),
+            child: Icon(Icons.mic_rounded, color: AppColors.primaryDark, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -525,7 +526,9 @@ class _PracticeNowCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadii.pillRadius),
-              child: const Text('Practice', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              child: Text('Practice',
+                  style: TextStyle(
+                      color: AppColors.textOnPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
             ),
           ),
         ],
@@ -550,7 +553,7 @@ class _QuestionChip extends StatelessWidget {
           color: AppColors.surface,
           borderRadius: AppRadii.pillRadius,
           border: Border.all(color: AppColors.border),
-          boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: AppShadows.sm,
         ),
         child: Text(label, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.5)),
       ),

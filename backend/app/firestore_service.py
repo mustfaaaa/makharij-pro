@@ -38,6 +38,64 @@ RULES = tuple(RULE_LABELS)
 
 MIN_HISTORY_FOR_PERSONALIZED_PLAN = 3  # Algorithm 6.5's MIN_HISTORY
 
+# How many per-word verdicts a session keeps for the label store (below).
+# A Firestore document is capped at ~1 MiB; at roughly 150 bytes a verdict this
+# leaves a wide margin, while still covering every ordinary practice session
+# and all of Juz 30 in full. Only a near-complete recitation of a long surah
+# ever exceeds it, and there the flagged words -- the ones a reciter can
+# dispute -- are always kept (see word_verdicts_for_storage).
+MAX_STORED_WORD_VERDICTS = 400
+
+
+def word_verdicts_for_storage(results) -> list[dict]:
+    """The per-word record a later "I said it right" needs to become a label.
+
+    The feedback endpoint stores only *coordinates* and the reciter's verdict:
+    "word 3 of ayah 2, the reciter disagreed". On its own that is unusable. To
+    tell a systematic false alarm (many reciters dispute the same word, so the
+    model is over-flagging there) from one learner who simply doesn't know the
+    rule, the label has to sit next to what the model actually claimed and how
+    far off it thought the recitation was. That context is computed once, sent
+    to the screen, and -- until now -- thrown away. This keeps it.
+
+    Only *recited* words are stored: a word the reciter never reached carries
+    no judgement to capture, and dropping them is what keeps the list bounded
+    by what was actually said rather than by surah length.
+
+    When even the recited words exceed [MAX_STORED_WORD_VERDICTS], every flagged
+    word is kept -- those are the ones a reciter can press "I said it right" on,
+    so losing one would drop a label we can never recover -- and the remaining
+    budget is filled with correct words in reading order.
+    """
+    recited = [r for r in results if r.recited]
+    if len(recited) > MAX_STORED_WORD_VERDICTS:
+        flagged_idx = [i for i, r in enumerate(recited) if not r.correct]
+        budget = max(MAX_STORED_WORD_VERDICTS - len(flagged_idx), 0)
+        correct_idx = [i for i, r in enumerate(recited) if r.correct][:budget]
+        keep = sorted(set(flagged_idx) | set(correct_idx))
+        recited = [recited[i] for i in keep]
+
+    return [
+        {
+            "ayahNumber": r.ayah_number,
+            "wordIndex": r.word_index,
+            "word": r.display_word,
+            # The features that separate a real mistake from recogniser noise:
+            # what the model heard, what it expected, and how far apart it
+            # judged them to be.
+            "predicted": r.predicted_phonemes,
+            "expected": r.expected_phonemes,
+            "distance": r.edit_distance,
+            "confidence": r.confidence,
+            # The model's own claim about this word -- the "claimed" half of a
+            # (claimed, reciter-says) label. errorType is None exactly when the
+            # model called the word correct.
+            "correct": r.correct,
+            "errorType": r.error_type,
+        }
+        for r in recited
+    ]
+
 
 def summarize_word_results(results) -> dict:
     """Reduce a list of WordPhonemeResult into what a session stores.
@@ -70,6 +128,12 @@ def summarize_word_results(results) -> dict:
         # Per-rule tallies, so the practice plan and mastery chart never have to
         # re-read the (much larger) mistake list.
         "mistakeCounts": {rule: counts.get(rule, 0) for rule in RULES},
+        # The per-word verdict record the feedback loop turns into labels. Kept
+        # separate from `mistakes` on purpose: `mistakes` drives the stats and
+        # the practice plan and holds only flagged words, while this holds the
+        # correct words too (a dispute can land on either) and the phoneme
+        # features neither the stats nor the UI need.
+        "words": word_verdicts_for_storage(results),
     }
 
 
@@ -86,6 +150,44 @@ def save_session(uid: str, model_id: str, surah_number: int, from_ayah: int,
         **summary,
     })
     return session_ref.id
+
+
+def record_word_feedback(uid: str, session_id: str, ayah_number: int,
+                         word_index: int, agreed: bool) -> dict:
+    """Records the reciter's own verdict on one flagged word.
+
+    The detector wrongly flags roughly two correct recitations in five
+    (ml/eval/README.md), so the reciter disagreeing is expected, not an edge
+    case. Storing it does two things: it lets the results screen stop insisting,
+    and it accumulates the one kind of data that does not exist anywhere --
+    per-word judgements on real learner recitations. Every published corpus is
+    either labelled per clip or made of deliberately-produced errors.
+
+    Read it as "the reciter disagreed", never as "the app was wrong": someone
+    can reject a correct verdict because they don't know the rule, or don't want
+    to be wrong. It is a signal to weigh, not ground truth.
+    """
+    db = get_firestore_client()
+    session_ref = db.collection("users").document(uid).collection("sessions").document(session_id)
+    session = session_ref.get()
+    if not session.exists:
+        raise KeyError(f"Session {session_id} not found for this user")
+
+    feedback = session.to_dict().get("wordFeedback", [])
+    # One verdict per word: pressing it again replaces, rather than stacking up
+    # contradictory entries for the same word.
+    feedback = [
+        f for f in feedback
+        if not (f.get("ayahNumber") == ayah_number and f.get("wordIndex") == word_index)
+    ]
+    feedback.append({
+        "ayahNumber": ayah_number,
+        "wordIndex": word_index,
+        "agreed": agreed,
+        "at": datetime.now(timezone.utc),
+    })
+    session_ref.update({"wordFeedback": feedback})
+    return {"session_id": session_id, "word_feedback_count": len(feedback)}
 
 
 def _fetch_all_sessions(uid: str) -> list[dict]:

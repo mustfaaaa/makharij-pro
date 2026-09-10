@@ -4,8 +4,17 @@
     {
       "name": "flutter-web",
       "runtimeExecutable": "flutter",
-      "runtimeArgs": ["run", "-d", "chrome", "--web-port", "5173"],
-      "port": 5173
+      "runtimeArgs": [
+        "run",
+        "-d",
+        "web-server",
+        "--web-port",
+        "5173",
+        "--web-hostname",
+        "127.0.0.1"
+      ],
+      "port": 5173,
+      "cwd": "frontend"
     },
     {
       "name": "backend",
@@ -23,6 +32,34 @@
       ],
       "port": 8000,
       "autoPort": false
+    },
+    {
+      "name": "flutter-web-build",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5174",
+        "--directory",
+        "frontend/build/web",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "port": 5174
+    },
+    {
+      "name": "mockups",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5199",
+        "--directory",
+        "C:/Users/shahs/AppData/Local/Temp/claude/C--dev-makharij-pro/94c0ebcb-5e25-436d-81eb-1f3e2b71f28c/scratchpad/mock",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "port": 5199
     }
   ]
 }

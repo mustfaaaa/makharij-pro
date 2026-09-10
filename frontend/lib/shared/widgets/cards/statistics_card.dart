@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 import 'app_card.dart';
 
@@ -28,7 +29,7 @@ class StatisticsCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppRadii.sm),
             child: LinearProgressIndicator(
               value: (percentage / 100).clamp(0, 1),
               minHeight: 8,

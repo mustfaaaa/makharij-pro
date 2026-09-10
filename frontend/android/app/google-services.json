@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "639830542253-t58o052m54h6v02kpkjt09us1lepufnq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.makharijpro.frontend",
+            "certificate_hash": "645dcc55e2eeebdf70fb3dc8c7b608c5516ac790"
+          }
+        },
+        {
           "client_id": "639830542253-vgov06b3v2apeui4pgh6toq010ft54jd.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

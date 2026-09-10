@@ -27,6 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscure = true;
+  final _passwordFocus = FocusNode();
   bool _loading = false;
   bool _googleLoading = false;
   bool _webGoogleReady = false;
@@ -64,6 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _passwordFocus.dispose();
     _googleWebSub?.cancel();
     super.dispose();
   }
@@ -140,40 +142,59 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 20),
           const AuthOrDivider(label: 'Or log in with email'),
           const SizedBox(height: 20),
-          AuthField(
-            hint: 'Email',
-            icon: Icons.mail_rounded,
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            errorText: _emailError,
-            onChanged: (_) {
-              if (_emailError != null) setState(() => _emailError = null);
-            },
-          ),
-          const SizedBox(height: 16),
-          AuthField(
-            hint: 'Password',
-            icon: Icons.lock_rounded,
-            controller: _passwordController,
-            obscureText: _obscure,
-            errorText: _passwordError,
-            onChanged: (_) {
-              if (_passwordError != null) setState(() => _passwordError = null);
-            },
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                size: 20,
-                color: AppColors.textMuted,
-              ),
-              onPressed: () => setState(() => _obscure = !_obscure),
+          // AutofillGroup + hints let a password manager recognise this as a
+          // sign-in form and fill both fields. Without them the OS never
+          // offers, and the user has to recall and retype the password --
+          // exactly what WCAG 2.2 SC 3.3.8 is about.
+          AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AuthField(
+                  hint: 'Email',
+                  icon: Icons.mail_rounded,
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.username, AutofillHints.email],
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: () => _passwordFocus.requestFocus(),
+                  errorText: _emailError,
+                  onChanged: (_) {
+                    if (_emailError != null) setState(() => _emailError = null);
+                  },
+                ),
+                const SizedBox(height: 16),
+                AuthField(
+                  hint: 'Password',
+                  icon: Icons.lock_rounded,
+                  controller: _passwordController,
+                  focusNode: _passwordFocus,
+                  obscureText: _obscure,
+                  autofillHints: const [AutofillHints.password],
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: _submit,
+                  errorText: _passwordError,
+                  onChanged: (_) {
+                    if (_passwordError != null) setState(() => _passwordError = null);
+                  },
+                  suffixIcon: IconButton(
+                    tooltip: _obscure ? 'Show password' : 'Hide password',
+                    icon: Icon(
+                      _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: () => context.push(RoutePaths.forgotPassword),
+            child: TextButton(
+              onPressed: () => context.push(RoutePaths.forgotPassword),
               child: Text(
                 'Forgot password?',
                 style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700, fontSize: 15),
@@ -188,8 +209,8 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               Text("Don't have an account? ",
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary)),
-              GestureDetector(
-                onTap: () => context.pushReplacement(RoutePaths.register),
+              TextButton(
+                onPressed: () => context.pushReplacement(RoutePaths.register),
                 child: Text(
                   'Sign Up',
                   style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w800, fontSize: 16),

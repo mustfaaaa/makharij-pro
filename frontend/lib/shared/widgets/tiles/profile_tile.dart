@@ -19,7 +19,7 @@ class ProfileTile extends StatelessWidget {
         radius: 26,
         backgroundColor: AppColors.primarySurface,
         backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
-        child: avatarUrl == null ? Icon(Icons.person, color: AppColors.primary) : null,
+        child: avatarUrl == null ? Icon(Icons.person, color: AppColors.primaryDark) : null,
       ),
       title: Text(name, style: Theme.of(context).textTheme.titleMedium),
       subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodySmall),

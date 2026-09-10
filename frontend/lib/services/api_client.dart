@@ -69,6 +69,38 @@ class ApiClient {
     return _decode(response);
   }
 
+  /// Posts form fields with no body of its own -- small "record this fact"
+  /// calls, where a multipart envelope would be all overhead.
+  Future<Map<String, dynamic>> postForm(
+    String path, {
+    Map<String, String> fields = const {},
+    bool authRequired = true,
+  }) async {
+    final headers = await _authHeader(required: authRequired);
+    final http.Response response;
+    try {
+      response = await http.post(Uri.parse('$kApiBaseUrl$path'), headers: headers, body: fields);
+    } catch (_) {
+      throw const AppException('Could not reach the server. Check your connection and try again.');
+    }
+    return _decode(response);
+  }
+
+  /// Fetches a binary body (reference audio). Returns null rather than
+  /// throwing: playing a Qari's word is a convenience layered on the results
+  /// screen, and the 15 surahs with reference audio are a real, current limit
+  /// -- a 404 here is expected, not a failure worth surfacing.
+  Future<Uint8List?> getBytes(String path, {bool authRequired = false}) async {
+    try {
+      final headers = await _authHeader(required: authRequired);
+      final response = await http.get(Uri.parse('$kApiBaseUrl$path'), headers: headers);
+      if (response.statusCode != 200) return null;
+      return response.bodyBytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Map<String, dynamic> _decode(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       String detail = response.body;

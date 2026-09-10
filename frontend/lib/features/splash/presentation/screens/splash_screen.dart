@@ -45,10 +45,21 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       CurvedAnimation(parent: _controller, curve: const Interval(0.6, 1.0, curve: Curves.easeOut)),
     );
 
-    _controller.forward();
-    Timer(const Duration(milliseconds: 2100), () {
+    // Honour "reduce motion": jump the choreography to its end state rather
+    // than playing it, and cut the hold to the minimum needed to avoid a
+    // jarring flash.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.go(Services.auth.currentUser != null ? RoutePaths.home : RoutePaths.onboarding);
+      final reduceMotion = MediaQuery.of(context).disableAnimations;
+      if (reduceMotion) {
+        _controller.value = 1.0;
+      } else {
+        _controller.forward();
+      }
+      Timer(Duration(milliseconds: reduceMotion ? 400 : 2100), () {
+        if (!mounted) return;
+        context.go(Services.auth.currentUser != null ? RoutePaths.home : RoutePaths.onboarding);
+      });
     });
   }
 
@@ -102,7 +113,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                               border: Border.all(color: AppColors.accent.withValues(alpha: 0.5), width: 1.5),
                             ),
                             alignment: Alignment.center,
-                            child: Text('م', style: AppTypography.arabicVerse(fontSize: 44, color: AppColors.primary)),
+                            child: Text('م', style: AppTypography.arabicVerse(fontSize: 44, color: AppColors.primaryDark)),
                           ),
                         ),
                       ),
@@ -126,7 +137,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       children: [
                         Text(
                           'MakharijPro AI',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: AppColors.primary),
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: AppColors.primaryDark),
                         ),
                         const SizedBox(height: 8),
                         Text(

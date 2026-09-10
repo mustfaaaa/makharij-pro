@@ -9,6 +9,7 @@ import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/loading/app_loading_indicator.dart';
 import '../../../../shared/widgets/score_badge.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 
@@ -71,12 +72,12 @@ class _DetailedFeedbackScreenState extends State<DetailedFeedbackScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text('Errors Breakdown', style: Theme.of(context).textTheme.titleMedium),
+              Text('Worth checking', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: AppSpacing.sm),
               if (session.errors.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                  child: Text('No Tajweed errors detected in this session. Excellent recitation!', style: Theme.of(context).textTheme.bodyMedium),
+                  child: Text('Nothing stood out in this session — everything matched. Excellent recitation!', style: Theme.of(context).textTheme.bodyMedium),
                 )
               else
                 ...session.errors.map((error) {
@@ -84,13 +85,13 @@ class _DetailedFeedbackScreenState extends State<DetailedFeedbackScreen> {
                   return Container(
                     margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                     padding: const EdgeInsets.all(AppSpacing.cardPadding),
-                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.border)),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppRadii.md), border: Border.all(color: AppColors.border)),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadii.lg)),
                           child: Text(error.type.label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
                         ),
                         const SizedBox(width: 12),

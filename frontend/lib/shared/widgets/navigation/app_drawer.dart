@@ -25,7 +25,7 @@ class AppDrawer extends StatelessWidget {
                   final user = snapshot.data;
                   return Row(
                     children: [
-                      CircleAvatar(radius: 24, backgroundColor: AppColors.primarySurface, child: Icon(Icons.person, color: AppColors.primary)),
+                      CircleAvatar(radius: 24, backgroundColor: AppColors.primarySurface, child: Icon(Icons.person, color: AppColors.primaryDark)),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(

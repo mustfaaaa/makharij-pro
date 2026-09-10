@@ -9,7 +9,9 @@ from fastapi.staticfiles import StaticFiles
 from .firebase_admin_setup import init_firebase
 from .model_service import TajweedModelService
 from .phoneme_analysis_service import PhonemeAnalysisService
-from .routers import inference, live, rattil, sessions
+from .reference_words import ReferenceWordAudio
+from .tajweed_reference import TajweedReference
+from .routers import inference, live, rattil, sessions, tajweed
 
 logging.basicConfig(level=logging.INFO)
 
@@ -34,10 +36,25 @@ async def lifespan(app: FastAPI):
     # download that never finished. Non-fatal like Firebase above.
     try:
         app.state.phoneme_analysis_service = PhonemeAnalysisService()
+        # Locating a word inside a Qari's recitation uses the same recognizer,
+        # so this rides on the analysis service and is unavailable without it.
+        app.state.reference_words = ReferenceWordAudio(app.state.phoneme_analysis_service)
         logging.info("Phoneme analysis service loaded -- word-level analysis available")
     except Exception as exc:
         app.state.phoneme_analysis_service = None
+        app.state.reference_words = None
         logging.warning(f"Phoneme analysis service not available, word-level analysis will 503: {exc}")
+
+    # Per-word Tajweed reference. Loaded before the phoneme model and kept
+    # independent of it on purpose: this is text data, not a prediction, so it
+    # must stay available on a server where the gated recogniser is missing.
+    app.state.tajweed_reference = TajweedReference()
+    if app.state.tajweed_reference.available:
+        logging.info("Tajweed reference loaded -- per-word rule lookup available")
+    else:
+        logging.warning(
+            "Tajweed reference table missing, /api/v1/tajweed/* will 503 "
+            "(generate it with ml/tools/extract_tajweed_reference.py)")
 
     yield
 
@@ -59,6 +76,7 @@ app.add_middleware(
 app.include_router(inference.router, prefix="/api/v1")
 app.include_router(sessions.router, prefix="/api/v1")
 app.include_router(rattil.router, prefix="/api/v1")
+app.include_router(tajweed.router, prefix="/api/v1")
 # Live word-position streaming (WebSocket) for highlighting words as the
 # user recites -- see routers/live.py for the protocol.
 app.include_router(live.router, prefix="/api/v1")

@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../theme/app_shadows.dart';
+import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 
 class _NavItem {
@@ -51,16 +53,16 @@ class AppBottomNav extends StatelessWidget {
           children: [
             // ── The glass bar ────────────────────────────────────────────
             ClipRRect(
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: BorderRadius.circular(AppRadii.xl),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                 child: Container(
                   height: 66,
                   decoration: BoxDecoration(
                     color: AppColors.glassSurface,
-                    borderRadius: BorderRadius.circular(26),
+                    borderRadius: BorderRadius.circular(AppRadii.xl),
                     border: Border.all(color: AppColors.glassBorder),
-                    boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 20, offset: const Offset(0, 6))],
+                    boxShadow: AppShadows.lg,
                   ),
                   child: Row(
                     children: [
@@ -100,7 +102,7 @@ class AppBottomNav extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [AppColors.primaryLight, AppColors.primaryDark],
+                        colors: AppColors.brandControlGradient,
                       ),
                       border: Border.all(color: AppColors.surface, width: 4),
                       boxShadow: [
@@ -111,7 +113,7 @@ class AppBottomNav extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.auto_awesome, color: Colors.white, size: 26),
+                    child: Icon(Icons.auto_awesome, color: AppColors.textOnPrimary, size: 26),
                   ),
                 ),
               ),
@@ -132,10 +134,10 @@ class _CenterLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.primary : AppColors.textMuted;
+    final color = selected ? AppColors.primaryDark : AppColors.textMuted;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadii.md),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -148,7 +150,7 @@ class _CenterLabel extends StatelessWidget {
             duration: const Duration(milliseconds: 250),
             width: selected ? 5 : 0,
             height: selected ? 5 : 0,
-            decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: AppColors.primaryDark, shape: BoxShape.circle),
           ),
           const SizedBox(height: 6),
         ],
@@ -166,10 +168,10 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.primary : AppColors.textMuted;
+    final color = selected ? AppColors.primaryDark : AppColors.textMuted;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadii.md),
       child: Semantics(
         button: true,
         selected: selected,
@@ -183,11 +185,15 @@ class _NavButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               decoration: BoxDecoration(
                 color: selected ? AppColors.primarySurface : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AppRadii.lg),
               ),
               child: AnimatedScale(
                 scale: selected ? 1.12 : 1.0,
-                duration: const Duration(milliseconds: 400),
+                // elasticOut overshoots and bounces; under "reduce motion"
+                // collapse it to an instant, non-animated change.
+                duration: MediaQuery.of(context).disableAnimations
+                    ? Duration.zero
+                    : const Duration(milliseconds: 400),
                 curve: Curves.elasticOut,
                 child: Icon(selected ? item.selectedIcon : item.icon, size: 22, color: color),
               ),

@@ -1,0 +1,65 @@
+loading the phoneme model...
+analysing 773 clips
+  50/773  (3.4 clips/s)
+  100/773  (3.3 clips/s)
+  150/773  (3.1 clips/s)
+  200/773  (3.0 clips/s)
+  250/773  (3.0 clips/s)
+  300/773  (3.0 clips/s)
+  350/773  (2.9 clips/s)
+  400/773  (2.8 clips/s)
+  450/773  (2.8 clips/s)
+  500/773  (2.8 clips/s)
+  550/773  (2.9 clips/s)
+  600/773  (3.0 clips/s)
+  650/773  (3.0 clips/s)
+  700/773  (3.1 clips/s)
+  750/773  (3.1 clips/s)
+
+==================================================================
+REAL LEARNER RECORDINGS -- what the app does on voices it was never tuned on
+==================================================================
+
+clips analysed: 773  (353 recited correctly, 420 with a real mistake)
+
+--- false positives (clips a human marked CORRECT) ---
+  clips wrongly flagged : 151/353 (42.8%)
+  words wrongly flagged : 249/1288 (19.3%)
+
+--- detection (clips a human marked INCORRECT) ---
+  clips where a mistake was found : 310/420 (73.8%)
+  (clip-level labels cannot confirm the *right* word was flagged)
+
+  balanced accuracy : 65.5%
+
+--- by gender (groups with 15+ clips) ---
+                  false-positive rate    detection rate
+  Unknown                47%  (n=178)      75%  (n=173)
+  female                  40%  (n=91)      71%  (n=156)
+  male                    38%  (n=84)       78%  (n=91)
+
+--- by age (groups with 15+ clips) ---
+                  false-positive rate    detection rate
+  Unknown                44%  (n=323)      74%  (n=398)
+  19-24                   18%  (n=17)       74%  (n=19)
+
+--- by country (groups with 15+ clips) ---
+                  false-positive rate    detection rate
+  Unknown                46%  (n=182)      75%  (n=173)
+  DE                      45%  (n=44)       84%  (n=79)
+  US                      46%  (n=24)       64%  (n=36)
+  GB                      73%  (n=22)       85%  (n=27)
+  AT                      24%  (n=17)       45%  (n=20)
+  DK                      19%  (n=16)       45%  (n=11)
+  KZ                      20%  (n=10)       73%  (n=11)
+  RU                        0%  (n=3)       54%  (n=13)
+  KG                       50%  (n=4)       73%  (n=11)
+
+--- what the false positives are blamed on ---
+  makhraj      168
+  shaddah      47
+  madd         29
+  ghunnah      3
+  skipped      2
+
+per-word detail written to C:\dev\makharij-pro\ml\eval\results\word_level.jsonl

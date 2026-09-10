@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/surah.dart';
+import '../../../theme/app_shadows.dart';
+import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_typography.dart';
 
@@ -14,17 +16,15 @@ class SurahCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadii.md),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: Offset(0, 3)),
-          ],
+          boxShadow: AppShadows.sm,
         ),
         child: Row(
           children: [
@@ -36,7 +36,7 @@ class SurahCard extends StatelessWidget {
               decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
               child: Text(
                 '${surah.number}',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                style: TextStyle(color: AppColors.textOnPrimary, fontWeight: FontWeight.w700, fontSize: 14),
               ),
             ),
             const SizedBox(width: 14),
@@ -63,7 +63,7 @@ class SurahCard extends StatelessWidget {
             if (surah.lastScore != null)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(AppRadii.lg)),
                 child: Text(
                   'Practiced ${surah.lastScore!.round()}%',
                   style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
@@ -77,7 +77,7 @@ class SurahCard extends StatelessWidget {
 
             if (surah.isBookmarked) ...[
               const SizedBox(width: 6),
-              Icon(Icons.bookmark_rounded, size: 16, color: AppColors.primary),
+              Icon(Icons.bookmark_rounded, size: 16, color: AppColors.primaryDark),
             ],
           ],
         ),

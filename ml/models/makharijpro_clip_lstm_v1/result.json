@@ -1,0 +1,27 @@
+{
+  "architecture": "Masking -> LSTM(48) -> Dropout -> Dense(1, sigmoid)",
+  "features": "MFCC(13)+delta = 26 dims, 25ms/10ms, 16000Hz",
+  "task": "clip-level: did this recitation contain a mistake",
+  "data": "RetaSy/quranic_audio_dataset, 773 labelled learner clips",
+  "split": {
+    "train": 288,
+    "val": 134,
+    "test": 351,
+    "grouped_by": "reciter_id",
+    "seed": 42
+  },
+  "params": 14449,
+  "epochs_run": 37,
+  "val_auc": 0.6749,
+  "test_auc": 0.5534,
+  "test_accuracy": 0.5242,
+  "majority_baseline": 0.5071,
+  "track_a_auc_same_clips": 0.527,
+  "confusion_test": {
+    "tp": 134,
+    "fp": 128,
+    "fn": 39,
+    "tn": 50
+  },
+  "verdict": "no better than chance -- reported as a negative result"
+}

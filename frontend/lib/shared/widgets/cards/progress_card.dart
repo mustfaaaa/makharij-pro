@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 import 'app_card.dart';
 
@@ -32,7 +33,7 @@ class ProgressCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(icon, size: 20, color: AppColors.primary),
+              Icon(icon, size: 20, color: AppColors.primaryDark),
               if (trend != null)
                 Row(
                   children: [
@@ -55,7 +56,7 @@ class ProgressCard extends StatelessWidget {
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
                 ),
                 child: Text(value, style: Theme.of(context).textTheme.headlineSmall),
               ),

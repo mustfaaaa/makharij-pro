@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../routes/route_names.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 
@@ -83,7 +84,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           height: 140,
                           decoration: BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
                           alignment: Alignment.center,
-                          child: Icon(page.icon, size: 60, color: AppColors.primary),
+                          child: Icon(page.icon, size: 60, color: AppColors.primaryDark),
                         ),
                         const SizedBox(height: AppSpacing.xl),
                         Text(page.title, style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
@@ -105,7 +106,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   height: 8,
                   decoration: BoxDecoration(
                     color: i == _index ? AppColors.primary : AppColors.border,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(AppRadii.xs),
                   ),
                 );
               }),

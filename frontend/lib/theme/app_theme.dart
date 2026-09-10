@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 import 'app_radii.dart';
+import 'app_shadows.dart';
 import 'app_spacing.dart';
 import 'app_typography.dart';
 
@@ -50,7 +51,7 @@ abstract class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.textOnPrimary,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.45),
-          disabledForegroundColor: Colors.white70,
+          disabledForegroundColor: AppColors.textOnPrimary.withValues(alpha: 0.55),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(borderRadius: AppRadii.mdRadius),
@@ -60,8 +61,10 @@ abstract class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          side: BorderSide(color: AppColors.primary, width: 1.5),
+          // Label and outline both sit on a light page: the fill gold reads
+          // at 2.41:1 there, the ink gold at 5.01:1.
+          foregroundColor: AppColors.primaryDark,
+          side: BorderSide(color: AppColors.primaryDark, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(borderRadius: AppRadii.mdRadius),
@@ -70,7 +73,7 @@ abstract class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
+          foregroundColor: AppColors.primaryDark,
           textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
@@ -80,16 +83,20 @@ abstract class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
         hintStyle: textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
         labelStyle: textTheme.bodyMedium,
-        border: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.border)),
-        enabledBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.border)),
-        focusedBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.primary, width: 1.6)),
+        border: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.borderStrong)),
+        enabledBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.borderStrong)),
+        // The focus ring is a control-state indicator, so it needs 3:1 against
+        // the field fill. Fill gold sat at 2.18:1 there; the ink gold is 4.80:1.
+        focusedBorder: OutlineInputBorder(
+            borderRadius: AppRadii.mdRadius,
+            borderSide: BorderSide(color: AppColors.primaryDark, width: 2)),
         errorBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.error)),
         focusedErrorBorder: OutlineInputBorder(borderRadius: AppRadii.mdRadius, borderSide: BorderSide(color: AppColors.error, width: 1.6)),
         errorStyle: TextStyle(color: AppColors.error, fontSize: 12),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.primarySurface,
-        labelStyle: textTheme.labelMedium?.copyWith(color: AppColors.primary),
+        labelStyle: textTheme.labelMedium?.copyWith(color: AppColors.primaryDark),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
         shape: RoundedRectangleBorder(borderRadius: AppRadii.pillRadius),
         side: BorderSide.none,
@@ -106,7 +113,7 @@ abstract class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.textPrimary,
-        contentTextStyle: textTheme.bodyMedium?.copyWith(color: AppColors.textOnPrimary),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(color: AppColors.textOnInverse),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: AppRadii.smRadius),
       ),
@@ -133,14 +140,12 @@ abstract class AppTheme {
 
   /// The one canonical card surface used across the app: clean white/dark
   /// surface, hairline border, soft warm shadow, generous corner radius.
-  static BoxDecoration cardDecoration({double radius = 18}) {
+  static BoxDecoration cardDecoration({double radius = AppRadii.lg}) {
     return BoxDecoration(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(color: AppColors.border),
-      boxShadow: [
-        BoxShadow(color: AppColors.cardShadow, blurRadius: 18, offset: const Offset(0, 8)),
-      ],
+      boxShadow: AppShadows.md,
     );
   }
 }

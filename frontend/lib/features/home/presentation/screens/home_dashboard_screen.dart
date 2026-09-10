@@ -11,6 +11,7 @@ import '../../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../../../shared/widgets/navigation/app_drawer.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
+import '../../../../theme/app_shadows.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
 
@@ -55,36 +56,6 @@ class HomeDashboardScreen extends StatefulWidget {
 }
 
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
-  Timer? _ticker;
-  Duration _untilNext = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _computeCountdown();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _computeCountdown());
-  }
-
-  void _computeCountdown() {
-    final now = DateTime.now();
-    var maghrib = DateTime(now.year, now.month, now.day, 19, 21);
-    if (maghrib.isBefore(now)) maghrib = maghrib.add(const Duration(days: 1));
-    if (mounted) setState(() => _untilNext = maghrib.difference(now));
-  }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    super.dispose();
-  }
-
-  String get _countdownText {
-    final h = _untilNext.inHours;
-    final m = (_untilNext.inMinutes % 60).toString().padLeft(2, '0');
-    final s = (_untilNext.inSeconds % 60).toString().padLeft(2, '0');
-    return '$h:$m:$s';
-  }
-
   @override
   Widget build(BuildContext context) {
     final firstName = currentUserName();
@@ -115,10 +86,17 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 children: [
                   Text('Prayer times',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-                  GestureDetector(
-                    onTap: () {},
+                  // Was `onTap: () {}` -- a control that looked live and did
+                  // nothing. Until the monthly view exists it says so, rather
+                  // than silently swallowing the tap.
+                  TextButton(
+                    onPressed: () => AppSnackbar.show(
+                        context, 'Monthly prayer view is coming in a later release.'),
                     child: Text('Monthly view',
-                        style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w600, fontSize: 14)),
+                        style: TextStyle(
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14)),
                   ),
                 ],
               ),
@@ -126,7 +104,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             const SizedBox(height: AppSpacing.md),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
-              child: _NextPrayerCard(countdown: _countdownText),
+              child: const _NextPrayerCard(),
             ),
             const SizedBox(height: AppSpacing.md),
             const Padding(
@@ -249,6 +227,7 @@ class _HeaderImage extends StatelessWidget {
                     Builder(
                       builder: (context) => _GlassCircleButton(
                         icon: Icons.menu_rounded,
+                        label: 'Open menu',
                         onTap: () => Scaffold.of(context).openDrawer(),
                       ),
                     ),
@@ -269,8 +248,8 @@ class _HeaderImage extends StatelessWidget {
                       alignment: Alignment.center,
                       child: Text(
                         firstName.isNotEmpty ? firstName[0].toUpperCase() : 'M',
-                        style: const TextStyle(
-                            color: Color(0xFF3A2C1B),
+                        style: TextStyle(
+                            color: AppColors.textOnPrimary,
                             fontWeight: FontWeight.w800,
                             fontSize: 18),
                       ),
@@ -298,6 +277,7 @@ class _HeaderImage extends StatelessWidget {
                     ),
                     _GlassCircleButton(
                       icon: Icons.notifications_none_rounded,
+                      label: 'Notifications',
                       onTap: () => context.push(RoutePaths.notifications),
                     ),
                   ],
@@ -316,21 +296,40 @@ class _HeaderImage extends StatelessWidget {
 class _GlassCircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _GlassCircleButton({required this.icon, required this.onTap});
+  final String label;
+  const _GlassCircleButton({required this.icon, required this.onTap, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.35),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+    // The visible circle stays 42dp to match the mockup, but the *tap target*
+    // is padded out to Android's 48dp floor, and the control now carries a
+    // name and press feedback -- as a bare GestureDetector it had neither.
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            width: 48,
+            height: 48,
+            alignment: Alignment.center,
+            child: Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.35),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+          ),
         ),
-        child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }
@@ -347,7 +346,7 @@ class _LastReadCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: AppShadows.md,
       ),
       child: Row(
         children: [
@@ -381,8 +380,9 @@ class _LastReadCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
               decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadii.pillRadius),
-              child: const Text('Continue',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              child: Text('Continue',
+                  style: TextStyle(
+                      color: AppColors.textOnPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
             ),
           ),
         ],
@@ -392,9 +392,48 @@ class _LastReadCard extends StatelessWidget {
 }
 
 // ── Next-prayer card with live countdown ─────────────────────────────────────
-class _NextPrayerCard extends StatelessWidget {
-  final String countdown;
-  const _NextPrayerCard({required this.countdown});
+/// Owns the per-second countdown itself.
+///
+/// The tick used to live on the screen's State, so once a second the whole
+/// dashboard rebuilt -- including the 440px `Image.asset` header. Scoping it
+/// here means the clock repaints one card.
+class _NextPrayerCard extends StatefulWidget {
+  const _NextPrayerCard();
+
+  @override
+  State<_NextPrayerCard> createState() => _NextPrayerCardState();
+}
+
+class _NextPrayerCardState extends State<_NextPrayerCard> {
+  Timer? _ticker;
+  Duration _untilNext = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _computeCountdown();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _computeCountdown());
+  }
+
+  void _computeCountdown() {
+    final now = DateTime.now();
+    var maghrib = DateTime(now.year, now.month, now.day, 19, 21);
+    if (maghrib.isBefore(now)) maghrib = maghrib.add(const Duration(days: 1));
+    if (mounted) setState(() => _untilNext = maghrib.difference(now));
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  String get countdown {
+    final h = _untilNext.inHours;
+    final m = (_untilNext.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (_untilNext.inSeconds % 60).toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +443,7 @@ class _NextPrayerCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: AppShadows.md,
       ),
       child: Row(
         children: [
@@ -453,7 +492,7 @@ class _NextPrayerCard extends StatelessWidget {
               Text(countdown,
                   style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.5)),
               const SizedBox(height: 6),
-              Icon(Icons.nightlight_round, color: AppColors.primary, size: 22),
+              Icon(Icons.nightlight_round, color: AppColors.primaryDark, size: 22),
             ],
           ),
         ],
@@ -492,7 +531,7 @@ class _PrayerChip extends StatelessWidget {
         color: highlighted ? AppColors.primarySurface : AppColors.surface,
         borderRadius: AppRadii.mdRadius,
         border: Border.all(color: highlighted ? AppColors.primary : AppColors.border, width: highlighted ? 1.5 : 1),
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: AppShadows.sm,
       ),
       child: Column(
         children: [
@@ -526,9 +565,9 @@ class _TodaysGoalCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.cardPadding),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F6E4E),
+        color: AppColors.successSurface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: AppShadows.md,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -561,7 +600,7 @@ class _TodaysGoalCard extends StatelessWidget {
               style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 14)),
           const SizedBox(height: 14),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppRadii.xsRadius,
             child: LinearProgressIndicator(
               value: pct,
               minHeight: 8,
@@ -596,7 +635,7 @@ class _QuickAccessCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: AppShadows.md,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,7 +690,7 @@ class _InviteFriendsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.lgRadius,
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: AppShadows.md,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
