@@ -1,0 +1,174 @@
+{
+  "what": "does the model's acoustic confidence separate false alarms from real mistakes",
+  "clips_scored": 773,
+  "correct_clips": 353,
+  "incorrect_clips": 420,
+  "flagged_word_confidence": {
+    "on_correctly_recited_clips (false alarms)": {
+      "words": 275,
+      "mean": 0.8991
+    },
+    "on_incorrectly_recited_clips (true detections)": {
+      "words": 589,
+      "mean": 0.8973
+    }
+  },
+  "gop_at_flagged_words": {
+    "on_correctly_recited_clips (false alarms)": {
+      "words": 275,
+      "mean": 0.3983
+    },
+    "on_incorrectly_recited_clips (true detections)": {
+      "words": 589,
+      "mean": 0.289
+    }
+  },
+  "ctc_gop_at_flagged_words": {
+    "on_correctly_recited_clips (false alarms)": {
+      "words": 275,
+      "mean": -0.761
+    },
+    "on_incorrectly_recited_clips (true detections)": {
+      "words": 586,
+      "mean": -0.8413
+    }
+  },
+  "suppression_sweep": [
+    {
+      "threshold": 0.0,
+      "by_chosen_confidence": {
+        "false_alarm_rate_pct": 53.5,
+        "true_detection_rate_pct": 72.9
+      },
+      "by_gop": {
+        "false_alarm_rate_pct": 0.0,
+        "true_detection_rate_pct": 0.0
+      }
+    },
+    {
+      "threshold": 0.3,
+      "by_chosen_confidence": {
+        "false_alarm_rate_pct": 53.5,
+        "true_detection_rate_pct": 72.6
+      },
+      "by_gop": {
+        "false_alarm_rate_pct": 26.6,
+        "true_detection_rate_pct": 51.9
+      }
+    },
+    {
+      "threshold": 0.4,
+      "by_chosen_confidence": {
+        "false_alarm_rate_pct": 53.5,
+        "true_detection_rate_pct": 72.6
+      },
+      "by_gop": {
+        "false_alarm_rate_pct": 32.0,
+        "true_detection_rate_pct": 58.6
+      }
+    },
+    {
+      "threshold": 0.5,
+      "by_chosen_confidence": {
+        "false_alarm_rate_pct": 53.0,
+        "true_detection_rate_pct": 72.6
+      },
+      "by_gop": {
+        "false_alarm_rate_pct": 35.7,
+        "true_detection_rate_pct": 61.9
+      }
+    },
+    {
+      "threshold": 0.6,
+      "by_chosen_confidence": {
+        "false_alarm_rate_pct": 53.0,
+        "true_detection_rate_pct": 72.6
+      },
+      "by_gop": {
+        "false_alarm_rate_pct": 38.2,
+        "true_detection_rate_pct": 63.8
+      }
+    },
+    {
+      "threshold": 0.7,
+      "by_chosen_confidence": {
+        "false_alarm_rate_pct": 52.4,
+        "true_detection_rate_pct": 72.6
+      },
+      "by_gop": {
+        "false_alarm_rate_pct": 40.5,
+        "true_detection_rate_pct": 65.0
+      }
+    },
+    {
+      "threshold": 0.8,
+      "by_chosen_confidence": {
+        "false_alarm_rate_pct": 50.4,
+        "true_detection_rate_pct": 69.3
+      },
+      "by_gop": {
+        "false_alarm_rate_pct": 41.6,
+        "true_detection_rate_pct": 65.7
+      }
+    },
+    {
+      "threshold": 0.9,
+      "by_chosen_confidence": {
+        "false_alarm_rate_pct": 38.5,
+        "true_detection_rate_pct": 50.5
+      },
+      "by_gop": {
+        "false_alarm_rate_pct": 44.8,
+        "true_detection_rate_pct": 68.6
+      }
+    }
+  ],
+  "ctc_forced_alignment_sweep": [
+    {
+      "max_ctc_gop_to_keep_flag": -0.05,
+      "false_alarm_rate_pct": 51.6,
+      "true_detection_rate_pct": 71.0
+    },
+    {
+      "max_ctc_gop_to_keep_flag": -0.1,
+      "false_alarm_rate_pct": 50.7,
+      "true_detection_rate_pct": 70.5
+    },
+    {
+      "max_ctc_gop_to_keep_flag": -0.2,
+      "false_alarm_rate_pct": 46.7,
+      "true_detection_rate_pct": 68.1
+    },
+    {
+      "max_ctc_gop_to_keep_flag": -0.3,
+      "false_alarm_rate_pct": 43.3,
+      "true_detection_rate_pct": 62.6
+    },
+    {
+      "max_ctc_gop_to_keep_flag": -0.5,
+      "false_alarm_rate_pct": 33.1,
+      "true_detection_rate_pct": 49.3
+    },
+    {
+      "max_ctc_gop_to_keep_flag": -0.75,
+      "false_alarm_rate_pct": 19.3,
+      "true_detection_rate_pct": 37.1
+    },
+    {
+      "max_ctc_gop_to_keep_flag": -1.0,
+      "false_alarm_rate_pct": 13.9,
+      "true_detection_rate_pct": 28.8
+    },
+    {
+      "max_ctc_gop_to_keep_flag": -1.5,
+      "false_alarm_rate_pct": 6.2,
+      "true_detection_rate_pct": 12.4
+    },
+    {
+      "max_ctc_gop_to_keep_flag": -2.0,
+      "false_alarm_rate_pct": 4.2,
+      "true_detection_rate_pct": 7.9
+    }
+  ],
+  "note": "confidence is the model's own posterior for the unit it chose, recovered from log_probs; the pipeline's existing `confidence` field is a rescaled edit distance and carries no acoustic information"
+}

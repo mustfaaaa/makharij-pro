@@ -1,0 +1,385 @@
+{
+  "what": "a learned filter over flagged words vs the single-feature GOP bar",
+  "split": "speaker-disjoint by reciter_id, half train / half held out",
+  "splits": 20,
+  "flagged_words": 864,
+  "median_baseline": {
+    "fa": 54.1,
+    "caught": 72.7
+  },
+  "median_gop": {
+    "fa": 35.8,
+    "caught": 61.8,
+    "net": 7.1
+  },
+  "median_model": {
+    "fa": 30.9,
+    "caught": 56.8,
+    "net": 4.3
+  },
+  "model_net_worst_split": 0.9,
+  "gop_net_worst_split": 4.0,
+  "runs": [
+    {
+      "seed": 0,
+      "cut": 0.75,
+      "baseline": {
+        "fa": 54.4,
+        "caught": 70.1
+      },
+      "gop": {
+        "fa": 35.9,
+        "caught": 59.1,
+        "net": 7.6
+      },
+      "model": {
+        "fa": 26.7,
+        "caught": 45.5,
+        "net": 3.2
+      }
+    },
+    {
+      "seed": 1,
+      "cut": 0.65,
+      "baseline": {
+        "fa": 56.7,
+        "caught": 74.1
+      },
+      "gop": {
+        "fa": 33.3,
+        "caught": 65.7,
+        "net": 14.9
+      },
+      "model": {
+        "fa": 22.2,
+        "caught": 49.7,
+        "net": 10.0
+      }
+    },
+    {
+      "seed": 2,
+      "cut": 0.65,
+      "baseline": {
+        "fa": 53.0,
+        "caught": 72.3
+      },
+      "gop": {
+        "fa": 37.3,
+        "caught": 61.4,
+        "net": 4.8
+      },
+      "model": {
+        "fa": 37.8,
+        "caught": 61.0,
+        "net": 4.0
+      }
+    },
+    {
+      "seed": 3,
+      "cut": 0.75,
+      "baseline": {
+        "fa": 56.6,
+        "caught": 72.8
+      },
+      "gop": {
+        "fa": 37.1,
+        "caught": 61.7,
+        "net": 8.4
+      },
+      "model": {
+        "fa": 27.3,
+        "caught": 44.6,
+        "net": 1.0
+      }
+    },
+    {
+      "seed": 4,
+      "cut": 0.65,
+      "baseline": {
+        "fa": 50.0,
+        "caught": 69.3
+      },
+      "gop": {
+        "fa": 32.4,
+        "caught": 61.3,
+        "net": 9.6
+      },
+      "model": {
+        "fa": 26.5,
+        "caught": 50.0,
+        "net": 4.2
+      }
+    },
+    {
+      "seed": 5,
+      "cut": 0.65,
+      "baseline": {
+        "fa": 51.0,
+        "caught": 71.7
+      },
+      "gop": {
+        "fa": 35.0,
+        "caught": 60.6,
+        "net": 4.8
+      },
+      "model": {
+        "fa": 31.1,
+        "caught": 56.6,
+        "net": 4.8
+      }
+    },
+    {
+      "seed": 6,
+      "cut": 0.65,
+      "baseline": {
+        "fa": 49.5,
+        "caught": 74.0
+      },
+      "gop": {
+        "fa": 36.6,
+        "caught": 66.1,
+        "net": 5.0
+      },
+      "model": {
+        "fa": 30.1,
+        "caught": 56.7,
+        "net": 2.0
+      }
+    },
+    {
+      "seed": 7,
+      "cut": 0.6,
+      "baseline": {
+        "fa": 54.7,
+        "caught": 71.9
+      },
+      "gop": {
+        "fa": 37.8,
+        "caught": 60.3,
+        "net": 5.2
+      },
+      "model": {
+        "fa": 40.8,
+        "caught": 62.6,
+        "net": 4.5
+      }
+    },
+    {
+      "seed": 8,
+      "cut": 0.75,
+      "baseline": {
+        "fa": 51.5,
+        "caught": 71.0
+      },
+      "gop": {
+        "fa": 34.0,
+        "caught": 59.9,
+        "net": 6.4
+      },
+      "model": {
+        "fa": 19.1,
+        "caught": 39.4,
+        "net": 0.9
+      }
+    },
+    {
+      "seed": 9,
+      "cut": 0.7,
+      "baseline": {
+        "fa": 51.0,
+        "caught": 71.5
+      },
+      "gop": {
+        "fa": 36.1,
+        "caught": 61.8,
+        "net": 5.3
+      },
+      "model": {
+        "fa": 33.2,
+        "caught": 57.4,
+        "net": 3.8
+      }
+    },
+    {
+      "seed": 10,
+      "cut": 0.5,
+      "baseline": {
+        "fa": 53.8,
+        "caught": 77.5
+      },
+      "gop": {
+        "fa": 33.3,
+        "caught": 65.8,
+        "net": 8.8
+      },
+      "model": {
+        "fa": 46.2,
+        "caught": 70.8,
+        "net": 1.0
+      }
+    },
+    {
+      "seed": 11,
+      "cut": 0.6,
+      "baseline": {
+        "fa": 61.0,
+        "caught": 72.5
+      },
+      "gop": {
+        "fa": 36.2,
+        "caught": 64.1,
+        "net": 16.3
+      },
+      "model": {
+        "fa": 39.0,
+        "caught": 64.1,
+        "net": 13.5
+      }
+    },
+    {
+      "seed": 12,
+      "cut": 0.65,
+      "baseline": {
+        "fa": 51.6,
+        "caught": 76.5
+      },
+      "gop": {
+        "fa": 29.5,
+        "caught": 64.7,
+        "net": 10.3
+      },
+      "model": {
+        "fa": 24.2,
+        "caught": 53.7,
+        "net": 4.6
+      }
+    },
+    {
+      "seed": 13,
+      "cut": 0.65,
+      "baseline": {
+        "fa": 60.2,
+        "caught": 76.5
+      },
+      "gop": {
+        "fa": 36.1,
+        "caught": 65.4,
+        "net": 13.0
+      },
+      "model": {
+        "fa": 30.6,
+        "caught": 62.1,
+        "net": 15.3
+      }
+    },
+    {
+      "seed": 14,
+      "cut": 0.6,
+      "baseline": {
+        "fa": 55.0,
+        "caught": 80.2
+      },
+      "gop": {
+        "fa": 38.8,
+        "caught": 68.6,
+        "net": 4.7
+      },
+      "model": {
+        "fa": 41.2,
+        "caught": 69.4,
+        "net": 3.0
+      }
+    },
+    {
+      "seed": 15,
+      "cut": 0.7,
+      "baseline": {
+        "fa": 55.4,
+        "caught": 73.1
+      },
+      "gop": {
+        "fa": 37.2,
+        "caught": 61.4,
+        "net": 6.6
+      },
+      "model": {
+        "fa": 35.4,
+        "caught": 58.1,
+        "net": 5.1
+      }
+    },
+    {
+      "seed": 16,
+      "cut": 0.55,
+      "baseline": {
+        "fa": 57.6,
+        "caught": 78.5
+      },
+      "gop": {
+        "fa": 32.3,
+        "caught": 66.2,
+        "net": 12.9
+      },
+      "model": {
+        "fa": 42.4,
+        "caught": 72.3,
+        "net": 9.0
+      }
+    },
+    {
+      "seed": 17,
+      "cut": 0.65,
+      "baseline": {
+        "fa": 49.4,
+        "caught": 71.4
+      },
+      "gop": {
+        "fa": 34.9,
+        "caught": 60.9,
+        "net": 4.0
+      },
+      "model": {
+        "fa": 32.6,
+        "caught": 56.8,
+        "net": 2.2
+      }
+    },
+    {
+      "seed": 18,
+      "cut": 0.65,
+      "baseline": {
+        "fa": 51.8,
+        "caught": 70.2
+      },
+      "gop": {
+        "fa": 35.8,
+        "caught": 60.2,
+        "net": 5.9
+      },
+      "model": {
+        "fa": 29.8,
+        "caught": 55.7,
+        "net": 7.4
+      }
+    },
+    {
+      "seed": 19,
+      "cut": 0.65,
+      "baseline": {
+        "fa": 56.4,
+        "caught": 76.0
+      },
+      "gop": {
+        "fa": 32.7,
+        "caught": 62.7,
+        "net": 10.3
+      },
+      "model": {
+        "fa": 24.5,
+        "caught": 52.7,
+        "net": 8.5
+      }
+    }
+  ],
+  "label_caveat": "negatives (false alarms) are clean; positives are clip-level and so contaminated by false alarms sitting beside a real mistake. This caps how good any model fitted here can look."
+}

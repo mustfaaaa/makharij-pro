@@ -1,0 +1,185 @@
+{
+  "what": "does the GOP suppression rule hold on reciters it was not fitted to",
+  "split": "speaker-disjoint (by reciter_id), half fit / half held out",
+  "splits_run": 8,
+  "thresholds_chosen": [
+    0.3,
+    0.4,
+    0.5,
+    0.9
+  ],
+  "median_heldout_fa_reduction_pts": 20.7,
+  "median_heldout_recall_loss_pts": 13.3,
+  "median_heldout_net_gain_pts": 6.8,
+  "runs": [
+    {
+      "seed": 0,
+      "chosen_threshold": 0.4,
+      "fit_clips": 202,
+      "heldout_clips": 571,
+      "fit": {
+        "false_alarm_pct": 30.1,
+        "caught_pct": 66.4
+      },
+      "heldout_baseline": {
+        "false_alarm_pct": 54.4,
+        "caught_pct": 70.1
+      },
+      "heldout_with_rule": {
+        "false_alarm_pct": 32.6,
+        "caught_pct": 55.5
+      },
+      "heldout_fa_reduction_pts": 21.9,
+      "heldout_recall_loss_pts": 14.6,
+      "heldout_net_gain_pts": 7.2
+    },
+    {
+      "seed": 1,
+      "chosen_threshold": 0.4,
+      "fit_clips": 540,
+      "heldout_clips": 233,
+      "fit": {
+        "false_alarm_pct": 33.8,
+        "caught_pct": 57.8
+      },
+      "heldout_baseline": {
+        "false_alarm_pct": 56.7,
+        "caught_pct": 74.1
+      },
+      "heldout_with_rule": {
+        "false_alarm_pct": 26.7,
+        "caught_pct": 60.1
+      },
+      "heldout_fa_reduction_pts": 30.0,
+      "heldout_recall_loss_pts": 14.0,
+      "heldout_net_gain_pts": 16.0
+    },
+    {
+      "seed": 2,
+      "chosen_threshold": 0.3,
+      "fit_clips": 257,
+      "heldout_clips": 516,
+      "fit": {
+        "false_alarm_pct": 17.3,
+        "caught_pct": 51.6
+      },
+      "heldout_baseline": {
+        "false_alarm_pct": 53.0,
+        "caught_pct": 72.3
+      },
+      "heldout_with_rule": {
+        "false_alarm_pct": 30.5,
+        "caught_pct": 52.1
+      },
+      "heldout_fa_reduction_pts": 22.5,
+      "heldout_recall_loss_pts": 20.2,
+      "heldout_net_gain_pts": 2.3
+    },
+    {
+      "seed": 3,
+      "chosen_threshold": 0.5,
+      "fit_clips": 208,
+      "heldout_clips": 565,
+      "fit": {
+        "false_alarm_pct": 31.4,
+        "caught_pct": 62.3
+      },
+      "heldout_baseline": {
+        "false_alarm_pct": 56.6,
+        "caught_pct": 72.8
+      },
+      "heldout_with_rule": {
+        "false_alarm_pct": 37.1,
+        "caught_pct": 61.7
+      },
+      "heldout_fa_reduction_pts": 19.5,
+      "heldout_recall_loss_pts": 11.1,
+      "heldout_net_gain_pts": 8.4
+    },
+    {
+      "seed": 4,
+      "chosen_threshold": 0.4,
+      "fit_clips": 521,
+      "heldout_clips": 252,
+      "fit": {
+        "false_alarm_pct": 34.3,
+        "caught_pct": 59.6
+      },
+      "heldout_baseline": {
+        "false_alarm_pct": 50.0,
+        "caught_pct": 69.3
+      },
+      "heldout_with_rule": {
+        "false_alarm_pct": 26.5,
+        "caught_pct": 56.7
+      },
+      "heldout_fa_reduction_pts": 23.5,
+      "heldout_recall_loss_pts": 12.7,
+      "heldout_net_gain_pts": 10.9
+    },
+    {
+      "seed": 5,
+      "chosen_threshold": 0.4,
+      "fit_clips": 237,
+      "heldout_clips": 536,
+      "fit": {
+        "false_alarm_pct": 29.2,
+        "caught_pct": 61.0
+      },
+      "heldout_baseline": {
+        "false_alarm_pct": 51.0,
+        "caught_pct": 71.7
+      },
+      "heldout_with_rule": {
+        "false_alarm_pct": 33.1,
+        "caught_pct": 57.3
+      },
+      "heldout_fa_reduction_pts": 17.9,
+      "heldout_recall_loss_pts": 14.3,
+      "heldout_net_gain_pts": 3.6
+    },
+    {
+      "seed": 6,
+      "chosen_threshold": 0.4,
+      "fit_clips": 553,
+      "heldout_clips": 220,
+      "fit": {
+        "false_alarm_pct": 32.3,
+        "caught_pct": 57.0
+      },
+      "heldout_baseline": {
+        "false_alarm_pct": 49.5,
+        "caught_pct": 74.0
+      },
+      "heldout_with_rule": {
+        "false_alarm_pct": 31.2,
+        "caught_pct": 62.2
+      },
+      "heldout_fa_reduction_pts": 18.3,
+      "heldout_recall_loss_pts": 11.8,
+      "heldout_net_gain_pts": 6.5
+    },
+    {
+      "seed": 7,
+      "chosen_threshold": 0.9,
+      "fit_clips": 196,
+      "heldout_clips": 577,
+      "fit": {
+        "false_alarm_pct": 37.2,
+        "caught_pct": 75.5
+      },
+      "heldout_baseline": {
+        "false_alarm_pct": 54.7,
+        "caught_pct": 71.9
+      },
+      "heldout_with_rule": {
+        "false_alarm_pct": 47.2,
+        "caught_pct": 66.1
+      },
+      "heldout_fa_reduction_pts": 7.5,
+      "heldout_recall_loss_pts": 5.8,
+      "heldout_net_gain_pts": 1.7
+    }
+  ],
+  "how_to_read": "net gain > 0 means the rule removes more false alarms than the real mistakes it costs, on speakers it never saw. A gain that appears on the fit half but not held out is the rule having memorised those voices."
+}

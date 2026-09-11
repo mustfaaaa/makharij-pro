@@ -136,3 +136,6 @@ ml/eval/crossmodel/out_qari/
 ml/eval/crossmodel/out_qari_left*/
 ml/eval/crossmodel/*.log
 ml/eval/crossmodel/log_*.txt
+
+# Eval run logs (the JSON summaries next to them are the durable record).
+ml/eval/results/*.log
