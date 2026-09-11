@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/cubit/verse_text_size_cubit.dart';
 import '../../../../models/ayah.dart';
 import '../../../../models/surah.dart';
+import '../../../../models/tajweed_error.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/loading/app_loading_indicator.dart';
@@ -273,7 +274,23 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> with SingleTick
     if (recited <= wordsBefore) return const {};
     final wordCount = ayah.arabicText.split(' ').length;
     final upto = min(recited - wordsBefore, wordCount);
-    return {for (var i = 0; i < upto; i++) i: WordMark.recited};
+    final marks = {for (var i = 0; i < upto; i++) i: WordMark.recited};
+
+    // An ayah the reciter is already past has been re-analysed on its complete
+    // audio, so its words can carry a rule colour while recitation continues.
+    // Only ayahs the server has actually settled appear here -- everything
+    // still in progress stays plain "recited", never guessed at.
+    final settled = state.liveVerdicts[ayah.number];
+    if (settled != null) {
+      settled.correctByWord.forEach((index, ok) {
+        if (index >= wordCount) return;
+        marks[index] = ok
+            ? WordMark.recited
+            : WordMark(WordTone.flagged,
+                rule: tajweedErrorTypeFromId(settled.ruleByWord[index]));
+      });
+    }
+    return marks;
   }
 
   @override

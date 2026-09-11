@@ -5,13 +5,27 @@ The Quran-Lab model is an *online* (streaming) zipformer, so this needs no
 second model and no extra training -- the same recognizer that produces the
 final per-word verdicts can be fed incrementally and queried mid-utterance.
 
-Deliberate split of responsibility:
-  - this endpoint answers only "how far has the reciter got", which is what
-    live highlighting needs, and it is allowed to be approximate;
-  - the authoritative per-word correct/incorrect verdicts still come from
-    POST /sessions/analyze_word_level once the complete recording is uploaded.
-A partially-decoded word must never be shown to the user as a mistake, so no
-mistake is ever reported from here.
+Two different jobs, on two different kinds of evidence:
+
+  - the *cursor* answers "how far has the reciter got". It runs on a partial
+    decode of a word still being spoken, so it is allowed to be approximate and
+    is never allowed to call anything a mistake: half a word matches half its
+    phonemes, and flagging that would accuse the reciter of an error they are
+    still in the middle of not making.
+
+  - an *ayah_result* carries verdicts for words whose audio has fully arrived,
+    with a little to spare. Those are re-analysed by the same call the results
+    screen uses, so they may report mistakes. That margin is what makes them
+    trustworthy -- see SETTLE_MARGIN_SEC for how much is enough.
+
+Each ayah_result carries only the words that have just settled, so a client
+merges them into whatever it already holds for that ayah rather than replacing
+it.
+
+The authoritative verdicts are still the ones from
+POST /sessions/analyze_word_level over the complete recording. An ayah_result is
+early feedback from a shorter recording; where the two disagree, the final
+analysis is the one that stands.
 
 Protocol (client -> server):
   1. text frame: {"token": "<firebase id token>", "surah_number": 1, "from_ayah": 1}
@@ -21,12 +35,16 @@ Protocol (client -> server):
 Server -> client:
   {"type": "ready",    "surah_number": 1, "total_words": 29}
   {"type": "progress", "ayah": 1, "word_index": 2, "global_index": 2}
+  {"type": "ayah_result", "ayah": 1, "words": [...]}   # words that have settled
   {"type": "error",    "detail": "..."}
 """
+import asyncio
+import io
 import json
 import logging
 
 import numpy as np
+import soundfile as sf
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..firebase_admin_setup import verify_id_token
@@ -37,10 +55,59 @@ logger = logging.getLogger(__name__)
 SAMPLE_RATE = 16000
 
 # Re-running the alignment on every arriving chunk would burn CPU for no visible
-# benefit -- the highlight only has to keep up with human recitation speed.
-# Recompute at most this often, and only when the recognizer actually emitted
-# new phonemes since last time.
-MIN_SECONDS_BETWEEN_UPDATES = 0.35
+# benefit, but this was throttled harder than it needed to be: at 0.35s it added
+# up to a third of a second to a cursor already sitting a measured 0.66s behind
+# the voice. live_advance only aligns a short window, so it is cheap; the costly
+# per-word analysis is throttled separately by SETTLE_MARGIN_SEC and its own
+# one-at-a-time guard.
+MIN_SECONDS_BETWEEN_UPDATES = 0.15
+
+# A ceiling on how deep into a long surah live feedback keeps running. Each pass
+# is a bounded cost now (see LIVE_CONTEXT_AYAHS), so this is no longer about the
+# work growing -- it is a floor under the streaming recogniser's share of the
+# CPU on a recitation of Al-Baqarah's length. Past it the preview stops and the
+# results screen still judges the whole recording at the end.
+MAX_LIVE_ANALYSIS_AYAHS = 30
+
+# How many ayahs before the words being judged the live analysis window opens.
+# Enough of a running start for the recogniser, without the cost growing with
+# the length of the recitation -- see _settled_word_verdicts.
+LIVE_CONTEXT_AYAHS = 2
+
+# ...and a hard ceiling on that window in seconds. Bounding by ayahs alone only
+# bounds the work where ayahs are short. Outside Juz 30 a single ayah can run
+# past a minute, so "two ayahs back" would quietly become the same unbounded
+# cost this was meant to remove.
+MAX_LIVE_WINDOW_SEC = 20.0
+
+# Audio kept before the window's first ayah, since the cursor's boundary is late.
+AYAH_LEAD_IN_SEC = 0.3
+
+# How much audio must follow a word before its verdict is worth showing.
+#
+# This replaced a fixed five-word lag. The word count was a proxy for the thing
+# that actually matters -- has this word's audio all arrived? -- and a bad one,
+# because a fast reciter covers five words in a second and a slow one takes
+# several. The analyser already timestamps every word, so the real quantity is
+# available directly.
+#
+# Measured on reference recitation (ml/eval/crossmodel/measure_live_latency.py),
+# how often a live verdict already matches what the complete recording concludes,
+# by how much audio had followed the word:
+#
+#     < 0.5s  -> 94.7%      1-2s -> 93.5%
+#     0.5-1s  -> 97.3%      2-3s -> 95.7%
+#
+# Agreement does not keep improving with more delay -- it peaks just under a
+# second. Waiting longer is not more careful, it is only slower, because the
+# analysis runs on a bounded window and a word drifting towards that window's
+# edge starts losing the context that made its verdict right.
+SETTLE_MARGIN_SEC = 0.6
+
+# How many words back to re-examine on each pass. Wide enough that nothing is
+# missed when several words settle at once, narrow enough to stay inside the
+# analysis window.
+SETTLE_LOOKBACK_WORDS = 12
 
 # The cursor only ever moves forward, and PhonemeAnalysisService.live_advance
 # only looks a few words ahead of it, so a partial transcript cannot jump to
@@ -50,6 +117,149 @@ MIN_SECONDS_BETWEEN_UPDATES = 0.35
 # Close codes. 1008 = policy violation, used here for a failed/absent token.
 WS_UNAUTHORIZED = 1008
 WS_UNAVAILABLE = 1011
+
+
+def _encode_wav(samples: np.ndarray) -> bytes:
+    """PCM float32 -> a WAV buffer, which is what analyze_range takes."""
+    buffer = io.BytesIO()
+    sf.write(buffer, samples, SAMPLE_RATE, format="WAV", subtype="PCM_16")
+    return buffer.getvalue()
+
+
+async def _settled_word_verdicts(service, buffered: list[np.ndarray], surah: int,
+                                 from_ayah: int, through_ayah: int,
+                                 first_global: int, last_global: int,
+                                 ayah_first_sample: dict[int, int]) -> list[dict]:
+    """Verdicts for the words between two whole-surah indices, grouped by ayah.
+
+    Analysed over a *window* of the recording, not all of it
+    ------------------------------------------------------
+    Re-analysing from the first sample every time made the cost grow with the
+    recitation, and past about half a minute it stopped keeping up. Measured on
+    Al-Fatihah:
+
+        5s of audio -> 0.45s     20s -> 1.60s     40s -> 3.79s
+
+    Settled words arrive every second or two, so by forty seconds in each pass
+    took longer than the gap between passes; they queued, feedback fell further
+    and further behind the voice, and whatever was still queued when the reciter
+    stopped never arrived at all. That is both halves of "it is slow and it
+    misses errors".
+
+    So the window starts a couple of ayahs before the words being judged. That
+    is ample left context -- what the recogniser needs is a running start, not
+    the whole history -- and it makes each pass a constant cost instead of a
+    growing one. The window's own opening words are not reported, only used as
+    context, so the cursor's boundaries being a little late does not matter here
+    the way it did when the slice had to contain the judged words exactly.
+
+    Runs off the event loop -- a decode takes long enough that doing it inline
+    would stall the socket and drop incoming audio.
+    """
+    if not buffered or last_global < first_global:
+        return []
+
+    # Which (ayah, word) pairs were asked for. Addressing them this way rather
+    # than by position keeps the answer independent of where the window starts.
+    all_words = service._range_words(surah, from_ayah, service.ayah_count(surah))
+    targets = {(all_words[i][0], all_words[i][1])
+               for i in range(first_global, min(last_global + 1, len(all_words)))}
+    if not targets:
+        return []
+
+    audio_all = np.concatenate(buffered)
+    window_from = max(from_ayah, min(a for a, _ in targets) - LIVE_CONTEXT_AYAHS)
+    start = max(ayah_first_sample.get(window_from, 0) - int(AYAH_LEAD_IN_SEC * SAMPLE_RATE), 0)
+
+    # Clamp the window to a fixed span of audio, then move `window_from` up to
+    # whichever ayah that lands in, so the expected text still lines up with
+    # what is actually being fed in.
+    floor = len(audio_all) - int(MAX_LIVE_WINDOW_SEC * SAMPLE_RATE)
+    if start < floor:
+        start = max(floor, 0)
+        later = [a for a, sample in sorted(ayah_first_sample.items()) if sample <= start]
+        if later:
+            window_from = max(window_from, later[-1])
+            start = min(start, ayah_first_sample[window_from])
+
+    audio = audio_all[start:]
+    if audio.size < SAMPLE_RATE // 4:
+        return []
+
+    try:
+        results = await asyncio.to_thread(
+            service.analyze_range, _encode_wav(audio), surah, window_from, through_ayah)
+    except Exception:
+        # Live feedback is a bonus, never the authoritative verdict. If this
+        # fails the recitation carries on and the results screen still judges
+        # the whole recording at the end.
+        logger.exception("Live word analysis failed for surah %s", surah)
+        return []
+
+    # A word is ready when its own audio finished comfortably before the end of
+    # the window -- everything here is in the window's own time frame.
+    window_end = audio.size / SAMPLE_RATE
+
+    by_ayah: dict[int, list[dict]] = {}
+    for r in results:
+        if (r.ayah_number, r.word_index) not in targets or not r.recited:
+            continue
+        if window_end - r.end_sec < SETTLE_MARGIN_SEC:
+            continue          # still too close to the live edge to trust
+        by_ayah.setdefault(r.ayah_number, []).append({
+            "word_index": r.word_index,
+            "word": r.display_word,
+            "recited": r.recited,
+            "correct": r.correct,
+            "error_type": r.error_type,
+            "explanation": r.explanation,
+        })
+
+    return [{"type": "ayah_result", "ayah": ayah, "words": words}
+            for ayah, words in sorted(by_ayah.items())]
+
+
+async def _flush_remaining(websocket, service, buffered, surah: int, from_ayah: int,
+                           last_ayah: int, sent_words: set, ayah_first_sample: dict):
+    """Judge everything still unreported, once the reciter has stopped.
+
+    During the recitation a word is held back until enough audio has followed
+    it. The final ayah never earns that margin -- the recording ends -- so it
+    stayed blank on screen while every earlier ayah filled in. This runs one
+    last pass over the whole recording with the margin waived, because by now
+    the audio really is all here.
+    """
+    if not buffered:
+        return
+    try:
+        results = await asyncio.to_thread(
+            service.analyze_range, _encode_wav(np.concatenate(buffered)),
+            surah, from_ayah, last_ayah)
+    except Exception:
+        logger.exception("Final live flush failed for surah %s", surah)
+        return
+
+    by_ayah: dict[int, list[dict]] = {}
+    for r in results:
+        if not r.recited or (r.ayah_number, r.word_index) in sent_words:
+            continue
+        sent_words.add((r.ayah_number, r.word_index))
+        by_ayah.setdefault(r.ayah_number, []).append({
+            "word_index": r.word_index,
+            "word": r.display_word,
+            "recited": r.recited,
+            "correct": r.correct,
+            "error_type": r.error_type,
+            "explanation": r.explanation,
+        })
+
+    for ayah, words in sorted(by_ayah.items()):
+        try:
+            await websocket.send_text(json.dumps(
+                {"type": "ayah_result", "ayah": ayah, "words": words},
+                ensure_ascii=False))
+        except Exception:
+            return          # client already gone; the results screen still has it
 
 
 def _pcm16_to_float32(data: bytes) -> np.ndarray:
@@ -104,6 +314,25 @@ async def stream_recitation(websocket: WebSocket):
     word_cursor = 0        # next word we expect to hear
     chars_consumed = 0     # phonemes already attributed to confirmed words
 
+    # Kept so settled words can be re-analysed in full. The streaming
+    # recognizer's own state cannot be rewound, and a per-word verdict needs the
+    # complete audio of a word rather than the partial decode the cursor runs
+    # on -- which is exactly why the cursor is not allowed to report mistakes.
+    buffered: list[np.ndarray] = []
+    # (ayah, word_index) already sent, so an overlapping lookback does not
+    # repeat itself.
+    sent_words: set[tuple[int, int]] = set()
+    last_ayah = from_ayah          # furthest ayah the cursor reached
+    # Sample offset where the cursor first reported each ayah. Late by the
+    # cursor's own lag, which is fine: it only ever picks a window start a
+    # couple of ayahs earlier, never a boundary that has to be exact.
+    ayah_first_sample: dict[int, int] = {}
+    # One analysis at a time. Without this a pass that runs long simply queues
+    # the next one behind it, and the backlog never drains while the reciter
+    # keeps going -- better to skip an update and report those words with the
+    # following batch than to fall permanently behind.
+    analysing = False
+
     try:
         while True:
             message = await websocket.receive()
@@ -114,6 +343,17 @@ async def stream_recitation(websocket: WebSocket):
             text = message.get("text")
             if text is not None:
                 # Only "stop" is expected here; anything else ends the session too.
+                #
+                # Flush before going. Every word still unsent is being held back
+                # for the same reason -- not enough audio has followed it yet --
+                # and for the closing ayah that reason never goes away on its
+                # own, because the reciter stops. So the last ayah showed no
+                # verdicts at all while recording, only on the results screen.
+                # Once "stop" arrives the recording IS complete, so the margin
+                # has nothing left to protect and everything can be judged.
+                await _flush_remaining(websocket, service, buffered, surah,
+                                       from_ayah, last_ayah, sent_words,
+                                       ayah_first_sample)
                 break
 
             chunk = message.get("bytes")
@@ -124,6 +364,7 @@ async def stream_recitation(websocket: WebSocket):
             if samples.size == 0:
                 continue
             samples_seen += samples.size
+            buffered.append(samples)
             stream.accept_waveform(SAMPLE_RATE, samples)
             while service.recognizer.is_ready(stream):
                 service.recognizer.decode_stream(stream)
@@ -155,6 +396,36 @@ async def stream_recitation(websocket: WebSocket):
                 "word_index": word_index,
                 "global_index": global_index,
             }))
+
+            ayah_first_sample.setdefault(ayah, samples_seen)
+            last_ayah = max(last_ayah, ayah)
+
+            # Judge the words just behind the cursor. Which of them are ready is
+            # decided by how much audio has followed each one, not by counting
+            # words back -- see SETTLE_MARGIN_SEC.
+            if not analysing and (ayah - from_ayah) <= MAX_LIVE_ANALYSIS_AYAHS:
+                analysing = True
+                try:
+                    verdicts = await _settled_word_verdicts(
+                        service, buffered, surah, from_ayah, ayah,
+                        max(0, global_index - SETTLE_LOOKBACK_WORDS), global_index,
+                        ayah_first_sample)
+                finally:
+                    analysing = False
+
+                # Only words not sent before. The lookback deliberately overlaps
+                # what was already reported, so a word held back last time for
+                # being too near the live edge is picked up as soon as it is
+                # ready, without re-sending the ones already shown.
+                for payload in verdicts:
+                    fresh = [w for w in payload["words"]
+                             if (payload["ayah"], w["word_index"]) not in sent_words]
+                    if not fresh:
+                        continue
+                    for w in fresh:
+                        sent_words.add((payload["ayah"], w["word_index"]))
+                    await websocket.send_text(json.dumps(
+                        {**payload, "words": fresh}, ensure_ascii=False))
 
     except WebSocketDisconnect:
         return

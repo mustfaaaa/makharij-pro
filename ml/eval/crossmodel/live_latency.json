@@ -1,0 +1,35 @@
+{
+  "cursor_lag_seconds": {
+    "samples": 151,
+    "median": 0.66,
+    "mean": 0.9,
+    "p90": 1.14
+  },
+  "audio_margin_when_verdict_settles": {
+    "words": 119,
+    "median": 0.74,
+    "p90": 5.34
+  },
+  "verdict_agreement_by_audio_margin": {
+    "<0.5s": {
+      "verdicts": 19,
+      "agree_with_final_pct": 94.7
+    },
+    "0.5-1s": {
+      "verdicts": 73,
+      "agree_with_final_pct": 97.3
+    },
+    "1-2s": {
+      "verdicts": 62,
+      "agree_with_final_pct": 93.5
+    },
+    "2-3s": {
+      "verdicts": 69,
+      "agree_with_final_pct": 95.7
+    },
+    ">=3s": {
+      "verdicts": 867,
+      "agree_with_final_pct": 81.1
+    }
+  }
+}

@@ -31,6 +31,7 @@ class RecitationCubit extends Cubit<RecitationState> {
 
   StreamSubscription<Uint8List>? _audioSubscription;
   StreamSubscription<LivePosition>? _positionSubscription;
+  StreamSubscription<LiveAyahVerdicts>? _verdictSubscription;
   LiveRecitationChannel? _live;
   DateTime? _recordingStartedAt;
 
@@ -65,6 +66,22 @@ class RecitationCubit extends Cubit<RecitationState> {
       _live = live;
       _positionSubscription = live.positions.listen((p) {
         emit(state.copyWith(livePosition: p));
+      });
+      _verdictSubscription = live.verdicts.listen((v) {
+        // Each message holds only the words that just settled, so this merges
+        // into the ayah rather than replacing it -- otherwise the second batch
+        // of an ayah would wipe the marks the first one put there.
+        final existing = state.liveVerdicts[v.ayah];
+        final merged = existing == null
+            ? v
+            : LiveAyahVerdicts(
+                ayah: v.ayah,
+                correctByWord: {...existing.correctByWord, ...v.correctByWord},
+                ruleByWord: {...existing.ruleByWord, ...v.ruleByWord},
+              );
+        emit(state.copyWith(
+          liveVerdicts: {...state.liveVerdicts, v.ayah: merged},
+        ));
       });
     } else {
       await live.close();
@@ -150,6 +167,8 @@ class RecitationCubit extends Cubit<RecitationState> {
   Future<void> _closeLive() async {
     await _positionSubscription?.cancel();
     _positionSubscription = null;
+    await _verdictSubscription?.cancel();
+    _verdictSubscription = null;
     await _live?.close();
     _live = null;
   }
@@ -168,6 +187,7 @@ class RecitationCubit extends Cubit<RecitationState> {
   Future<void> close() {
     _audioSubscription?.cancel();
     _positionSubscription?.cancel();
+    _verdictSubscription?.cancel();
     _live?.close();
     _recorder.dispose();
     return super.close();

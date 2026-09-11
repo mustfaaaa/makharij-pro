@@ -1,0 +1,35 @@
+{
+  "what": "TAIL_EXTEND_RATIO on the labelled learner corpus",
+  "note": "spill on truncated recitations must be read from ml/eval/crossmodel/measure_recited_spill.py at the same values; this half of the trade-off only covers finished recitations",
+  "clips": 773,
+  "results": [
+    {
+      "tail_ratio": 0.5,
+      "false_alarm_pct": 41.9,
+      "caught_pct": 73.3,
+      "words_wrongly_flagged_pct": 16.2,
+      "words_wrongly_unread_pct": 14.2
+    },
+    {
+      "tail_ratio": 0.65,
+      "false_alarm_pct": 39.9,
+      "caught_pct": 69.8,
+      "words_wrongly_flagged_pct": 14.4,
+      "words_wrongly_unread_pct": 15.9
+    },
+    {
+      "tail_ratio": 0.75,
+      "false_alarm_pct": 39.1,
+      "caught_pct": 67.9,
+      "words_wrongly_flagged_pct": 13.9,
+      "words_wrongly_unread_pct": 16.8
+    },
+    {
+      "tail_ratio": 0.85,
+      "false_alarm_pct": 37.7,
+      "caught_pct": 61.7,
+      "words_wrongly_flagged_pct": 13.2,
+      "words_wrongly_unread_pct": 25.3
+    }
+  ]
+}

@@ -1,0 +1,829 @@
+{
+  "what": "a professional reciter's complete Quran; every flag is a false alarm",
+  "reciter": "Abdurrahmaan_As-Sudais_64kbps",
+  "ayahs_analysed": 6236,
+  "ayahs_completely_clean_pct": 87.7,
+  "words": 82784,
+  "words_wrongly_flagged_pct": 1.3,
+  "words_wrongly_unread_pct": 0.9,
+  "flags_by_rule": {
+    "makhraj": 913,
+    "shaddah": 60,
+    "madd": 54,
+    "ghunnah": 23
+  },
+  "worst_ayahs": [
+    {
+      "ayah": "19:1",
+      "words": 9,
+      "flagged": 1,
+      "unread": 8
+    },
+    {
+      "ayah": "67:1",
+      "words": 17,
+      "flagged": 1,
+      "unread": 8
+    },
+    {
+      "ayah": "7:1",
+      "words": 9,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "20:1",
+      "words": 9,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "21:1",
+      "words": 15,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "23:1",
+      "words": 11,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "24:1",
+      "words": 17,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "25:1",
+      "words": 17,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "27:1",
+      "words": 15,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "36:1",
+      "words": 9,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "37:1",
+      "words": 10,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "38:1",
+      "words": 13,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "47:1",
+      "words": 16,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "51:1",
+      "words": 10,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "52:1",
+      "words": 9,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "53:1",
+      "words": 11,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "54:1",
+      "words": 12,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "55:1",
+      "words": 9,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "56:1",
+      "words": 11,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "68:1",
+      "words": 13,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "69:1",
+      "words": 9,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "70:1",
+      "words": 12,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "73:1",
+      "words": 10,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "74:1",
+      "words": 10,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "75:1",
+      "words": 12,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "77:1",
+      "words": 10,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "78:1",
+      "words": 10,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "79:1",
+      "words": 10,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "80:1",
+      "words": 10,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "81:1",
+      "words": 11,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "82:1",
+      "words": 11,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "83:1",
+      "words": 10,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "84:1",
+      "words": 11,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "85:1",
+      "words": 11,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "86:1",
+      "words": 10,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "87:1",
+      "words": 12,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "88:1",
+      "words": 12,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "89:1",
+      "words": 9,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "90:1",
+      "words": 12,
+      "flagged": 0,
+      "unread": 8
+    },
+    {
+      "ayah": "91:1",
+      "words": 10,
+      "flagged": 0,
+      "unread": 8
+    }
+  ],
+  "per_surah": {
+    "S1": {
+      "words": 29,
+      "flagged_pct": 0.0,
+      "unread_pct": 0.0
+    },
+    "S2": {
+      "words": 6610,
+      "flagged_pct": 2.9,
+      "unread_pct": 0.1
+    },
+    "S3": {
+      "words": 3701,
+      "flagged_pct": 1.4,
+      "unread_pct": 0.1
+    },
+    "S4": {
+      "words": 4021,
+      "flagged_pct": 2.2,
+      "unread_pct": 0.2
+    },
+    "S5": {
+      "words": 3022,
+      "flagged_pct": 2.5,
+      "unread_pct": 0.3
+    },
+    "S6": {
+      "words": 3306,
+      "flagged_pct": 1.3,
+      "unread_pct": 0.2
+    },
+    "S7": {
+      "words": 3538,
+      "flagged_pct": 0.9,
+      "unread_pct": 0.2
+    },
+    "S8": {
+      "words": 1319,
+      "flagged_pct": 1.1,
+      "unread_pct": 0.6
+    },
+    "S9": {
+      "words": 2667,
+      "flagged_pct": 1.8,
+      "unread_pct": 0.0
+    },
+    "S10": {
+      "words": 1962,
+      "flagged_pct": 0.8,
+      "unread_pct": 0.2
+    },
+    "S11": {
+      "words": 2058,
+      "flagged_pct": 1.4,
+      "unread_pct": 0.2
+    },
+    "S12": {
+      "words": 1898,
+      "flagged_pct": 0.9,
+      "unread_pct": 0.2
+    },
+    "S13": {
+      "words": 932,
+      "flagged_pct": 1.3,
+      "unread_pct": 0.4
+    },
+    "S14": {
+      "words": 889,
+      "flagged_pct": 1.2,
+      "unread_pct": 0.4
+    },
+    "S15": {
+      "words": 668,
+      "flagged_pct": 0.3,
+      "unread_pct": 0.6
+    },
+    "S16": {
+      "words": 1971,
+      "flagged_pct": 0.9,
+      "unread_pct": 0.4
+    },
+    "S17": {
+      "words": 1650,
+      "flagged_pct": 1.2,
+      "unread_pct": 0.5
+    },
+    "S18": {
+      "words": 1661,
+      "flagged_pct": 1.2,
+      "unread_pct": 0.5
+    },
+    "S19": {
+      "words": 1010,
+      "flagged_pct": 0.8,
+      "unread_pct": 0.8
+    },
+    "S20": {
+      "words": 1399,
+      "flagged_pct": 0.4,
+      "unread_pct": 0.6
+    },
+    "S21": {
+      "words": 1239,
+      "flagged_pct": 0.6,
+      "unread_pct": 0.6
+    },
+    "S22": {
+      "words": 1359,
+      "flagged_pct": 0.9,
+      "unread_pct": 0.6
+    },
+    "S23": {
+      "words": 1095,
+      "flagged_pct": 0.6,
+      "unread_pct": 0.7
+    },
+    "S24": {
+      "words": 1420,
+      "flagged_pct": 3.5,
+      "unread_pct": 0.6
+    },
+    "S25": {
+      "words": 937,
+      "flagged_pct": 0.7,
+      "unread_pct": 0.9
+    },
+    "S26": {
+      "words": 1355,
+      "flagged_pct": 0.4,
+      "unread_pct": 0.3
+    },
+    "S27": {
+      "words": 1215,
+      "flagged_pct": 1.5,
+      "unread_pct": 0.7
+    },
+    "S28": {
+      "words": 1516,
+      "flagged_pct": 0.9,
+      "unread_pct": 0.3
+    },
+    "S29": {
+      "words": 1046,
+      "flagged_pct": 0.4,
+      "unread_pct": 0.5
+    },
+    "S30": {
+      "words": 872,
+      "flagged_pct": 0.9,
+      "unread_pct": 0.5
+    },
+    "S31": {
+      "words": 586,
+      "flagged_pct": 0.0,
+      "unread_pct": 0.7
+    },
+    "S32": {
+      "words": 394,
+      "flagged_pct": 0.5,
+      "unread_pct": 1.0
+    },
+    "S33": {
+      "words": 1376,
+      "flagged_pct": 1.8,
+      "unread_pct": 0.6
+    },
+    "S34": {
+      "words": 943,
+      "flagged_pct": 1.0,
+      "unread_pct": 0.3
+    },
+    "S35": {
+      "words": 845,
+      "flagged_pct": 1.5,
+      "unread_pct": 0.4
+    },
+    "S36": {
+      "words": 757,
+      "flagged_pct": 0.1,
+      "unread_pct": 1.1
+    },
+    "S37": {
+      "words": 885,
+      "flagged_pct": 0.5,
+      "unread_pct": 0.9
+    },
+    "S38": {
+      "words": 780,
+      "flagged_pct": 0.8,
+      "unread_pct": 1.0
+    },
+    "S39": {
+      "words": 1258,
+      "flagged_pct": 1.7,
+      "unread_pct": 0.3
+    },
+    "S40": {
+      "words": 1293,
+      "flagged_pct": 0.9,
+      "unread_pct": 0.3
+    },
+    "S41": {
+      "words": 842,
+      "flagged_pct": 1.1,
+      "unread_pct": 0.5
+    },
+    "S42": {
+      "words": 936,
+      "flagged_pct": 0.7,
+      "unread_pct": 0.4
+    },
+    "S43": {
+      "words": 868,
+      "flagged_pct": 0.5,
+      "unread_pct": 0.5
+    },
+    "S44": {
+      "words": 368,
+      "flagged_pct": 0.5,
+      "unread_pct": 1.1
+    },
+    "S45": {
+      "words": 516,
+      "flagged_pct": 0.2,
+      "unread_pct": 0.8
+    },
+    "S46": {
+      "words": 678,
+      "flagged_pct": 1.0,
+      "unread_pct": 0.6
+    },
+    "S47": {
+      "words": 575,
+      "flagged_pct": 1.6,
+      "unread_pct": 1.4
+    },
+    "S48": {
+      "words": 604,
+      "flagged_pct": 1.3,
+      "unread_pct": 0.7
+    },
+    "S49": {
+      "words": 384,
+      "flagged_pct": 0.0,
+      "unread_pct": 2.1
+    },
+    "S50": {
+      "words": 393,
+      "flagged_pct": 1.3,
+      "unread_pct": 0.5
+    },
+    "S51": {
+      "words": 379,
+      "flagged_pct": 0.3,
+      "unread_pct": 2.1
+    },
+    "S52": {
+      "words": 332,
+      "flagged_pct": 0.3,
+      "unread_pct": 2.4
+    },
+    "S53": {
+      "words": 380,
+      "flagged_pct": 0.8,
+      "unread_pct": 2.1
+    },
+    "S54": {
+      "words": 358,
+      "flagged_pct": 0.0,
+      "unread_pct": 2.2
+    },
+    "S55": {
+      "words": 362,
+      "flagged_pct": 0.3,
+      "unread_pct": 2.2
+    },
+    "S56": {
+      "words": 388,
+      "flagged_pct": 0.3,
+      "unread_pct": 2.1
+    },
+    "S57": {
+      "words": 625,
+      "flagged_pct": 0.6,
+      "unread_pct": 1.3
+    },
+    "S58": {
+      "words": 517,
+      "flagged_pct": 2.5,
+      "unread_pct": 0.8
+    },
+    "S59": {
+      "words": 484,
+      "flagged_pct": 2.3,
+      "unread_pct": 1.7
+    },
+    "S60": {
+      "words": 381,
+      "flagged_pct": 2.4,
+      "unread_pct": 2.1
+    },
+    "S61": {
+      "words": 241,
+      "flagged_pct": 0.0,
+      "unread_pct": 3.3
+    },
+    "S62": {
+      "words": 188,
+      "flagged_pct": 1.1,
+      "unread_pct": 2.1
+    },
+    "S63": {
+      "words": 202,
+      "flagged_pct": 0.0,
+      "unread_pct": 4.0
+    },
+    "S64": {
+      "words": 267,
+      "flagged_pct": 0.4,
+      "unread_pct": 1.5
+    },
+    "S65": {
+      "words": 319,
+      "flagged_pct": 1.9,
+      "unread_pct": 2.5
+    },
+    "S66": {
+      "words": 271,
+      "flagged_pct": 1.1,
+      "unread_pct": 3.0
+    },
+    "S67": {
+      "words": 356,
+      "flagged_pct": 0.3,
+      "unread_pct": 2.2
+    },
+    "S68": {
+      "words": 315,
+      "flagged_pct": 0.3,
+      "unread_pct": 2.5
+    },
+    "S69": {
+      "words": 270,
+      "flagged_pct": 0.4,
+      "unread_pct": 3.0
+    },
+    "S70": {
+      "words": 230,
+      "flagged_pct": 0.4,
+      "unread_pct": 3.5
+    },
+    "S71": {
+      "words": 237,
+      "flagged_pct": 0.4,
+      "unread_pct": 3.4
+    },
+    "S72": {
+      "words": 300,
+      "flagged_pct": 0.0,
+      "unread_pct": 2.7
+    },
+    "S73": {
+      "words": 221,
+      "flagged_pct": 0.9,
+      "unread_pct": 3.6
+    },
+    "S74": {
+      "words": 272,
+      "flagged_pct": 0.7,
+      "unread_pct": 2.9
+    },
+    "S75": {
+      "words": 173,
+      "flagged_pct": 0.0,
+      "unread_pct": 4.6
+    },
+    "S76": {
+      "words": 254,
+      "flagged_pct": 0.0,
+      "unread_pct": 1.6
+    },
+    "S77": {
+      "words": 190,
+      "flagged_pct": 0.0,
+      "unread_pct": 4.2
+    },
+    "S78": {
+      "words": 184,
+      "flagged_pct": 1.1,
+      "unread_pct": 4.3
+    },
+    "S79": {
+      "words": 188,
+      "flagged_pct": 0.0,
+      "unread_pct": 4.3
+    },
+    "S80": {
+      "words": 141,
+      "flagged_pct": 0.0,
+      "unread_pct": 5.7
+    },
+    "S81": {
+      "words": 112,
+      "flagged_pct": 0.9,
+      "unread_pct": 7.1
+    },
+    "S82": {
+      "words": 89,
+      "flagged_pct": 0.0,
+      "unread_pct": 9.0
+    },
+    "S83": {
+      "words": 180,
+      "flagged_pct": 0.0,
+      "unread_pct": 4.4
+    },
+    "S84": {
+      "words": 116,
+      "flagged_pct": 0.0,
+      "unread_pct": 6.9
+    },
+    "S85": {
+      "words": 119,
+      "flagged_pct": 0.0,
+      "unread_pct": 6.7
+    },
+    "S86": {
+      "words": 69,
+      "flagged_pct": 1.4,
+      "unread_pct": 11.6
+    },
+    "S87": {
+      "words": 81,
+      "flagged_pct": 0.0,
+      "unread_pct": 9.9
+    },
+    "S88": {
+      "words": 100,
+      "flagged_pct": 0.0,
+      "unread_pct": 8.0
+    },
+    "S89": {
+      "words": 147,
+      "flagged_pct": 0.0,
+      "unread_pct": 5.4
+    },
+    "S90": {
+      "words": 90,
+      "flagged_pct": 0.0,
+      "unread_pct": 8.9
+    },
+    "S91": {
+      "words": 62,
+      "flagged_pct": 0.0,
+      "unread_pct": 12.9
+    },
+    "S92": {
+      "words": 79,
+      "flagged_pct": 0.0,
+      "unread_pct": 10.1
+    },
+    "S93": {
+      "words": 48,
+      "flagged_pct": 0.0,
+      "unread_pct": 16.7
+    },
+    "S94": {
+      "words": 35,
+      "flagged_pct": 5.7,
+      "unread_pct": 22.9
+    },
+    "S95": {
+      "words": 42,
+      "flagged_pct": 0.0,
+      "unread_pct": 19.0
+    },
+    "S96": {
+      "words": 81,
+      "flagged_pct": 0.0,
+      "unread_pct": 9.9
+    },
+    "S97": {
+      "words": 38,
+      "flagged_pct": 0.0,
+      "unread_pct": 21.1
+    },
+    "S98": {
+      "words": 106,
+      "flagged_pct": 0.0,
+      "unread_pct": 7.5
+    },
+    "S99": {
+      "words": 44,
+      "flagged_pct": 0.0,
+      "unread_pct": 18.2
+    },
+    "S100": {
+      "words": 49,
+      "flagged_pct": 0.0,
+      "unread_pct": 16.3
+    },
+    "S101": {
+      "words": 44,
+      "flagged_pct": 0.0,
+      "unread_pct": 18.2
+    },
+    "S102": {
+      "words": 36,
+      "flagged_pct": 0.0,
+      "unread_pct": 22.2
+    },
+    "S103": {
+      "words": 22,
+      "flagged_pct": 0.0,
+      "unread_pct": 36.4
+    },
+    "S104": {
+      "words": 42,
+      "flagged_pct": 0.0,
+      "unread_pct": 19.0
+    },
+    "S105": {
+      "words": 31,
+      "flagged_pct": 0.0,
+      "unread_pct": 25.8
+    },
+    "S106": {
+      "words": 25,
+      "flagged_pct": 0.0,
+      "unread_pct": 32.0
+    },
+    "S107": {
+      "words": 33,
+      "flagged_pct": 0.0,
+      "unread_pct": 24.2
+    },
+    "S108": {
+      "words": 18,
+      "flagged_pct": 0.0,
+      "unread_pct": 44.4
+    },
+    "S109": {
+      "words": 34,
+      "flagged_pct": 0.0,
+      "unread_pct": 23.5
+    },
+    "S110": {
+      "words": 28,
+      "flagged_pct": 0.0,
+      "unread_pct": 28.6
+    },
+    "S111": {
+      "words": 31,
+      "flagged_pct": 0.0,
+      "unread_pct": 25.8
+    },
+    "S112": {
+      "words": 23,
+      "flagged_pct": 0.0,
+      "unread_pct": 34.8
+    },
+    "S113": {
+      "words": 31,
+      "flagged_pct": 0.0,
+      "unread_pct": 25.8
+    },
+    "S114": {
+      "words": 28,
+      "flagged_pct": 3.6,
+      "unread_pct": 28.6
+    }
+  }
+}

@@ -87,7 +87,26 @@ class MushafAyah extends StatefulWidget {
 /// so every rebuild leaked one per ayah -- and on the reading page, where a
 /// per-second recording timer rebuilt the whole surah, that was hundreds of
 /// live recognizers a minute for a long surah.
-class _MushafAyahState extends State<MushafAyah> {
+class _MushafAyahState extends State<MushafAyah>
+    with SingleTickerProviderStateMixin {
+  /// Words do not snap from resting grey to full ink. A verdict arriving mid
+  /// recitation used to repaint a word in one frame, which read as a flicker
+  /// rather than as progress -- several words changing at once looked like the
+  /// page twitching. This tween carries each changed word from the colour it
+  /// was actually showing to its new one.
+  ///
+  /// The animation is decoration only. `widget.marks` is the truth and is
+  /// applied the moment it arrives; the controller just decides what colour is
+  /// painted on the way there, so a tween interrupted half-way is not a
+  /// correctness problem -- the next one starts from wherever this one got to.
+  late final AnimationController _fade = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+  );
+
+  /// Colour each word was showing when the current tween began.
+  Map<int, Color> _fadeFrom = const {};
+
   /// One long-press recognizer per word. Like the tap recognizer before it,
   /// these are disposables that register with the gesture arena, so they are
   /// owned by the State and rebuilt only when the word count or the callback
@@ -97,6 +116,7 @@ class _MushafAyahState extends State<MushafAyah> {
   @override
   void initState() {
     super.initState();
+    _fade.value = 1.0;         // nothing to animate on the first paint
     _syncRecognizers();
   }
 
@@ -107,6 +127,42 @@ class _MushafAyahState extends State<MushafAyah> {
         oldWidget.ayah.arabicText != widget.ayah.arabicText) {
       _syncRecognizers();
     }
+    _startFadeIfMarksChanged(oldWidget.marks);
+  }
+
+  /// Begin a tween for the words whose verdict just changed.
+  ///
+  /// Starts from what each word was *actually showing*, not from its previous
+  /// target, so a verdict that lands while an earlier tween is still running
+  /// continues from the colour on screen rather than jumping back to restart.
+  void _startFadeIfMarksChanged(Map<int, WordMark> old) {
+    final changed = <int, Color>{};
+    final indices = {...old.keys, ...widget.marks.keys};
+    for (final i in indices) {
+      final before = old[i] ?? WordMark.pending;
+      final after = widget.marks[i] ?? WordMark.pending;
+      if (before.tone == after.tone && before.rule == after.rule) continue;
+      changed[i] = _paintedColorFor(i, old);
+    }
+    if (changed.isEmpty) return;
+
+    // Respect the system's reduced-motion setting: land on the final colour
+    // immediately rather than animating.
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      setState(() => _fadeFrom = const {});
+      _fade.value = 1.0;
+      return;
+    }
+    setState(() => _fadeFrom = changed);
+    _fade.forward(from: 0);
+  }
+
+  /// The colour word [index] is showing under [marks], mid-tween included.
+  Color _paintedColorFor(int index, Map<int, WordMark> marks) {
+    final target = _colorFor(marks[index] ?? WordMark.pending);
+    final from = _fadeFrom[index];
+    if (from == null || _fade.isCompleted) return target;
+    return Color.lerp(from, target, Curves.easeOut.transform(_fade.value)) ?? target;
   }
 
   void _syncRecognizers() {
@@ -127,11 +183,16 @@ class _MushafAyahState extends State<MushafAyah> {
 
   @override
   void dispose() {
+    _fade.dispose();
     for (final recognizer in _wordRecognizers) {
       recognizer.dispose();
     }
     super.dispose();
   }
+
+  /// What a word is painted right now: its target colour, or a point on the way
+  /// there if a tween is running.
+  Color _paintedColor(int index) => _paintedColorFor(index, widget.marks);
 
   /// The rule's own colour when a word is flagged, so the page distinguishes a
   /// short madd from a missed ghunnah instead of painting both the same red.
@@ -153,10 +214,10 @@ class _MushafAyahState extends State<MushafAyah> {
 
   /// Colour plus, for a flagged word, the underline whose shape names the
   /// rule. The shape is what keeps this readable without colour.
-  TextStyle _styleFor(WordMark mark) {
+  TextStyle _styleFor(WordMark mark, int index) {
     final base = AppTypography.arabicVerse(
       fontSize: widget.fontSize,
-      color: _colorFor(mark),
+      color: _paintedColor(index),
       height: 2.1,
     );
     final rule = mark.rule;
@@ -184,12 +245,16 @@ class _MushafAyahState extends State<MushafAyah> {
             // long-press. A tap that no word claims falls through to this.
             onTap: widget.onTap,
             behavior: HitTestBehavior.opaque,
-            child: Text.rich(
+            // Rebuilds only while a tween is running -- _fade sits completed
+            // the rest of the time, so a resting page costs nothing.
+            child: AnimatedBuilder(
+              animation: _fade,
+              builder: (context, _) => Text.rich(
             TextSpan(children: [
               for (var i = 0; i < words.length; i++)
                 TextSpan(
                   text: i == words.length - 1 ? words[i] : '${words[i]} ',
-                  style: _styleFor(widget.marks[i] ?? WordMark.pending),
+                  style: _styleFor(widget.marks[i] ?? WordMark.pending, i),
                   recognizer: i < _wordRecognizers.length ? _wordRecognizers[i] : null,
                 ),
               const TextSpan(text: ' '),
@@ -200,6 +265,7 @@ class _MushafAyahState extends State<MushafAyah> {
             ]),
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.justify,
+              ),
             ),
           ),
           if (widget.showTranslation)

@@ -1,0 +1,57 @@
+{
+  "what": "how many further words must be recited before a word's verdict matches the one the complete recitation gives",
+  "audio": "reference Qari recitations, analysed at growing prefixes",
+  "step_seconds": 0.5,
+  "words_measured": 393,
+  "words_that_settled": 333,
+  "words_never_settled": 60,
+  "distribution": {
+    "0": 81,
+    "1": 47,
+    "2": 13,
+    "3": 3,
+    "4": 156,
+    "5": 25,
+    "6": 6,
+    "7": 1,
+    "8": 1
+  },
+  "cumulative": [
+    {
+      "words_of_lag": 0,
+      "settled_pct": 24.3
+    },
+    {
+      "words_of_lag": 1,
+      "settled_pct": 38.4
+    },
+    {
+      "words_of_lag": 2,
+      "settled_pct": 42.3
+    },
+    {
+      "words_of_lag": 3,
+      "settled_pct": 43.2
+    },
+    {
+      "words_of_lag": 4,
+      "settled_pct": 90.1
+    },
+    {
+      "words_of_lag": 5,
+      "settled_pct": 97.6
+    },
+    {
+      "words_of_lag": 6,
+      "settled_pct": 99.4
+    },
+    {
+      "words_of_lag": 7,
+      "settled_pct": 99.7
+    },
+    {
+      "words_of_lag": 8,
+      "settled_pct": 100.0
+    }
+  ]
+}

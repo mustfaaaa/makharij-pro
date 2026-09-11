@@ -72,10 +72,24 @@ HEARD_MATCH_MIN_CHARS = 3
 #     tail 0.75 -> 17/213 cases spill, 45 words wrong
 #     tail 0.85 ->  9/213 cases spill, 27 words wrong
 #
-# and the full-surah control was *identical* at both (300 words missed across
-# 42 cases), so the stricter bar buys the reduction without costing any extra
-# under-detection. That control number is itself a known separate defect and is
-# not caused by this bar.
+# That measurement looked only at truncated recitations, which turned out to be
+# half the picture. Sweeping the labelled learner corpus (773 *finished*
+# recitations) against the same 213 truncation points showed the two regimes
+# pulling in opposite directions:
+#
+#     ratio   learner: caught   wrongly unread  | truncated: spill
+#      0.5            73.3%           14.2%     |   14.1%  (66 words)
+#      0.65           69.8%           15.9%     |    8.0%  (45 words)
+#      0.75           67.9%           16.8%     |    8.0%  (45 words)
+#      0.85           61.7%           25.3%     |    4.2%  (27 words)
+#
+# No single value is good at both, and choosing one is the wrong move anyway:
+# the regimes are distinguishable. The bar exists to stop the span reaching into
+# text the reciter never got to, and when the span already ends at the last word
+# of the requested range there is no such text for it to protect. So
+# _recited_span exempts that case (see its `at_range_end`), which keeps this
+# strict for the reciter who stopped part-way without charging the reciter who
+# finished for it.
 TAIL_EXTEND_RATIO = 0.85
 TAIL_EXTEND_MIN_CHARS = 4
 
@@ -116,7 +130,12 @@ LIVE_WINDOW_SLACK = 1.5
 # second, so a word withheld now is claimed ~0.35s later once its audio has
 # actually arrived. The unconsumed phonemes stay in the tail and are re-matched
 # on the next round, so nothing is lost by waiting.
-LIVE_FRONTIER_RATIO = TAIL_EXTEND_RATIO
+# Pinned rather than tied to TAIL_EXTEND_RATIO. The two happen to share a value
+# but answer different questions and were measured separately, so a change to one
+# must not silently move the other. This one judges a word still being spoken:
+# at 0.85 the live cursor ran ahead of the voice on 0 of 850 updates, against 13
+# without it (ml/eval/crossmodel/measure_live_overrun.py).
+LIVE_FRONTIER_RATIO = 0.85
 LIVE_FRONTIER_MIN_CHARS = TAIL_EXTEND_MIN_CHARS
 
 # How much of the recording's opening is compared against the optional Basmala
@@ -391,7 +410,8 @@ class PhonemeAnalysisService:
         return word_pred_chars, word_matched, word_errors
 
     @staticmethod
-    def _recited_span(word_pred_chars, word_matched, considered):
+    def _recited_span(word_pred_chars, word_matched, considered,
+                      at_range_end: bool = False):
         """Find [first, last] word indices the recording actually covers.
 
         Two different questions, deliberately kept apart:
@@ -402,6 +422,14 @@ class PhonemeAnalysisService:
         Using `heard` at both ends marked a badly-recited opening ayah as "never
         recited" instead of as the mistake it was; using `touched` at the far end
         would let alignment drift past the point the user actually stopped.
+
+        [at_range_end] says the last entry of `considered` is also the last word
+        of the whole requested range. The tail bar exists to stop the span
+        reaching into text the reciter never got to -- and past the end of the
+        range there is no such text, so there is nothing for it to protect and a
+        reciter who finished has their closing word greyed out for nothing. It
+        is the difference between the two regimes this analyser sees: someone
+        who stopped part-way (guard the tail) and someone who finished (do not).
         """
         heard = PhonemeAnalysisService._heard_flags(word_matched, considered)
         heard_idxs = [i for i, h in enumerate(heard) if h]
@@ -414,6 +442,8 @@ class PhonemeAnalysisService:
         # something wrong rather than nothing at all.
         last = heard_idxs[-1]
         while True:
+            if at_range_end and last == len(considered) - 1:
+                break          # nothing beyond it to spill into
             expected = considered[last][3]
             if not expected:
                 # A waqf mark carries no phonemes, so it is no evidence either
@@ -519,6 +549,17 @@ class PhonemeAnalysisService:
                 skipped_prefix = prefix
                 considered = considered[prefix_len:]
 
+        # Does `considered` still reach the final word of the *requested range*?
+        #
+        # It must be measured against `words`, not against whatever `considered`
+        # happens to be: the expected side has already been trimmed to what this
+        # much audio could plausibly cover, so for someone who stopped part-way
+        # `considered` ends near their stop point. Comparing it to itself would
+        # call that "the end of the range" and waive the tail bar exactly where
+        # it is needed -- measured, that put spill back from 4.2% to 12.7%.
+        def reaches_range_end(window) -> bool:
+            return len(skipped_prefix) + len(window) == len(words)
+
         # The first alignment runs against the *whole* requested range, so the
         # expected text continues well past wherever the user actually stopped
         # -- and Levenshtein is free to scatter the closing characters of the
@@ -533,7 +574,9 @@ class PhonemeAnalysisService:
         first_heard = last_heard = None
         for _ in range(MAX_REALIGN_ROUNDS):
             word_pred_chars, word_matched, word_errors = self._attribute(pred_chars, considered)
-            first_heard, last_heard = self._recited_span(word_pred_chars, word_matched, considered)
+            first_heard, last_heard = self._recited_span(
+                word_pred_chars, word_matched, considered,
+                at_range_end=reaches_range_end(considered))
             if last_heard is None:
                 break
             limit = min(len(considered), last_heard + 1 + TRAILING_MARGIN_WORDS)
@@ -547,9 +590,35 @@ class PhonemeAnalysisService:
         # margin words (ٱلرَّحِيمِ losing its م to the following مَـٰلِكِ).
         # Cut exactly at the stop point and align one last time.
         if last_heard is not None and last_heard < len(considered) - 1:
+            # Trim the predicted characters along with the words.
+            #
+            # Cutting `considered` alone left the whole predicted stream to be
+            # aligned against a shorter expected text, and _attribute gives an
+            # unmatched character to whatever word it is currently inside -- so
+            # every phoneme past the cut piled onto the last surviving word.
+            # That word then read as roughly twice its own length and was
+            # flagged (almost always as makhraj), while the word after it was
+            # reported as never recited.
+            #
+            # It was the single largest source of false alarms on real learner
+            # recordings: a third of the words wrongly flagged on correctly
+            # recited clips carried this signature, mean length ratio 2.08, and
+            # it hit the Basmala hardest -- 90% of correct recitations of it
+            # were flagged, because ٱلرَّحْمَٰنِ and ٱلرَّحِيمِ share an opening
+            # and sit at the end where there is no following text to anchor the
+            # boundary.
+            #
+            # The first pass still has the full expected text, so its
+            # attribution says where the kept words really end. Slicing a
+            # *prefix* keeps every index valid for pred_char_token_idx.
+            kept = [p for i in range(last_heard + 1) for p in word_pred_chars[i]]
+            cutoff = max(kept) + 1 if kept else 0
             considered = considered[:last_heard + 1]
-            word_pred_chars, word_matched, word_errors = self._attribute(pred_chars, considered)
-            first_heard, _ = self._recited_span(word_pred_chars, word_matched, considered)
+            word_pred_chars, word_matched, word_errors = self._attribute(
+                pred_chars[:cutoff], considered)
+            first_heard, _ = self._recited_span(
+                word_pred_chars, word_matched, considered,
+                at_range_end=reaches_range_end(considered))
             first_heard = first_heard if first_heard is not None else 0
             last_heard = len(considered) - 1
         beyond = words[len(considered):]

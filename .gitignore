@@ -139,3 +139,17 @@ ml/eval/crossmodel/log_*.txt
 
 # Eval run logs (the JSON summaries next to them are the durable record).
 ml/eval/results/*.log
+
+# Full-Quran reference audio fetched for evaluation (~1 GB, regenerable via
+# ml/tools/fetch_full_quran_reference.py).
+ml/data/reference_full/
+
+# Reciter audio. The fifteen surahs the repository ships are already tracked, and
+# gitignore does not apply to tracked files, so this only stops *new* audio from
+# being committed -- one reciter's complete Quran is ~593 MB and is regenerable:
+# ml/tools/fetch_full_quran_reference.py downloads it, and
+# ml/tools/sync_qari_availability.py then tells the API which surahs are present.
+backend/app/static/recitations/**/*.mp3
+
+# Scratch markers the eval harnesses drop to signal completion.
+ml/eval/**/*_DONE

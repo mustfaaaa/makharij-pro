@@ -1,0 +1,201 @@
+{
+  "what": "words reported as recited beyond the true stop point",
+  "audio": "reference Qari recitations, consecutive ayahs concatenated",
+  "cases": 213,
+  "cases_with_spill": 21,
+  "cases_with_spill_pct": 9.9,
+  "spilled_words_total": 45,
+  "mean_spilled_words_per_affected_case": 2.1,
+  "ayahs_overrun_total": 27,
+  "first_spill_distance_in_ayahs": {
+    "1": 21
+  },
+  "per_surah": {
+    "S1": {
+      "cases": 18,
+      "spilled": 0,
+      "words": 0
+    },
+    "S101": {
+      "cases": 30,
+      "spilled": 0,
+      "words": 0
+    },
+    "S102": {
+      "cases": 21,
+      "spilled": 6,
+      "words": 21
+    },
+    "S103": {
+      "cases": 6,
+      "spilled": 0,
+      "words": 0
+    },
+    "S104": {
+      "cases": 24,
+      "spilled": 0,
+      "words": 0
+    },
+    "S105": {
+      "cases": 12,
+      "spilled": 0,
+      "words": 0
+    },
+    "S106": {
+      "cases": 9,
+      "spilled": 0,
+      "words": 0
+    },
+    "S107": {
+      "cases": 18,
+      "spilled": 6,
+      "words": 9
+    },
+    "S108": {
+      "cases": 6,
+      "spilled": 0,
+      "words": 0
+    },
+    "S109": {
+      "cases": 15,
+      "spilled": 0,
+      "words": 0
+    },
+    "S110": {
+      "cases": 6,
+      "spilled": 0,
+      "words": 0
+    },
+    "S111": {
+      "cases": 12,
+      "spilled": 0,
+      "words": 0
+    },
+    "S112": {
+      "cases": 9,
+      "spilled": 0,
+      "words": 0
+    },
+    "S113": {
+      "cases": 12,
+      "spilled": 3,
+      "words": 3
+    },
+    "S114": {
+      "cases": 15,
+      "spilled": 6,
+      "words": 12
+    }
+  },
+  "examples": [
+    {
+      "qari": "abdurrahmaan_as_sudais",
+      "surah": 102,
+      "recited_through_ayah": 3,
+      "highlighted_up_to_ayah": 4,
+      "spilled_words": 3,
+      "first_spilled_word": "كَلَّا"
+    },
+    {
+      "qari": "abdurrahmaan_as_sudais",
+      "surah": 102,
+      "recited_through_ayah": 5,
+      "highlighted_up_to_ayah": 7,
+      "spilled_words": 4,
+      "first_spilled_word": "ٱلْجَحِيمَ"
+    },
+    {
+      "qari": "abdurrahmaan_as_sudais",
+      "surah": 107,
+      "recited_through_ayah": 5,
+      "highlighted_up_to_ayah": 7,
+      "spilled_words": 2,
+      "first_spilled_word": "هُمْ"
+    },
+    {
+      "qari": "abdurrahmaan_as_sudais",
+      "surah": 107,
+      "recited_through_ayah": 6,
+      "highlighted_up_to_ayah": 7,
+      "spilled_words": 1,
+      "first_spilled_word": "ٱلْمَاعُونَ"
+    },
+    {
+      "qari": "abdurrahmaan_as_sudais",
+      "surah": 113,
+      "recited_through_ayah": 4,
+      "highlighted_up_to_ayah": 5,
+      "spilled_words": 1,
+      "first_spilled_word": "حَسَدَ"
+    },
+    {
+      "qari": "abdurrahmaan_as_sudais",
+      "surah": 114,
+      "recited_through_ayah": 4,
+      "highlighted_up_to_ayah": 5,
+      "spilled_words": 2,
+      "first_spilled_word": "يُوَسْوِسُ"
+    },
+    {
+      "qari": "abdurrahmaan_as_sudais",
+      "surah": 114,
+      "recited_through_ayah": 5,
+      "highlighted_up_to_ayah": 6,
+      "spilled_words": 2,
+      "first_spilled_word": "ٱلْجِنَّةِ"
+    },
+    {
+      "qari": "alafasy",
+      "surah": 102,
+      "recited_through_ayah": 3,
+      "highlighted_up_to_ayah": 4,
+      "spilled_words": 3,
+      "first_spilled_word": "كَلَّا"
+    },
+    {
+      "qari": "alafasy",
+      "surah": 102,
+      "recited_through_ayah": 5,
+      "highlighted_up_to_ayah": 7,
+      "spilled_words": 4,
+      "first_spilled_word": "ٱلْجَحِيمَ"
+    },
+    {
+      "qari": "alafasy",
+      "surah": 107,
+      "recited_through_ayah": 5,
+      "highlighted_up_to_ayah": 7,
+      "spilled_words": 2,
+      "first_spilled_word": "هُمْ"
+    },
+    {
+      "qari": "alafasy",
+      "surah": 107,
+      "recited_through_ayah": 6,
+      "highlighted_up_to_ayah": 7,
+      "spilled_words": 1,
+      "first_spilled_word": "ٱلْمَاعُونَ"
+    },
+    {
+      "qari": "alafasy",
+      "surah": 113,
+      "recited_through_ayah": 4,
+      "highlighted_up_to_ayah": 5,
+      "spilled_words": 1,
+      "first_spilled_word": "حَسَدَ"
+    }
+  ],
+  "control_full_surah": {
+    "cases": 45,
+    "cases_with_missing_words": 42,
+    "missing_words_total": 300,
+    "note": "whole surah recited; every word should be recited=True, so anything here is the cost of the tail bar"
+  },
+  "thresholds_in_force": {
+    "HEARD_MATCH_RATIO": 0.5,
+    "HEARD_MATCH_MIN_CHARS": 3,
+    "TRAILING_MARGIN_WORDS": 2,
+    "TAIL_EXTEND_RATIO": 0.85,
+    "TAIL_EXTEND_MIN_CHARS": 4
+  }
+}
