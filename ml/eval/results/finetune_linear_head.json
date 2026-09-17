@@ -1,5 +1,8 @@
 {
   "what": "candidate phoneme head fine-tuned on correctly-recited learner clips, scored on unseen speakers",
+  "head": "linear",
+  "lr": 0.0003,
+  "epochs": 60,
   "held_out_clips": 71,
   "held_out_reciters": 30,
   "train_clips": 282,

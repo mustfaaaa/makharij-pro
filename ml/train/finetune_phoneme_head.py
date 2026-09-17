@@ -49,7 +49,7 @@ REPO = Path(__file__).resolve().parents[2]
 MODEL_DIR = REPO / "ml" / "models" / "muaalem-v3_2"
 SPLIT = REPO / "ml" / "train" / "splits" / "learner_split.json"
 CACHE = REPO / "ml" / "train" / "cache"
-OUT = REPO / "ml" / "eval" / "results" / "finetune_phoneme_head.json"
+RESULTS = REPO / "ml" / "eval" / "results"
 # Named per head type: a linear run and an mlp run are different models and
 # must not overwrite each other.
 WEIGHTS_DIR = REPO / "ml" / "train" / "weights"
@@ -85,10 +85,15 @@ def main() -> int:
                              "hidden layer, to test whether the remaining gap is "
                              "a capacity limit rather than a domain one")
     parser.add_argument("--hidden", type=int, default=1024)
-    parser.add_argument("--out", type=Path, default=OUT)
+    parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--split", type=Path, default=SPLIT)
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
+    # Defaulted after parsing so it can carry the head type: a linear run
+    # and an mlp run are different experiments and must not overwrite
+    # each other's results.
+    if args.out is None:
+        args.out = RESULTS / f"finetune_{args.head}_head.json"
 
     import numpy as np
     import torch
