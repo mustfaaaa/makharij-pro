@@ -1,0 +1,98 @@
+{
+  "what": "which branch of classify() produced each finding, over the learner corpus",
+  "clips": 773,
+  "words_with_an_expectation": 3478,
+  "words_producing_at_least_one_finding": 1427,
+  "findings_total": 2057,
+  "by_branch": {
+    "substituted_over:makhraj": {
+      "count": 646,
+      "pct": 31.4
+    },
+    "skipped": {
+      "count": 500,
+      "pct": 24.3
+    },
+    "run_absent:other": {
+      "count": 479,
+      "pct": 23.3
+    },
+    "substituted_over:shaddah": {
+      "count": 108,
+      "pct": 5.3
+    },
+    "length:shaddah": {
+      "count": 96,
+      "pct": 4.7
+    },
+    "run_absent:madd": {
+      "count": 93,
+      "pct": 4.5
+    },
+    "run_absent:shaddah": {
+      "count": 47,
+      "pct": 2.3
+    },
+    "substituted_over:madd": {
+      "count": 37,
+      "pct": 1.8
+    },
+    "extra_sound": {
+      "count": 19,
+      "pct": 0.9
+    },
+    "length:ghunnah": {
+      "count": 14,
+      "pct": 0.7
+    },
+    "substituted_over:ikhfa": {
+      "count": 9,
+      "pct": 0.4
+    },
+    "length:madd": {
+      "count": 4,
+      "pct": 0.2
+    },
+    "substituted_over:ghunnah": {
+      "count": 3,
+      "pct": 0.1
+    },
+    "run_absent:ikhfa": {
+      "count": 2,
+      "pct": 0.1
+    }
+  },
+  "by_reported_type": {
+    "makhraj": {
+      "count": 1301,
+      "pct": 63.2
+    },
+    "word not heard at all": {
+      "count": 500,
+      "pct": 24.3
+    },
+    "shaddah": {
+      "count": 143,
+      "pct": 7.0
+    },
+    "madd": {
+      "count": 97,
+      "pct": 4.7
+    },
+    "ghunnah": {
+      "count": 14,
+      "pct": 0.7
+    },
+    "ikhfa": {
+      "count": 2,
+      "pct": 0.1
+    }
+  },
+  "rule_the_substitution_branch_swallowed": {
+    "makhraj": 646,
+    "shaddah": 108,
+    "madd": 37,
+    "ikhfa": 9,
+    "ghunnah": 3
+  }
+}

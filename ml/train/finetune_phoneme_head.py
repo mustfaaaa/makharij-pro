@@ -78,7 +78,14 @@ def main() -> int:
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--batch", type=int, default=8)
     parser.add_argument("--seed", type=int, default=1337)
+    parser.add_argument("--head", choices=["linear", "mlp"], default="linear",
+                        help="linear keeps the shipped head's shape; mlp adds a "
+                             "hidden layer, to test whether the remaining gap is "
+                             "a capacity limit rather than a domain one")
+    parser.add_argument("--hidden", type=int, default=1024)
     parser.add_argument("--out", type=Path, default=OUT)
+    parser.add_argument("--split", type=Path, default=SPLIT)
+    parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
 
     import numpy as np
@@ -91,10 +98,11 @@ def main() -> int:
 
     torch.manual_seed(args.seed)
 
-    split = json.loads(SPLIT.read_text(encoding="utf-8"))
+    split = json.loads(args.split.read_text(encoding="utf-8"))
     index = json.loads((CACHE / "index.json").read_text(encoding="utf-8"))
     train_ids = [c for c in split["train"] if c in index]
     held_ids = [c for c in split["held_out"] if c in index]
+    _ = args.quiet and None
     print(f"train {len(train_ids)} clips, held out {len(held_ids)} clips "
           f"from {len(split['held_out_reciters'])} unseen reciters")
 
@@ -145,8 +153,21 @@ def main() -> int:
     print(f"  median PER {before['median_per']}  clean {before['pct_under_10pct_per']}%")
 
     # Train a copy, so `before` cannot be contaminated by the training loop.
-    tuned = torch.nn.Linear(head.in_features, head.out_features)
-    tuned.load_state_dict(head.state_dict())
+    if args.head == "linear":
+        tuned = torch.nn.Linear(head.in_features, head.out_features)
+        tuned.load_state_dict(head.state_dict())
+    else:
+        # Start from the shipped head as the output layer and prepend a hidden
+        # layer initialised near-identity, so training begins from the model we
+        # already measured rather than from noise.
+        first = torch.nn.Linear(head.in_features, args.hidden)
+        output = torch.nn.Linear(args.hidden, head.out_features)
+        if args.hidden == head.in_features:
+            with torch.no_grad():
+                first.weight.copy_(torch.eye(args.hidden))
+                first.bias.zero_()
+                output.load_state_dict(head.state_dict())
+        tuned = torch.nn.Sequential(first, torch.nn.GELU(), output)
     optimiser = torch.optim.AdamW(tuned.parameters(), lr=args.lr, weight_decay=0.01)
 
     cached = {c: (load(c), targets(c)) for c in train_ids}
@@ -192,7 +213,7 @@ def main() -> int:
         if scores["median_per"] < best["median_per"]:
             best = dict(scores, epoch=epoch)
             best_state = {k: v.clone() for k, v in tuned.state_dict().items()}
-        if epoch % 5 == 0 or epoch == 1:
+        if not args.quiet and (epoch % 5 == 0 or epoch == 1):
             print(f"  epoch {epoch:3}  loss {history[-1]['train_loss']:7.4f}  "
                   f"median PER {scores['median_per']:.4f}  "
                   f"clean {scores['pct_under_10pct_per']:.1f}%")
@@ -214,6 +235,9 @@ def main() -> int:
     summary = {
         "what": "candidate phoneme head fine-tuned on correctly-recited learner "
                 "clips, scored on unseen speakers",
+        "head": args.head,
+        "lr": args.lr,
+        "epochs": args.epochs,
         "held_out_clips": len(held_ids),
         "held_out_reciters": len(split["held_out_reciters"]),
         "train_clips": len(train_ids),
