@@ -1,0 +1,37 @@
+{
+  "what": "phoneme error rate against the canonical text, same clips, identical reference string, same rule",
+  "clips_compared": 726,
+  "clips_excluded_reference_mismatch": 47,
+  "why_excluded": "the app prepends the basmala to ayah 1; the candidate's phonetiser does not, so those clips score two different questions and cannot be compared",
+  "current": {
+    "model": "quran-lab zipformer (in production)",
+    "clips_scored": 726,
+    "on_correct_clips": {
+      "clips": 329,
+      "median_per": 0.069,
+      "mean_per": 0.1169,
+      "pct_under_10pct_per": 61.7
+    },
+    "on_incorrect_clips": {
+      "clips": 397,
+      "median_per": 0.1818,
+      "mean_per": 0.2299
+    }
+  },
+  "candidate": {
+    "model": "obadx/muaalem-model-v3_2",
+    "clips_scored": 726,
+    "on_correct_clips": {
+      "clips": 329,
+      "median_per": 0.1538,
+      "mean_per": 0.1955,
+      "pct_under_10pct_per": 31.6
+    },
+    "on_incorrect_clips": {
+      "clips": 397,
+      "median_per": 0.2857,
+      "mean_per": 0.3068
+    }
+  },
+  "verdict": "candidate is NOT better on correct learner recitation"
+}
