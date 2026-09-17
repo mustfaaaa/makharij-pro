@@ -25,6 +25,7 @@ import '../bloc/recitation_cubit.dart';
 import '../widgets/mistake_breakdown.dart';
 import '../widgets/reference_playback_button.dart';
 import '../widgets/said_it_right_button.dart';
+import '../widgets/try_word_again_button.dart';
 import '../widgets/mistake_legend.dart';
 import '../widgets/word_playback_button.dart';
 
@@ -416,6 +417,17 @@ class _MistakeCard extends StatelessWidget {
                   endSec: verdict.endSec,
                 ),
               ReferencePlaybackButton(
+                surahNumber: surahNumber,
+                ayahNumber: verdict.ayahNumber,
+                wordIndex: verdict.wordIndex,
+              ),
+              // Two ways to disagree, and the reciter should not have to pick
+              // the first because the second is missing. "I said it right"
+              // overrules the verdict; "Try again" (FR-8/BR-5) offers to
+              // settle it instead. Trying again can only lower the mistake
+              // count, never raise it, so it is safe to press.
+              TryWordAgainButton(
+                sessionId: sessionId,
                 surahNumber: surahNumber,
                 ayahNumber: verdict.ayahNumber,
                 wordIndex: verdict.wordIndex,

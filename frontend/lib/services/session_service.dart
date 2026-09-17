@@ -5,6 +5,7 @@ import '../core/audio/wav_encoder.dart';
 import '../dummy/dummy_sessions.dart';
 import '../dummy/dummy_surahs.dart';
 import '../models/ayah.dart';
+import '../models/reattempt_outcome.dart';
 import '../models/session_result.dart';
 import '../models/tajweed_error.dart';
 import '../models/word_verdict.dart';
@@ -41,6 +42,20 @@ abstract class SessionService {
     required int ayahNumber,
     required int wordIndex,
     required bool agreed,
+  });
+
+  /// Re-recites a flagged word (FR-8/BR-5) and returns what changed.
+  ///
+  /// Only words the session already flagged can change, so this can lower the
+  /// number of mistakes but never raise it -- trying again is safe.
+  ///
+  /// [wordIndex] null re-attempts every flagged word in [ayahNumber].
+  Future<ReattemptOutcome> reattempt({
+    required String sessionId,
+    required int surahNumber,
+    required int ayahNumber,
+    int? wordIndex,
+    required Uint8List audioPcm,
   });
 }
 
@@ -139,6 +154,28 @@ class DummySessionService implements SessionService {
     required int wordIndex,
     required bool agreed,
   }) async {}
+
+  /// Same reason: there is no stored session to re-score. Reports the word as
+  /// corrected so the flow can be walked through without a backend, and says
+  /// nothing about accuracy, which it cannot know.
+  @override
+  Future<ReattemptOutcome> reattempt({
+    required String sessionId,
+    required int surahNumber,
+    required int ayahNumber,
+    int? wordIndex,
+    required Uint8List audioPcm,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 700));
+    return ReattemptOutcome(
+      corrected: [ReattemptWord(ayahNumber: ayahNumber, wordIndex: wordIndex ?? 0)],
+      stillWrong: const [],
+      notReached: const [],
+      accuracyScore: 0,
+      wordsCorrect: 0,
+      wordsRecited: 0,
+    );
+  }
 
   @override
   Future<List<SessionResult>> getSessions() async {
@@ -275,6 +312,33 @@ class ApiSessionService implements SessionService {
         'agreed': agreed.toString(),
       },
     );
+  }
+
+  /// FR-8/BR-5: another go at a word the analysis flagged.
+  ///
+  /// The backend only lets already-flagged words change, so a retake can
+  /// improve the session's score and never worsen it. That asymmetry is the
+  /// point: with a measured 41.9% false-alarm rate, a reciter who is told they
+  /// were wrong is often right, and asking them to prove it must not be a
+  /// gamble.
+  @override
+  Future<ReattemptOutcome> reattempt({
+    required String sessionId,
+    required int surahNumber,
+    required int ayahNumber,
+    int? wordIndex,
+    required Uint8List audioPcm,
+  }) async {
+    final json = await _client.postAudio(
+      '/api/v1/sessions/$sessionId/reattempt',
+      pcm16ToWav(audioPcm),
+      fields: {
+        'surah_number': surahNumber.toString(),
+        'ayah_number': ayahNumber.toString(),
+        if (wordIndex != null) 'word_index': wordIndex.toString(),
+      },
+    );
+    return ReattemptOutcome.fromJson(json);
   }
 
   SessionResult _sessionFromHistoryJson(Map<String, dynamic> json) {
