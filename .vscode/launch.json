@@ -1,0 +1,66 @@
+{
+  // Run the backend with F5. Breakpoints work, and stopping is the red square
+  // rather than Ctrl+C in a terminal.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend (FastAPI)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host", "0.0.0.0", "--port", "8000"],
+
+      // uvicorn resolves "app.main:app" relative to where it starts, so this
+      // has to be the backend folder rather than the repo root.
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+
+      "console": "integratedTerminal",
+      // Without this a breakpoint inside FastAPI or uvicorn itself would stop
+      // the debugger in library code you did not write.
+      "justMyCode": true,
+      "env": {
+        // The model loads on CPU either way; this silences the oneDNN notice
+        // that otherwise buries the startup lines worth reading.
+        "TF_ENABLE_ONEDNN_OPTS": "0",
+        "PYTHONUNBUFFERED": "1"
+      }
+    },
+    {
+      // Same thing with auto-reload: saving a .py file restarts the server.
+      // Handy while editing, but it reloads the phoneme model each time, which
+      // takes several seconds -- so it is a separate entry rather than the
+      // default.
+      "name": "Backend (FastAPI, auto-reload)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "TF_ENABLE_ONEDNN_OPTS": "0",
+        "PYTHONUNBUFFERED": "1"
+      }
+    },
+    {
+      "name": "App (Flutter)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/frontend"
+    }
+  ],
+  "compounds": [
+    {
+      // Starts the backend and the app together. The app talks to the backend
+      // over localhost:8000, so on a physical phone this still needs
+      // `adb reverse tcp:8000 tcp:8000` -- see .vscode/tasks.json.
+      "name": "Backend + App",
+      "configurations": ["Backend (FastAPI)", "App (Flutter)"],
+      "stopAll": true
+    }
+  ]
+}

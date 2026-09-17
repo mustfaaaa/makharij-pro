@@ -621,7 +621,17 @@ class PhonemeAnalysisService:
                 at_range_end=reaches_range_end(considered))
             first_heard = first_heard if first_heard is not None else 0
             last_heard = len(considered) - 1
-        beyond = words[len(considered):]
+        # Where `considered` actually sits inside `words`. When the reciter did
+        # not say the optional Basmala it was dropped from the front, so
+        # `considered` starts `len(skipped_prefix)` words in -- and indexing
+        # `words` by its length alone then pointed that many words too early,
+        # re-emitting the closing words of the ayah a second time as "never
+        # recited" underneath the correct verdicts they had already been given.
+        #
+        # It is why the first ayah of a surah was the worst-scoring ayah in the
+        # book: every one of the forty worst ayahs across the whole Quran was an
+        # ayah 1, which is exactly where an unspoken Basmala can be dropped.
+        beyond = words[len(skipped_prefix) + len(considered):]
 
         results: list[WordPhonemeResult] = []
         for i, (ayah, idx_in_ayah, display, expected_word) in enumerate(considered):

@@ -1,0 +1,53 @@
+{
+  // Ctrl+Shift+P -> "Tasks: Run Task" -> pick one.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // The single most common cause of "recording analysis fails": the phone
+      // reaches the backend through this tunnel, and it is torn down every time
+      // the phone disconnects. Re-run it after every reconnect.
+      "label": "adb reverse (phone -> backend)",
+      "type": "shell",
+      "command": "${env:LOCALAPPDATA}\\Android\\Sdk\\platform-tools\\adb.exe",
+      "args": ["reverse", "tcp:8000", "tcp:8000"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "adb devices",
+      "type": "shell",
+      "command": "${env:LOCALAPPDATA}\\Android\\Sdk\\platform-tools\\adb.exe",
+      "args": ["devices", "-l"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      // When the phone has dropped off wireless debugging entirely: this lists
+      // the address it is advertising, which `adb connect <addr>` then takes.
+      "label": "adb find phone (mdns)",
+      "type": "shell",
+      "command": "${env:LOCALAPPDATA}\\Android\\Sdk\\platform-tools\\adb.exe",
+      "args": ["mdns", "services"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Backend health check",
+      "type": "shell",
+      "command": "curl",
+      "args": ["-s", "-o", "NUL", "-w", "backend: %{http_code}\\n",
+               "http://localhost:8000/health"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Backend tests",
+      "type": "shell",
+      "command": "${workspaceFolder}\\backend\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "pytest", "tests", "-q"],
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}
