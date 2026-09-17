@@ -97,7 +97,13 @@ validation and held-out columns are the ones that count.
 
 ## Results
 
-### Baseline — the app as shipped, on 773 labelled learner clips
+### Baseline — the app when this harness was first run, on 773 labelled learner clips
+
+*(Current numbers, re-measured at HEAD: 41.9% of correct clips flagged, 17.2%
+of words, 73.1% of mistakes caught, 12.2% of words wrongly shown as unread.
+Run `ml/eval/measure_false_alarms.py` for today's figures — the table below is
+the starting point everything since is measured against, not a claim about the
+app as it stands.)*
 
 |  | professional Qaris | real learners |
 |---|---|---|
@@ -143,17 +149,63 @@ On learner voices — accented, hesitant, often children — its own error rate 
 comparable to the signal being measured, and no decision threshold can separate
 two things that arrive mixed together.
 
-Two routes forward, in cost order:
+Two routes forward were proposed here, in cost order. **Both have now been
+run.** What follows is what they returned, replacing what this section used to
+predict.
 
-1. **Swap the recogniser for one that predicts Tajweed attributes directly.**
-   [`obadx/muaalem-model-v3`](https://huggingface.co/obadx/muaalem-model-v3)
-   emits `sifat` — ghunnah, shidda/rakhawa, tafkheem/tarqeeq, madd length —
-   rather than leaving them to be inferred from phoneme run-lengths as
-   `tajweed_diff.py` does. No training required; just run it through this
-   harness and compare the table above.
-2. **Adapt the recogniser to learner voices.** The 5,600 *unlabelled* clips in
-   this same corpus are the right material, and unlike calibration this is real
-   fine-tuning with a real GPU cost.
+### Route 1 — swap the recogniser. Tried. It is worse out of the box.
 
-Either way the harness is now the thing that settles it: any change can be run
-against the same 773 clips and put next to these numbers.
+The proposal was that [`obadx/muaalem-model-v3_2`](https://huggingface.co/obadx/muaalem-model-v3_2)
+needs "no training required; just run it through this harness". It was run
+(`ml/eval/transcribe_with_muaalem.py`, `ml/eval/compare_recognisers.py`) over
+the same clips, scored by the same code, against a character-for-character
+identical reference:
+
+| correctly-recited clips | in production | candidate |
+|---|---|---|
+| median phoneme error rate | **0.069** | 0.154 |
+| clips coming back essentially clean | **61.7%** | 31.6% |
+
+Its published 0.16% PER is a number from expert reciters, and it does not
+survive learners — the same blind spot the 1.0% Qari column above has. Two
+measurement faults were found and fixed along the way, both of which had been
+handicapping the candidate: 47 ayah-1 clips were being scored against different
+reference strings (the app prepends the basmala, the candidate's phonetiser
+does not), and the candidate was given no silence padding while the production
+recogniser gets 1.5s.
+
+Worth recording for whoever tries integration: **the two phoneme alphabets are
+identical** — 35 symbols, no divergence, both from `quran_transcript`. The
+43-vs-251 vocabulary mismatch that looked like the main integration risk does
+not exist; 251 is the model's internal token inventory, not the alphabet the
+reference is written in.
+
+### Route 2 — adapt to learner voices. Tried. It works.
+
+`ml/train/` does this: speaker-disjoint split, frozen encoder with its output
+cached (no GPU on the build machine), and the phoneme head trained on the 353
+clips a human marked correctly recited. Across five speaker splits, on
+held-out reciters:
+
+| | before | after | in production |
+|---|---|---|---|
+| median PER | 0.154 | **0.088** | 0.092 |
+
+The honest reading is parity, not victory: the tuned candidate is better on
+four splits of five, and the medians differ by less than the spread between
+splits. Parity is not yet a reason to ship — the candidate is 0.6B and decodes
+4.4s of audio in 6.3s on CPU, against a 69MB int8 ONNX that runs in real time.
+What it establishes is that the MIT, trainable path reaches the quality of the
+licence-locked one.
+
+**Correction to what this file used to say.** It recommended the 5,600
+*unlabelled* clips as "the right material" for that fine-tuning. They are not,
+and they were not used. Training a recogniser on audio paired with the
+canonical text, without knowing whether the reciter actually said it, teaches
+the model to emit the right answer regardless of what it heard — which destroys
+the only thing this app does. Only the 353 clips with a human verdict were
+used. The unlabelled clips are usable for a recogniser *if* something
+establishes what was said in them; nothing here does.
+
+Either way the harness is still the thing that settles it: any change can be
+run against the same 773 clips and put next to these numbers.
