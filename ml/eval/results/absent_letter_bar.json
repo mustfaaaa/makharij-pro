@@ -1,0 +1,50 @@
+{
+  "what": "how many missing letters it should take to flag a word when nothing else is wrong with it",
+  "words_on_correctly_recited_clips": 1282,
+  "incorrect_clips": 420,
+  "today": "bar = 1 (MAKHRAJ_MIN_FINDINGS = 1 never suppresses anything)",
+  "settings": [
+    {
+      "bar": 1,
+      "words_wrongly_flagged": 247,
+      "pct_words_wrongly_flagged": 19.27,
+      "incorrect_clips_caught": 310,
+      "pct_incorrect_clips_caught": 73.81
+    },
+    {
+      "bar": 2,
+      "words_wrongly_flagged": 198,
+      "pct_words_wrongly_flagged": 15.44,
+      "incorrect_clips_caught": 271,
+      "pct_incorrect_clips_caught": 64.52
+    },
+    {
+      "bar": 3,
+      "words_wrongly_flagged": 191,
+      "pct_words_wrongly_flagged": 14.9,
+      "incorrect_clips_caught": 267,
+      "pct_incorrect_clips_caught": 63.57
+    },
+    {
+      "bar": 4,
+      "words_wrongly_flagged": 189,
+      "pct_words_wrongly_flagged": 14.74,
+      "incorrect_clips_caught": 265,
+      "pct_incorrect_clips_caught": 63.1
+    },
+    {
+      "bar": 5,
+      "words_wrongly_flagged": 189,
+      "pct_words_wrongly_flagged": 14.74,
+      "incorrect_clips_caught": 265,
+      "pct_incorrect_clips_caught": 63.1
+    },
+    {
+      "bar": 6,
+      "words_wrongly_flagged": 189,
+      "pct_words_wrongly_flagged": 14.74,
+      "incorrect_clips_caught": 265,
+      "pct_incorrect_clips_caught": 63.1
+    }
+  ]
+}
