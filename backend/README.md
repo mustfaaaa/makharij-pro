@@ -100,9 +100,13 @@ lookup for a Storage-signed-URL lookup in `rattil.py` — the retrieval endpoint
 doesn't need to change, just where the URL points.
 
 **Not yet built**: natural-language request parsing (FR-19 — "give me Ayat al-Kursi" instead of
-explicit surah/ayah numbers) and playback commands (FR-18 — repeat/slow/continue). Both are layers
-on top of `/rattil/recitation` that make more sense to build once Track C's chat UI exists to
-actually drive them, rather than speculatively now.
+explicit surah/ayah numbers). A layer on top of `/rattil/recitation`; the chat UI does simple
+name/number matching today.
+
+**FR-18 playback** is built, in the player on the Ask AI screen: play/pause, previous/next ayah,
+play again, slow (0.75x), and a three-state end-of-clip mode — stop, play on through the passage,
+or loop this ayah (`lib/models/after_clip.dart`). This paragraph previously listed all of FR-18 as
+"not yet built" while slow and next/previous had been shipped for some time.
 
 ## Status
 
@@ -138,8 +142,7 @@ model, a real Firebase project, and real audio/session data — not just scaffol
 integration (Track C) is now wired end-to-end too: Practice Plan, Ask AI/Rattil, Progress
 Dashboard, Achievements, Notifications, and the Tajweed Rules library all call these real
 endpoints instead of dummy data. Remaining work: Rattil AI's full natural-language request parsing
-(FR-19 — the chat UI does simple name/number matching today, not free-form NLU) and richer
-playback commands beyond repeat/slow/next/previous (FR-18).
+(FR-19 — the chat UI does simple name/number matching today, not free-form NLU).
 
 ## Real-audio validation
 

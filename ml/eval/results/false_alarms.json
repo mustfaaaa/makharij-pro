@@ -1,58 +1,58 @@
 {
-  "label": "after word-merge fix",
+  "label": "current",
   "correct_clips": 353,
   "incorrect_clips": 420,
-  "false_alarm_pct": 37.7,
-  "caught_pct": 61.7,
-  "clips_with_a_wrongly_unread_word_pct": 55.0,
-  "words_on_correct_clips": 1496,
-  "words_wrongly_flagged_pct": 13.2,
-  "words_wrongly_unread_pct": 25.3,
+  "false_alarm_pct": 41.9,
+  "caught_pct": 73.1,
+  "clips_with_a_wrongly_unread_word_pct": 12.2,
+  "words_on_correct_clips": 1404,
+  "words_wrongly_flagged_pct": 17.2,
+  "words_wrongly_unread_pct": 8.5,
   "per_ayah": {
     "S1:4": {
       "clips": 57,
       "flagged_pct": 17.5,
-      "unread_pct": 31.6
+      "unread_pct": 7.0
     },
     "S1:1": {
       "clips": 42,
-      "flagged_pct": 28.6,
-      "unread_pct": 92.9
+      "flagged_pct": 38.1,
+      "unread_pct": 2.4
     },
     "S1:5": {
       "clips": 38,
-      "flagged_pct": 7.9,
-      "unread_pct": 81.6
+      "flagged_pct": 10.5,
+      "unread_pct": 0.0
     },
     "S1:3": {
       "clips": 36,
       "flagged_pct": 69.4,
-      "unread_pct": 36.1
+      "unread_pct": 13.9
     },
     "S1:6": {
       "clips": 35,
-      "flagged_pct": 54.3,
-      "unread_pct": 74.3
+      "flagged_pct": 62.9,
+      "unread_pct": 0.0
     },
     "S1:2": {
       "clips": 28,
-      "flagged_pct": 67.9,
-      "unread_pct": 50.0
+      "flagged_pct": 78.6,
+      "unread_pct": 7.1
     },
     "S112:3": {
       "clips": 11,
-      "flagged_pct": 18.2,
-      "unread_pct": 9.1
+      "flagged_pct": 27.3,
+      "unread_pct": 0.0
     },
     "S1:7": {
       "clips": 10,
       "flagged_pct": 60.0,
-      "unread_pct": 60.0
+      "unread_pct": 30.0
     },
     "S114:5": {
       "clips": 9,
       "flagged_pct": 44.4,
-      "unread_pct": 66.7
+      "unread_pct": 0.0
     },
     "S112:4": {
       "clips": 5,
@@ -62,16 +62,16 @@
     "S114:3": {
       "clips": 5,
       "flagged_pct": 60.0,
-      "unread_pct": 40.0
+      "unread_pct": 0.0
     },
     "S112:2": {
       "clips": 5,
-      "flagged_pct": 40.0,
-      "unread_pct": 20.0
+      "flagged_pct": 60.0,
+      "unread_pct": 0.0
     },
     "S114:1": {
       "clips": 5,
-      "flagged_pct": 0.0,
+      "flagged_pct": 20.0,
       "unread_pct": 100.0
     },
     "S109:1": {
@@ -87,7 +87,7 @@
     "S109:6": {
       "clips": 4,
       "flagged_pct": 0.0,
-      "unread_pct": 100.0
+      "unread_pct": 0.0
     },
     "S103:2": {
       "clips": 4,
@@ -102,7 +102,7 @@
     "S109:2": {
       "clips": 3,
       "flagged_pct": 66.7,
-      "unread_pct": 66.7
+      "unread_pct": 0.0
     },
     "S103:1": {
       "clips": 3,
@@ -111,8 +111,8 @@
     },
     "S114:2": {
       "clips": 3,
-      "flagged_pct": 33.3,
-      "unread_pct": 33.3
+      "flagged_pct": 66.7,
+      "unread_pct": 0.0
     },
     "S113:5": {
       "clips": 3,
@@ -122,7 +122,7 @@
     "S113:2": {
       "clips": 3,
       "flagged_pct": 66.7,
-      "unread_pct": 66.7
+      "unread_pct": 33.3
     },
     "S112:1": {
       "clips": 3,
@@ -147,7 +147,7 @@
     "S114:4": {
       "clips": 2,
       "flagged_pct": 100.0,
-      "unread_pct": 50.0
+      "unread_pct": 0.0
     },
     "S114:6": {
       "clips": 2,

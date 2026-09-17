@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/errors/app_exception.dart';
+import '../../../../models/after_clip.dart';
 import '../../../../models/qari.dart';
 import '../../../../models/surah.dart';
 import '../../../../routes/route_names.dart';
@@ -381,13 +382,38 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
   bool _playing = false;
   bool _slow = false;
   int _clipIndex = 0;
+  AfterClip _afterClip = AfterClip.stop;
+
+  /// Set while we stop the player ourselves. Some platform implementations
+  /// deliver a completion event for a stop we asked for, which would look
+  /// exactly like a clip ending and start the next one behind the user's back.
+  bool _stoppingOurselves = false;
 
   @override
   void initState() {
     super.initState();
-    _player.onPlayerComplete.listen((_) {
-      if (mounted) setState(() => _playing = false);
-    });
+    _player.onPlayerComplete.listen((_) => _onClipEnded());
+  }
+
+  Future<void> _onClipEnded() async {
+    if (!mounted || _stoppingOurselves) return;
+
+    switch (_afterClip) {
+      case AfterClip.repeatOne:
+        await _play();
+      case AfterClip.continueOn:
+        // Runs on to the end of the passage and stops there rather than
+        // looping back to the first ayah -- wrapping around would be the app
+        // deciding to start the surah again on its own.
+        if (_clipIndex < widget.recitation.clips.length - 1) {
+          setState(() => _clipIndex += 1);
+          await _play();
+        } else {
+          if (mounted) setState(() => _playing = false);
+        }
+      case AfterClip.stop:
+        if (mounted) setState(() => _playing = false);
+    }
   }
 
   @override
@@ -398,10 +424,12 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
 
   Future<void> _play() async {
     final clip = widget.recitation.clips[_clipIndex];
+    _stoppingOurselves = true;
     await _player.stop();
+    _stoppingOurselves = false;
     await _player.setPlaybackRate(_slow ? 0.75 : 1.0);
     await _player.play(UrlSource(clip.url));
-    setState(() => _playing = true);
+    if (mounted) setState(() => _playing = true);
   }
 
   Future<void> _toggle() async {
@@ -471,7 +499,23 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
                 icon: const Icon(Icons.replay_rounded),
                 color: AppColors.textSecondary,
                 onPressed: _play,
-                tooltip: 'Repeat',
+                tooltip: 'Play again',
+              ),
+              IconButton(
+                icon: Icon(
+                  _afterClip == AfterClip.repeatOne
+                      ? Icons.repeat_one_rounded
+                      : Icons.repeat_rounded,
+                  color: _afterClip == AfterClip.stop
+                      ? AppColors.textSecondary
+                      : AppColors.primary,
+                ),
+                onPressed: () => setState(() => _afterClip = _afterClip.next),
+                tooltip: switch (_afterClip) {
+                  AfterClip.stop => 'Keep playing through the passage',
+                  AfterClip.continueOn => 'Loop this ayah',
+                  AfterClip.repeatOne => 'Stop at the end',
+                },
               ),
               IconButton(
                 icon: Icon(Icons.slow_motion_video_rounded, color: _slow ? AppColors.primary : AppColors.textSecondary),
