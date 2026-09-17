@@ -415,3 +415,130 @@ def generate_practice_plan(uid: str) -> dict:
 
     return {"plan_type": "personalized", "based_on_sessions": len(sessions),
             "recommendations": recommendations}
+
+
+def apply_reattempt(uid: str, session_id: str, results,
+                    scope: tuple[int, int | None] | None = None) -> dict:
+    """FR-8/BR-5 self-correction, at word granularity.
+
+    What a re-attempt is allowed to change
+    --------------------------------------
+    Only words this session already flagged. A word the session called correct
+    stays correct even if the new recording scores it worse -- BR-5 is about
+    letting a reciter fix what they got wrong, not about putting a second
+    recording's mistakes onto the first one's record. Without that rule a user
+    who re-recites one bad word and fumbles a neighbouring good one ends up
+    with a worse score for having tried, which is the opposite of the
+    behaviour the requirement asks for.
+
+    `scope` narrows it further to (ayah_number, word_index) when the reciter
+    re-recorded a single word rather than the passage; word_index None means
+    the whole ayah.
+
+    Why the original per-word record is not overwritten
+    ---------------------------------------------------
+    `words` is the evidence the correction loop turns into ML labels -- what
+    the model claimed and how far off it thought the recitation was. A first
+    attempt that was wrongly flagged is exactly the case worth learning from,
+    so overwriting it with a later, cleaner take would delete the only record
+    of the false alarm. Re-attempts are appended to `reattempts` instead, and
+    only the user-facing statistics are recomputed.
+
+    `hadMultipleAttempts` stays true once set, even after a successful
+    correction: BR-5 intends such words to keep counting as weak areas for the
+    practice plan (FR-14).
+    """
+    db = get_firestore_client()
+    session_ref = (db.collection("users").document(uid)
+                   .collection("sessions").document(session_id))
+    session = session_ref.get()
+    if not session.exists:
+        raise KeyError(f"Session {session_id} not found for this user")
+    data = session.to_dict()
+
+    was_flagged = {(m["ayahNumber"], m["wordIndex"]) for m in data.get("mistakes", [])}
+    if scope is not None:
+        ayah, word_index = scope
+        was_flagged = {
+            key for key in was_flagged
+            if key[0] == ayah and (word_index is None or key[1] == word_index)
+        }
+    if not was_flagged:
+        raise ValueError(
+            "Nothing to re-attempt: this session has no flagged words in that range")
+
+    # New verdicts, keyed the same way, for words the recording actually reached.
+    fresh = {(r.ayah_number, r.word_index): r for r in results if r.recited}
+
+    attempt_counts = dict(data.get("attemptCounts", {}))
+    had_multiple = set(data.get("hadMultipleAttempts", []))
+    mistakes = [dict(m) for m in data.get("mistakes", [])]
+    by_key = {(m["ayahNumber"], m["wordIndex"]): m for m in mistakes}
+
+    corrected: list[dict] = []
+    still_wrong: list[dict] = []
+    not_reached: list[dict] = []
+
+    for key in sorted(was_flagged):
+        coordinate = f"{key[0]}:{key[1]}"
+        result = fresh.get(key)
+        if result is None:
+            # The re-recording never got to this word; its original verdict
+            # stands, and it does not count as an attempt.
+            not_reached.append({"ayahNumber": key[0], "wordIndex": key[1]})
+            continue
+
+        attempt_counts[coordinate] = attempt_counts.get(coordinate, 1) + 1
+        had_multiple.add(coordinate)
+        entry = {"ayahNumber": key[0], "wordIndex": key[1],
+                 "word": result.display_word}
+
+        if result.correct:
+            mistakes = [m for m in mistakes
+                        if (m["ayahNumber"], m["wordIndex"]) != key]
+            corrected.append(entry)
+        else:
+            # Still wrong, but possibly wrong in a new way -- the explanation
+            # the user sees should describe the attempt they just made.
+            existing = by_key.get(key)
+            if existing is not None:
+                existing["errorType"] = result.error_type or "makhraj"
+                existing["explanation"] = result.explanation or ""
+            still_wrong.append({**entry, "errorType": result.error_type})
+
+    words_recited = data.get("wordsRecited", 0)
+    words_correct = max(words_recited - len(mistakes), 0)
+    counts = Counter(m["errorType"] for m in mistakes)
+
+    reattempts = list(data.get("reattempts", []))
+    reattempts.append({
+        "at": datetime.now(timezone.utc),
+        "scope": {"ayahNumber": scope[0], "wordIndex": scope[1]} if scope else None,
+        "corrected": corrected,
+        "stillWrong": still_wrong,
+        "notReached": not_reached,
+    })
+
+    update = {
+        "mistakes": mistakes,
+        "mistakeCounts": {rule: counts.get(rule, 0) for rule in RULES},
+        "wordsCorrect": words_correct,
+        "accuracyScore": (round(words_correct / words_recited, 4)
+                          if words_recited else 0.0),
+        "attemptCounts": attempt_counts,
+        "hadMultipleAttempts": sorted(had_multiple),
+        "reattempts": reattempts,
+    }
+    session_ref.update(update)
+
+    return {
+        "session_id": session_id,
+        "corrected": corrected,
+        "still_wrong": still_wrong,
+        "not_reached": not_reached,
+        "words_correct": words_correct,
+        "words_recited": words_recited,
+        "accuracy_score": update["accuracyScore"],
+        "mistake_counts": update["mistakeCounts"],
+        "had_multiple_attempts": update["hadMultipleAttempts"],
+    }

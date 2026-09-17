@@ -156,6 +156,69 @@ async def word_feedback(
         raise HTTPException(status_code=404, detail=str(exc))
 
 
+@router.post("/sessions/{session_id}/reattempt")
+async def reattempt(
+    request: Request,
+    session_id: str,
+    audio: UploadFile = File(...),
+    surah_number: int = Form(...),
+    from_ayah: int = Form(1),
+    to_ayah: int | None = Form(None),
+    ayah_number: int | None = Form(None),
+    word_index: int | None = Form(None),
+    uid: str = Depends(get_current_uid),
+):
+    """FR-8/BR-5: recite a flagged passage again, and fix only what was wrong.
+
+    The reciter re-records either the whole passage or, with `ayah_number`
+    (optionally plus `word_index`), the one place they want another go at. Only
+    words this session already flagged can change; a word it called correct
+    keeps that verdict even if the new take scores it worse, so trying again can
+    never cost you a word you had already got right.
+
+    The session's own statistics -- mistakes, per-rule counts, accuracy -- are
+    recomputed. Its per-word phoneme record is not: that is what the correction
+    loop turns into training labels, and a first attempt that was wrongly
+    flagged is the case most worth keeping.
+    """
+    service = request.app.state.phoneme_analysis_service
+    if service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Word-level analysis isn't available yet on this server "
+                   "(phoneme model not loaded).",
+        )
+
+    audio_bytes = await audio.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Empty audio file")
+
+    scope = None
+    if ayah_number is not None:
+        from_ayah = to_ayah = ayah_number
+        scope = (ayah_number, word_index)
+    elif word_index is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="word_index needs an ayah_number to identify the word.",
+        )
+
+    try:
+        results = service.analyze_range(audio_bytes, surah_number, from_ayah, to_ayah)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Re-attempt analysis failed")
+        raise HTTPException(status_code=422, detail=f"Could not analyze audio: {exc}")
+
+    try:
+        return firestore_service.apply_reattempt(uid, session_id, results, scope)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @router.get("/progress")
 async def get_progress(uid: str = Depends(get_current_uid)):
     """FR-13: day streak, average score, chart-ready daily history, activity heatmap, and

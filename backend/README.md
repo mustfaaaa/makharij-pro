@@ -52,14 +52,18 @@ Until you do this, `/api/v1/analyze` (stateless inference) keeps working fine �
   the 3 rules marked correct — a clip-level stand-in until word-level detection exists).
 - `GET /api/v1/sessions` — the signed-in user's session history, most recent first (FR-13/UC-5,
   feeds the progress dashboard).
-- `POST /api/v1/sessions/{session_id}/reattempt` — FR-8/BR-5 self-correction, **adapted to
-  rule-granularity**: the model has no word-level detection yet, so a "re-attempt" resubmits a new
-  recording of the same passage, and only rules that were previously flagged incorrect in that
-  session get updated from the new result — rules already correct are left untouched, even if the
-  new clip's fresh analysis of them differs. Bumps `attemptCounts` and sets `hadMultipleAttempts`
-  only for the re-evaluated rule(s), and recomputes `accuracyScore`. `hadMultipleAttempts` stays
-  `true` even after a successful correction, matching BR-5's intent that such items still count as
-  weak areas for the future practice plan (FR-14).
+- `POST /api/v1/sessions/{session_id}/reattempt` — FR-8/BR-5 self-correction, **at word
+  granularity**. The reciter re-records either the whole passage or, with `ayah_number` (optionally
+  plus `word_index`), the single place they want another go at. Only words the session already
+  flagged can change: a word it called correct keeps that verdict even if the new take scores it
+  worse, so trying again can never cost you a word you had already got right. Bumps `attemptCounts`
+  and sets `hadMultipleAttempts` for the re-evaluated words, and recomputes `mistakes`,
+  `mistakeCounts` and `accuracyScore`. `hadMultipleAttempts` stays `true` even after a successful
+  correction, matching BR-5's intent that such items still count as weak areas for the practice
+  plan (FR-14). The session's per-word phoneme record (`words`) is deliberately *not* rewritten —
+  that is the evidence the correction loop turns into ML labels, and a first attempt that was
+  wrongly flagged is the case most worth keeping. Each re-attempt is appended to `reattempts`.
+  Pinned by `tests/test_reattempt.py` (15 tests).
 - `GET /api/v1/progress` — FR-13: `total_sessions`, `avg_score`, `day_streak` (consecutive days
   with at least one session, UTC calendar date — no per-user timezone yet, documented
   simplification), and `daily_scores` (last 30 active days, chart-ready for the dashboard).
@@ -118,7 +122,7 @@ separate architectural extension, tracked as future work, not a gap in this endp
 | Stereo-audio robustness fix (`predict_from_waveform` now downmixes defensively) | **done, verified no prediction change** |
 | Firebase Auth verification (`app/auth.py`) | **done, verified end-to-end with a real token** |
 | Firestore session/history persistence (`app/firestore_service.py`, `/api/v1/sessions*`) | **done, verified end-to-end** — analyze → save → read-back all confirmed working against the real `makharijpro-ai-9606e` project |
-| Self-correction / re-attempt endpoint (`POST /api/v1/sessions/{id}/reattempt`, FR-8/BR-5) | **done, verified end-to-end** — adapted to rule-granularity (see below); confirmed only the previously-incorrect rule gets updated, already-correct rules are untouched, attempt counts and accuracy score recompute correctly |
+| Self-correction / re-attempt endpoint (`POST /api/v1/sessions/{id}/reattempt`, FR-8/BR-5) | **done, at word granularity** — pinned by `tests/test_reattempt.py`. This row previously claimed "done, verified end-to-end" while no such route existed in the code: the rule-granularity version described here was lost in the move to word-level analysis and the row was never updated. Rebuilt per-word, which is what the requirement wanted in the first place. No frontend yet — the endpoint has no caller in `frontend/lib`. |
 | Progress stats (`GET /api/v1/progress`, FR-13) | **done, verified end-to-end** — day streak, avg score, and daily chart data all confirmed correct against a 4-session/3-day test history |
 | Practice plan (`GET /api/v1/practice-plan`, FR-14) | **done, verified end-to-end** — beginner-plan fallback and personalized ranking both confirmed correct |
 | Rattil AI repository + retrieval (`GET /api/v1/rattil/qaris`, `GET /api/v1/rattil/recitation`) | **done, verified end-to-end** — 258 real clips (3 Qaris × 15 surahs: 1, 101-114), served from local disk (Firebase Storage needs a billing account now, see "Rattil AI repository" below). Surah 100 deliberately excluded — the source dataset is missing ayahs 1-2 for all three reciters there, a real gap, not a bug. Qaris list + recitation retrieval + all error cases tested against real HTTP, a served clip confirmed to decode as valid playable audio (MPEG layer III). |
