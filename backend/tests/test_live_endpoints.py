@@ -142,6 +142,12 @@ class TestProgress:
             assert 0 <= pct <= 100, f"rule_mastery[{rule!r}]={pct} should be a 0-100 percentage"
 
     def test_requires_auth(self):
+        # Every other test in this file reaches _require_server() through the
+        # auth_headers fixture. This one takes no fixture, so without an
+        # explicit guard it is the one test that hard-fails -- rather than
+        # skips -- when the backend is not running, which is how a fresh
+        # clone sees it.
+        _require_server()
         r = httpx.get(f"{BASE_URL}/api/v1/progress", timeout=10)
         assert r.status_code in (401, 403)
 
@@ -251,6 +257,7 @@ class TestWordLevelAnalysis:
         assert correct_count >= 3, f"expected at least 3/4 words correct on a clean reference clip, got {correct_count}/4"
 
     def test_requires_auth(self):
+        _require_server()
         clip = self.RECITATIONS_DIR / "abdurrahmaan_as_sudais" / "001001.mp3"
         if not clip.exists():
             pytest.skip("Reference clip not present in this checkout.")
