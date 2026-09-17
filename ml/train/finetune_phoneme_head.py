@@ -50,7 +50,9 @@ MODEL_DIR = REPO / "ml" / "models" / "muaalem-v3_2"
 SPLIT = REPO / "ml" / "train" / "splits" / "learner_split.json"
 CACHE = REPO / "ml" / "train" / "cache"
 OUT = REPO / "ml" / "eval" / "results" / "finetune_phoneme_head.json"
-WEIGHTS = REPO / "ml" / "train" / "phoneme_head_learner.pt"
+# Named per head type: a linear run and an mlp run are different models and
+# must not overwrite each other.
+WEIGHTS_DIR = REPO / "ml" / "train" / "weights"
 
 LEVEL = "phonemes"
 # How many trailing epochs the settled score is read from.
@@ -264,7 +266,8 @@ def main() -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(summary, indent=2, ensure_ascii=False),
                         encoding="utf-8")
-    torch.save(best_state, WEIGHTS)
+    WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
+    torch.save(best_state, WEIGHTS_DIR / f"phoneme_head_{args.head}.pt")
 
     print()
     print("=" * 62)

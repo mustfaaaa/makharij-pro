@@ -171,3 +171,8 @@ ml/eval/results/current_predictions.jsonl
 ml/train/cache/
 ml/train/*_DONE
 ml/train/*.log
+
+# Tuned head weights: a byproduct, rebuilt in a minute by
+# ml/train/finetune_phoneme_head.py from the cached encoder features.
+ml/train/weights/
+ml/train/phoneme_head_learner.pt
