@@ -45,11 +45,12 @@ Until you do this, `/api/v1/analyze` (stateless inference) keeps working fine �
   thresholds from the model card. Stateless — nothing is saved.
 - `GET /api/v1/model-info` — model metadata, task list, thresholds, and known limitations (surface
   these to the frontend/product team — don't let "the model works" get overclaimed).
-- `POST /api/v1/sessions/analyze` — same as `/analyze`, but requires
-  `Authorization: Bearer <firebase_id_token>` and saves the result to
-  `users/{uid}/sessions/{sessionId}` in Firestore (FR-12). Optional form fields `surah_number`,
-  `ayah_range` to tag which passage was recited. Returns an `accuracy_score` (BR-3: proportion of
-  the 3 rules marked correct — a clip-level stand-in until word-level detection exists).
+- **Removed:** the clip-level three-rule session endpoint (POST /api/v1/sessions/analyze).
+  It scored a whole recording against three rules as "a stand-in until word-level detection
+  exists" — word-level detection exists, and `POST /api/v1/sessions/analyze_word_level` (below)
+  replaced it. The route was deleted; this entry stayed behind describing it as live until
+  `tests/test_documented_routes_exist.py` was written. Removed endpoints are named in prose, not
+  in the backticked `METHOD /path` notation the live ones use, so that test can tell them apart.
 - `GET /api/v1/sessions` — the signed-in user's session history, most recent first (FR-13/UC-5,
   feeds the progress dashboard).
 - `POST /api/v1/sessions/{session_id}/reattempt` — FR-8/BR-5 self-correction, **at word
