@@ -1,0 +1,173 @@
+{
+  "what": "phrase PER distribution of genuine attempts vs everything else",
+  "positives": {
+    "all_correct": {
+      "n": 121,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.459
+    },
+    "all_wrong": {
+      "n": 57,
+      "min": 0.0,
+      "median": 0.148,
+      "max": 0.393
+    },
+    "some_wrong": {
+      "n": 121,
+      "min": 0.0,
+      "median": 0.033,
+      "max": 0.262
+    },
+    "unlabelled": {
+      "n": 1,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    }
+  },
+  "negatives": {
+    "twin 2:32": {
+      "n": 1,
+      "min": 0.82,
+      "median": 0.82,
+      "max": 0.82
+    },
+    "whole of 5:109": {
+      "n": 1,
+      "min": 0.951,
+      "median": 0.951,
+      "max": 0.951
+    },
+    "other ayat (reference reciter)": {
+      "n": 60,
+      "min": 0.721,
+      "median": 0.943,
+      "max": 5.098
+    },
+    "learner recordings, other ayat": {
+      "n": 100,
+      "min": 0.656,
+      "median": 0.803,
+      "max": 1.016
+    }
+  },
+  "closest_negative": 0.656,
+  "furthest_positive": 0.459,
+  "sweep": [
+    {
+      "threshold": 0.1,
+      "qdat_accepted_pct": 86.0,
+      "qdat_all_wrong_accepted_pct": 42.1,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.15,
+      "qdat_accepted_pct": 89.7,
+      "qdat_all_wrong_accepted_pct": 54.4,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.2,
+      "qdat_accepted_pct": 92.3,
+      "qdat_all_wrong_accepted_pct": 64.9,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.25,
+      "qdat_accepted_pct": 95.0,
+      "qdat_all_wrong_accepted_pct": 77.2,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.3,
+      "qdat_accepted_pct": 97.7,
+      "qdat_all_wrong_accepted_pct": 89.5,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.35,
+      "qdat_accepted_pct": 98.7,
+      "qdat_all_wrong_accepted_pct": 94.7,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.4,
+      "qdat_accepted_pct": 99.7,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.45,
+      "qdat_accepted_pct": 99.7,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.5,
+      "qdat_accepted_pct": 100.0,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.55,
+      "qdat_accepted_pct": 100.0,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.6,
+      "qdat_accepted_pct": 100.0,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.65,
+      "qdat_accepted_pct": 100.0,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 100.0
+    },
+    {
+      "threshold": 0.7,
+      "qdat_accepted_pct": 100.0,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 98.8
+    },
+    {
+      "threshold": 0.75,
+      "qdat_accepted_pct": 100.0,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 95.1
+    },
+    {
+      "threshold": 0.8,
+      "qdat_accepted_pct": 100.0,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 74.1
+    },
+    {
+      "threshold": 0.85,
+      "qdat_accepted_pct": 100.0,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 46.9
+    },
+    {
+      "threshold": 0.9,
+      "qdat_accepted_pct": 100.0,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 26.5
+    },
+    {
+      "threshold": 0.95,
+      "qdat_accepted_pct": 100.0,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 24.1
+    },
+    {
+      "threshold": 1.0,
+      "qdat_accepted_pct": 100.0,
+      "qdat_all_wrong_accepted_pct": 100.0,
+      "negatives_rejected_pct": 17.9
+    }
+  ]
+}

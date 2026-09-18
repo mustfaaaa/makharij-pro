@@ -1,0 +1,67 @@
+{
+  "split": "test",
+  "clips": 206,
+  "labels_skipped": 0,
+  "rules": {
+    "separate_tide": {
+      "name": "Madd Munfasil",
+      "v1": {
+        "n": 206,
+        "accuracy": 0.568,
+        "balanced_accuracy": 0.522,
+        "mistakes_caught": 0.043,
+        "correct_confirmed": 1.0,
+        "n_incorrect": 93
+      },
+      "app": {
+        "n": 206,
+        "accuracy": 0.549,
+        "balanced_accuracy": 0.501,
+        "mistakes_caught": 0.011,
+        "correct_confirmed": 0.991,
+        "n_incorrect": 93
+      },
+      "better": "v1"
+    },
+    "the_tight_noon": {
+      "name": "Ghunnah (Noon Mushaddadah)",
+      "v1": {
+        "n": 206,
+        "accuracy": 0.762,
+        "balanced_accuracy": 0.5,
+        "mistakes_caught": 0.0,
+        "correct_confirmed": 1.0,
+        "n_incorrect": 49
+      },
+      "app": {
+        "n": 206,
+        "accuracy": 0.801,
+        "balanced_accuracy": 0.582,
+        "mistakes_caught": 0.163,
+        "correct_confirmed": 1.0,
+        "n_incorrect": 49
+      },
+      "better": "app"
+    },
+    "concealment": {
+      "name": "Ikhfa",
+      "v1": {
+        "n": 206,
+        "accuracy": 0.563,
+        "balanced_accuracy": 0.517,
+        "mistakes_caught": 0.156,
+        "correct_confirmed": 0.879,
+        "n_incorrect": 90
+      },
+      "app": {
+        "n": 206,
+        "accuracy": 0.718,
+        "balanced_accuracy": 0.678,
+        "mistakes_caught": 0.356,
+        "correct_confirmed": 1.0,
+        "n_incorrect": 90
+      },
+      "better": "app"
+    }
+  }
+}
