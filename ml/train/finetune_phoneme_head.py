@@ -87,6 +87,9 @@ def main() -> int:
     parser.add_argument("--hidden", type=int, default=1024)
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--split", type=Path, default=SPLIT)
+    parser.add_argument("--cache", type=Path, default=CACHE,
+                        help="encoder-output cache; point at cache_depth/K<n> "
+                             "to train on a truncated encoder")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
     # Defaulted after parsing so it can carry the head type: a linear run
@@ -106,7 +109,8 @@ def main() -> int:
     torch.manual_seed(args.seed)
 
     split = json.loads(args.split.read_text(encoding="utf-8"))
-    index = json.loads((CACHE / "index.json").read_text(encoding="utf-8"))
+    cache_dir = args.cache
+    index = json.loads((cache_dir / "index.json").read_text(encoding="utf-8"))
     train_ids = [c for c in split["train"] if c in index]
     held_ids = [c for c in split["held_out"] if c in index]
     _ = args.quiet and None
@@ -124,7 +128,7 @@ def main() -> int:
 
     def load(clip_id: str) -> torch.Tensor:
         return torch.from_numpy(
-            np.load(CACHE / f"{clip_id}.npy").astype(np.float32))
+            np.load(cache_dir / f"{clip_id}.npy").astype(np.float32))
 
     def targets(clip_id: str) -> torch.Tensor:
         ids = tokenizer(index[clip_id]["reference_phonemes"]).input_ids
@@ -272,7 +276,11 @@ def main() -> int:
     args.out.write_text(json.dumps(summary, indent=2, ensure_ascii=False),
                         encoding="utf-8")
     WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
-    torch.save(best_state, WEIGHTS_DIR / f"phoneme_head_{args.head}.pt")
+    # The final epoch's weights, not the best-scoring epoch's. The best epoch
+    # was picked by looking at the held-out clips, so any later measurement on
+    # those clips with those weights would be quietly optimistic -- which is
+    # exactly what measure_int8_quality.py did on its first run.
+    torch.save(tuned.state_dict(), WEIGHTS_DIR / f"phoneme_head_{args.head}.pt")
 
     print()
     print("=" * 62)

@@ -1,0 +1,23 @@
+{
+  "what": "same trained head, fp32 vs int8 encoder, held-out clips of the default split",
+  "results": [
+    {
+      "layers": 24,
+      "clips": 71,
+      "median_per_fp32": 0.0952,
+      "median_per_int8": 0.0952,
+      "mean_per_fp32": 0.1313,
+      "mean_per_int8": 0.1407,
+      "identical_output_pct": 38.0
+    },
+    {
+      "layers": 18,
+      "clips": 71,
+      "median_per_fp32": 0.1026,
+      "median_per_int8": 0.1026,
+      "mean_per_fp32": 0.1449,
+      "mean_per_int8": 0.1379,
+      "identical_output_pct": 22.5
+    }
+  ]
+}
