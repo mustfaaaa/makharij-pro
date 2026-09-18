@@ -83,7 +83,7 @@ Until you do this, `/api/v1/analyze` (stateless inference) keeps working fine �
 **Real audio, not placeholders** — 75 clips (5 short, commonly-practiced surahs: Al-Fatiha,
 Al-Kawthar, Al-Ikhlas, Al-Falaq, An-Nas — × the 3 SRS-named Qaris: Mishary Rashid Alafasy, Abdul
 Rahman As-Sudais, Yasser Al-Dosari), sourced from `Buraaq/quran-md-ayahs` on Hugging Face and
-verified playable. Built by [`tests/build_rattil_repository.py`](tests/build_rattil_repository.py)
+verified playable. Built by [`build_rattil_repository.py`](../archive/backend/tests/build_rattil_repository.py) (one-time script, now archived)
 — re-run it to add more surahs (extend `SURAHS` and `ml`-style `SURAH_AYAH_COUNTS`/`SURAH_NAMES` in
 `app/quran_metadata.py`) or more Qaris (the source dataset has 30 total, see its reciter list).
 
@@ -122,7 +122,7 @@ separate architectural extension, tracked as future work, not a gap in this endp
 | `/api/v1/analyze` — audio in, per-rule verdict out | **done, verified over real HTTP** |
 | `/api/v1/model-info` — surfaces thresholds + known limitations | **done, verified** |
 | Canonical feature extraction ported from `ml/notebooks/02_qdat_manifest.ipynb` §7, resampling added for non-16kHz uploads | **done, verified** (16kHz and 44.1kHz both tested) |
-| Local smoke test (`tests/smoke_test.py`) + live HTTP test (`tests/make_test_wav.py` + curl) | **done, passed** |
+| Local smoke test (`archive/backend/tests/smoke_test.py`) + live HTTP test (`archive/backend/tests/make_test_wav.py` + curl) — superseded by the pytest suite | **done, passed** |
 | Real-audio spot check against 3 held-out QDAT test clips with known labels | **done** — see "Real-audio validation" below |
 | Stereo-audio robustness fix (`predict_from_waveform` now downmixes defensively) | **done, verified no prediction change** |
 | Firebase Auth verification (`app/auth.py`) | **done, verified end-to-end with a real token** |
@@ -147,7 +147,7 @@ endpoints instead of dummy data. Remaining work: Rattil AI's full natural-langua
 ## Real-audio validation
 
 Ran 3 real, held-out QDAT test clips (never seen in training) through the backend, not synthetic
-noise: `tests/fetch_real_test_clips.py` downloads them from `obadx/qdat` by row index/id with
+noise: `archive/backend/tests/fetch_real_test_clips.py` downloads them from `obadx/qdat` by row index/id with
 known ground truth. Result: the "correct" clip matched on all 3 rules with high confidence
 (0.87-1.00); two "incorrect" clips were both misclassified as correct. This isn't a backend bug —
 verified identical predictions across three different decode paths (ruling out a pipeline issue) —

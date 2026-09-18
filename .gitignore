@@ -181,3 +181,6 @@ ml/train/phoneme_head_learner.pt
 # ml/train/cache_truncated_features.py
 ml/train/cache_depth/
 ml/train/*.log
+
+# Written by tests/test_live_stream.py on every run; its old copy is archived.
+backend/tests/live_stream_result.json

@@ -250,7 +250,7 @@ class TestWordLevelAnalysis:
                 correct_count += 1
 
         # At least 3 of 4 words on a clean reference recording, matching what
-        # independent verification (tests/zipformer_phoneme_multi_test.py)
+        # independent verification (archive/backend/tests/zipformer_phoneme_multi_test.py)
         # found for this exact clip -- not asserting all 4, since the model's
         # own documented ~3.65% real error rate means occasional misses on
         # elongation-heavy words are expected, not a bug.
