@@ -105,10 +105,17 @@ class _AskAiScreenState extends State<AskAiScreen> {
     }
 
     try {
-      final result = await Services.rattil.getRecitation(qariId: reply.qari!.qariId, surah: reply.surah!.number);
+      final result = await Services.rattil.getRecitation(
+        qariId: reply.qari!.qariId,
+        surah: reply.surah!.number,
+        // FR-19: particular ayat, when asked for. The backend already took a
+        // range; the chat just never read one out of a message.
+        ayahStart: reply.ayahStart,
+        ayahEnd: reply.ayahEnd,
+      );
       setState(() => _messages.add(_ChatMessage(
             fromUser: false,
-            text: '${result.surahNameEnglish}, recited by ${result.qariName}:',
+            text: '${reply.label}, recited by ${result.qariName}:',
             recitation: result,
           )));
     } on AppException catch (e) {
@@ -200,7 +207,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
                       spacing: 10,
                       runSpacing: 10,
                       children: [
-                        for (final n in const ['Al-Fatihah', 'Al-Ikhlas', 'Al-Kawthar', 'An-Nas'])
+                        for (final n in const ['Al-Fatihah', 'Ayat al-Kursi', 'Al-Ikhlas', 'Al-Kawthar', 'An-Nas'])
                           _QuestionChip(label: n, onTap: () => _send(n)),
                       ],
                     ),
@@ -414,6 +421,16 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
     if (_playing) await _player.setPlaybackRate(_slow ? 0.75 : 1.0);
   }
 
+  /// "Ayah 3 of 7" for a whole surah, where the ayah number and the position
+  /// in the list are the same thing. For a range they are not -- 285-286
+  /// would read "Ayah 285 of 2" -- so the position is given separately.
+  String _ayahLabel(int ayah, bool hasMultiple) {
+    final clips = widget.recitation.clips;
+    if (!hasMultiple) return 'Ayah $ayah';
+    if (clips.first.ayah == 1) return 'Ayah $ayah of ${clips.length}';
+    return 'Ayah $ayah  ·  ${_clipIndex + 1} of ${clips.length}';
+  }
+
   Future<void> _skip(int delta) async {
     final next = _clipIndex + delta;
     if (next < 0 || next >= widget.recitation.clips.length) return;
@@ -459,7 +476,7 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  'Ayah ${clip.ayah}${hasMultiple ? ' of ${widget.recitation.clips.length}' : ''}',
+                  _ayahLabel(clip.ayah, hasMultiple),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
                 ),
               ),

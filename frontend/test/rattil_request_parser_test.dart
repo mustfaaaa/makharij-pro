@@ -197,6 +197,150 @@ void main() {
     });
   });
 
+  group('particular ayat (FR-19)', () {
+    /// (surah, first ayah, last ayah) as parsed; null ayat = the whole surah.
+    List<int?> span(String text) {
+      final r = parser.parse(text);
+      return [r.surah?.number, r.ayahStart, r.ayahEnd];
+    }
+
+    group('passages by name', () {
+      final cases = {
+        'Ayat al-Kursi': [2, 255, 255],
+        'ayatul kursi': [2, 255, 255],
+        'ayat ul kursi sunao': [2, 255, 255],
+        'kursi by sudais': [2, 255, 255],
+        'آية الكرسي': [2, 255, 255],
+        'Amana ar-Rasul': [2, 285, 286],
+        'aamanar rasool': [2, 285, 286],
+        'ayat an nur': [24, 35, 35],
+        'ayatun noor': [24, 35, 35],
+      };
+      cases.forEach((text, expected) {
+        test('"$text" -> $expected', () => expect(span(text), expected));
+      });
+
+      test('"ayat 5 of an-nur" is ayah 5 of the surah, not Ayat an-Nur', () {
+        expect(span('an-nur ayat 5'), [24, 5, 5]);
+      });
+      test('"surah nur" is the whole surah', () => expect(span('surah nur'), [24, null, null]));
+    });
+
+    group('by number', () {
+      final cases = {
+        '2:255': [2, 255, 255],
+        '18:1-10': [18, 1, 10],
+        'surah 2 ayah 255': [2, 255, 255],
+        'ayah 255 of surah 2': [2, 255, 255],
+        'baqarah ayat 255': [2, 255, 255],
+        'baqarah 255': [2, 255, 255],
+        'baqarah ki ayat 255': [2, 255, 255],
+        'kahf 1-10': [18, 1, 10],
+        'kahf 1 to 10': [18, 1, 10],
+        'kahf 1 se 10 tak': [18, 1, 10],
+        'kahf 10-1': [18, 1, 10],
+        'yaseen verses 1 to 12': [36, 1, 12],
+      };
+      cases.forEach((text, expected) {
+        test('"$text" -> $expected', () => expect(span(text), expected));
+      });
+    });
+
+    group('first and last', () {
+      final cases = {
+        'mulk ki pehli 5 ayat': [67, 1, 5],
+        'first ten ayat of kahf': [18, 1, 10],
+        'kahf ki aakhri 10 ayat': [18, 101, 110],
+        'last two ayat of baqarah': [2, 285, 286],
+        'baqarah ki akhri do ayat': [2, 285, 286],
+      };
+      cases.forEach((text, expected) {
+        test('"$text" -> $expected', () => expect(span(text), expected));
+      });
+    });
+
+    group('the whole surah when no ayah is asked for', () {
+      for (final text in ['surah 112', '112', 'ikhlas', 'Al-Kahf by Sudais', '2 times surah 112']) {
+        test('"$text"', () => expect(span(text).sublist(1), [null, null]));
+      }
+    });
+
+    group('numbers that are not ayat', () {
+      test('"yaseen 36" is Ya-Sin restating its own number, not ayah 36', () {
+        expect(span('yaseen 36'), [36, null, null]);
+      });
+      test('"baqarah 36" is still ayah 36 -- only the surah\'s own number is special', () {
+        expect(span('baqarah 36'), [2, 36, 36]);
+      });
+      test('"recite 10 ayat" is a count, not Surah Yunus', () {
+        final r = parser.parse('recite 10 ayat');
+        expect(r.surah, isNull);
+        expect(parser.decide(r).plays, isFalse);
+      });
+      test('"ayah 5" alone is not Surah Al-Ma\'idah -- it asks which surah', () {
+        final r = parser.parse('ayah 5');
+        expect(r.surah, isNull);
+        expect(r.problem, contains('Which surah'));
+      });
+      for (final text in ['juz 30', 'para 1', 'page 5', 'sipara 30 by sudais']) {
+        test('"$text" is a juz or page, not a surah', () {
+          final r = parser.parse(text);
+          expect(r.surah, isNull);
+          expect(r.problem, contains('juz or page'));
+        });
+      }
+      test('"115:1" names a surah that does not exist', () {
+        expect(parser.parse('115:1').problem, contains('114 surahs'));
+      });
+    });
+
+    group('first and last without a number', () {
+      test('"last ayah of baqarah"', () => expect(span('last ayah of baqarah'), [2, 286, 286]));
+      test('"first ayah of fatiha"', () => expect(span('first ayah of fatiha'), [1, 1, 1]));
+    });
+
+    group('ayat that do not exist are explained, not requested', () {
+      test('past the end of the surah', () {
+        final r = parser.parse('ikhlas ayah 7');
+        expect(r.problem, contains('4 ayat'));
+        expect(r.ayahStart, isNull);
+        expect(parser.decide(r).plays, isFalse);
+      });
+      test('a range that runs past the end', () {
+        expect(parser.parse('baqarah 280-300').problem, contains('286 ayat'));
+      });
+      test('more "first" ayat than the surah has', () {
+        expect(parser.parse('first 10 ayat of ikhlas').problem, contains('only 4'));
+      });
+      test('ayah 0', () => expect(parser.parse('kahf ayah 0').problem, isNotNull));
+    });
+
+    group('what Rattil does with them', () {
+      test('plays the range, and names it', () {
+        final reply = parser.decide(parser.parse('Ayat al-Kursi'));
+        expect(reply.plays, isTrue);
+        expect([reply.surah!.number, reply.ayahStart, reply.ayahEnd], [2, 255, 255]);
+        expect(reply.label, 'Ayat al-Kursi (Al-Baqarah 255)');
+        expect(parser.decide(parser.parse('kahf 1-10')).label, 'Al-Kahf 1–10');
+        expect(parser.decide(parser.parse('kahf')).label, 'Al-Kahf');
+      });
+
+      test('a reciter who lacks the surah gets a suggestion that works as typed', () {
+        for (final text in ['Ayat al-Kursi by Alafasy', 'kahf 1-10 by Alafasy', 'baqarah 255 by Dosari']) {
+          final reply = parser.decide(parser.parse(text));
+          expect(reply.plays, isFalse, reason: text);
+          final suggestion = RegExp(r'try "([^"]+)"').firstMatch(reply.message!)!.group(1)!;
+          final original = parser.parse(text);
+          final followed = parser.decide(parser.parse(suggestion));
+          expect(followed.plays, isTrue, reason: suggestion);
+          expect([followed.surah!.number, followed.ayahStart, followed.ayahEnd],
+              [original.surah!.number, original.ayahStart, original.ayahEnd],
+              reason: '"$suggestion" must ask for the same ayat as "$text"');
+        }
+      });
+    });
+  });
+
   group('the welcome message', () {
     final text = parser.describeLibrary();
 
@@ -213,8 +357,12 @@ void main() {
 
     test('offers examples that actually work', () {
       expect(text, contains('"Al-Kahf"'));
-      final example = RegExp(r'"([^"]+ by [^"]+)"').firstMatch(text)!.group(1)!;
-      expect(parser.decide(parser.parse(example)).plays, isTrue, reason: example);
+      expect(text, contains('"Ayat al-Kursi"'));
+      final examples = RegExp(r'"([^"]+)"').allMatches(text).map((m) => m.group(1)!).toList();
+      expect(examples, hasLength(greaterThanOrEqualTo(3)));
+      for (final example in examples) {
+        expect(parser.decide(parser.parse(example)).plays, isTrue, reason: example);
+      }
     });
   });
 }
