@@ -112,7 +112,12 @@ class RattilRequestParser {
 
   /// Turns a parsed request into what Rattil should do: play something, or say
   /// why it can't. Never silently swaps the reciter someone asked for.
-  RattilReply decide(RattilRequest request) {
+  ///
+  /// [preferred] is the reciter picked on screen (FR-16). A reciter named in
+  /// the message outranks it. If the picked one lacks the surah, someone who
+  /// has it plays instead -- the picker is a default, not a demand -- and
+  /// [RattilReply.note] says so, so the switch is never silent either.
+  RattilReply decide(RattilRequest request, {Qari? preferred}) {
     if (request.problem != null) return RattilReply.say(request.problem!);
     final surah = request.surah;
     if (surah == null) {
@@ -126,8 +131,8 @@ class RattilRequestParser {
           'I have ${_joinAnd(qaris.map((q) => q.nameEnglish).toList())}.');
     }
 
-    RattilReply play(Qari q) => RattilReply.play(q, surah,
-        ayahStart: request.ayahStart, ayahEnd: request.ayahEnd, passage: request.passage);
+    RattilReply play(Qari q, {String? note}) => RattilReply.play(q, surah,
+        ayahStart: request.ayahStart, ayahEnd: request.ayahEnd, passage: request.passage, note: note);
     // What to call this request in a suggestion. It must read back as the same
     // request, so it is written the way the parser reads it.
     final asked = request.passage ??
@@ -146,10 +151,19 @@ class RattilRequestParser {
           "${requested.nameEnglish} doesn't have ${surah.nameEnglish} here yet.$alternative");
     }
 
-    // No reciter named: the first one who actually has it, rather than the
-    // first in the list and an error.
+    // No reciter named: the one picked on screen, if they have it.
+    if (preferred != null && preferred.availableSurahs.contains(surah.number)) {
+      return play(preferred);
+    }
+    // Otherwise the first one who actually has it, rather than an error.
     for (final q in qaris) {
-      if (q.availableSurahs.contains(surah.number)) return play(q);
+      if (q.availableSurahs.contains(surah.number)) {
+        return play(q,
+            note: preferred == null
+                ? null
+                : "${preferred.nameEnglish} doesn't have ${surah.nameEnglish} yet, "
+                    'so this is ${q.nameEnglish}.');
+      }
     }
     return RattilReply.say('No reciter here has ${surah.nameEnglish} yet.');
   }
@@ -442,6 +456,20 @@ class RattilRequest {
     this.passage,
     this.problem,
   });
+
+  /// The same ayat, asked of [reciter] by name -- what picking a reciter on
+  /// screen means for the passage already playing.
+  RattilRequest withQari(Qari reciter) => RattilRequest(
+        surah: surah,
+        qari: reciter,
+        ayahStart: ayahStart,
+        ayahEnd: ayahEnd,
+        passage: passage,
+        problem: problem,
+      );
+
+  /// Whether this is something that could be played again by another reciter.
+  bool get isPlayable => surah != null && problem == null && unknownReciter == null;
 }
 
 /// What Rattil should do with a request: play, or explain.
@@ -453,15 +481,20 @@ class RattilReply {
   final String? passage;
   final String? message;
 
+  /// Said alongside the recitation -- when the reciter playing is not the
+  /// one picked on screen, and why.
+  final String? note;
+
   const RattilReply.play(Qari this.qari, Surah this.surah,
-      {this.ayahStart, this.ayahEnd, this.passage})
+      {this.ayahStart, this.ayahEnd, this.passage, this.note})
       : message = null;
   const RattilReply.say(String this.message)
       : qari = null,
         surah = null,
         ayahStart = null,
         ayahEnd = null,
-        passage = null;
+        passage = null,
+        note = null;
 
   bool get plays => qari != null && surah != null;
 

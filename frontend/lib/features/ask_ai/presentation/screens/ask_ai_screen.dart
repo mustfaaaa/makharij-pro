@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/errors/app_exception.dart';
 import '../../../../models/after_clip.dart';
+import '../../../../models/ayah.dart';
 import '../../../../models/qari.dart';
 import '../../../../models/surah.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/quran_text_repository.dart';
 import '../../../../services/rattil_request_parser.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/animated/pressable.dart';
@@ -15,12 +17,13 @@ import '../../../../theme/app_shadows.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
+import '../widgets/rattil_widgets.dart';
 
-/// Rattil AI — real reference-recitation retrieval (FR-15/16/17), not a
-/// general Tajweed-knowledge chatbot. There's no NLP/LLM backend behind this;
-/// matching a typed request to a surah + Qari is done here by name/number,
-/// which is honest about what it actually is (see rattil.py's own docstring:
-/// natural-language parsing, FR-19, is explicitly future work).
+/// Rattil AI — reference-recitation retrieval (FR-15 to FR-19), not a general
+/// Tajweed-knowledge chatbot. There is no language model behind it: a typed
+/// request is read by [RattilRequestParser] -- rule-based, and tested -- into a
+/// surah or particular ayat and a reciter. The reciter can also be picked on
+/// screen (FR-16), and the ayah being recited is shown as it plays.
 class AskAiScreen extends StatefulWidget {
   const AskAiScreen({super.key});
 
@@ -45,6 +48,14 @@ class _AskAiScreenState extends State<AskAiScreen> {
   bool _ready = false;
   late RattilRequestParser _parser;
 
+  /// The reciter picked on screen (FR-16): who plays when a message names no
+  /// one. Starts on whoever has the most of the Quran.
+  Qari? _selectedQari;
+
+  /// The last request that played, so picking another reciter can play the
+  /// same ayat in their voice.
+  RattilRequest? _lastRequest;
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +68,9 @@ class _AskAiScreenState extends State<AskAiScreen> {
         _qaris = results[0] as List<Qari>;
         _surahs = results[1] as List<Surah>;
         _parser = RattilRequestParser(surahs: _surahs, qaris: _qaris);
+        _selectedQari = _qaris.isEmpty
+            ? null
+            : _qaris.reduce((a, b) => b.availableSurahs.length > a.availableSurahs.length ? b : a);
         _ready = true;
         // Summarised by reciter. It used to list every available surah by name,
         // which became 114 names in one bubble once a reciter had the whole Quran.
@@ -97,12 +111,30 @@ class _AskAiScreenState extends State<AskAiScreen> {
 
     // The parser decides, and never plays a different reciter from the one
     // asked for -- it says who has the surah instead.
-    final reply = _parser.decide(_parser.parse(text));
+    final request = _parser.parse(text);
+    await _play(request, _parser.decide(request, preferred: _selectedQari));
+  }
+
+  /// Picking a reciter (FR-16): the default from now on, and -- if something
+  /// has already played -- the same ayat again in their voice, which is what
+  /// comparing reciters actually needs.
+  Future<void> _pickQari(Qari qari) async {
+    if (_selectedQari?.qariId == qari.qariId) return;
+    HapticFeedback.selectionClick();
+    setState(() => _selectedQari = qari);
+    final last = _lastRequest;
+    if (last == null) return;
+    final again = last.withQari(qari);
+    await _play(again, _parser.decide(again));
+  }
+
+  Future<void> _play(RattilRequest request, RattilReply reply) async {
     if (!reply.plays) {
       setState(() => _messages.add(_ChatMessage(fromUser: false, text: reply.message!)));
       _scrollToEnd();
       return;
     }
+    if (request.isPlayable) _lastRequest = request;
 
     try {
       final result = await Services.rattil.getRecitation(
@@ -113,9 +145,10 @@ class _AskAiScreenState extends State<AskAiScreen> {
         ayahStart: reply.ayahStart,
         ayahEnd: reply.ayahEnd,
       );
+      final said = '${reply.label}, recited by ${result.qariName}:';
       setState(() => _messages.add(_ChatMessage(
             fromUser: false,
-            text: '${reply.label}, recited by ${result.qariName}:',
+            text: reply.note == null ? said : '${reply.note}\n$said',
             recitation: result,
           )));
     } on AppException catch (e) {
@@ -190,6 +223,16 @@ class _AskAiScreenState extends State<AskAiScreen> {
                 ],
               ),
             ),
+            // ── Reciter picker (FR-16) ───────────────────────────────────
+            // Outside the scrolling chat so it is always in reach: before this
+            // the only way to change reciter was to know a name and type it.
+            if (_ready && _qaris.isNotEmpty)
+              QariPicker(
+                qaris: _qaris,
+                selected: _selectedQari,
+                totalSurahs: _surahs.length,
+                onPick: _pickQari,
+              ),
             // ── Chat + cards ─────────────────────────────────────────────
             Expanded(
               child: ListView(
@@ -364,10 +407,27 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
   /// exactly like a clip ending and start the next one behind the user's back.
   bool _stoppingOurselves = false;
 
+  /// The text of each ayah in this surah, from the bundled Quran asset --
+  /// so it shows offline, and instantly, while the audio is still loading.
+  Map<int, Ayah> _ayahs = const {};
+  String _basmala = '';
+
   @override
   void initState() {
     super.initState();
     _player.onPlayerComplete.listen((_) => _onClipEnded());
+    _loadText();
+  }
+
+  Future<void> _loadText() async {
+    final repo = QuranTextRepository.instance;
+    final ayahs = await repo.ayahsForSurah(widget.recitation.surah);
+    final basmala = await repo.basmala();
+    if (!mounted) return;
+    setState(() {
+      _ayahs = {for (final a in ayahs) a.number: a};
+      _basmala = basmala;
+    });
   }
 
   Future<void> _onClipEnded() async {
@@ -442,12 +502,30 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
   Widget build(BuildContext context) {
     final clip = widget.recitation.clips[_clipIndex];
     final hasMultiple = widget.recitation.clips.length > 1;
+    final ayah = _ayahs[clip.ayah];
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: AppRadii.mdRadius),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // The words being recited, so the listener can follow along -- the
+          // point of a reference recitation. Before this the card showed only
+          // "Ayah 255".
+          if (ayah != null) ...[
+            AnimatedSwitcher(
+              duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 220),
+              child: RattilAyahText(
+                key: ValueKey('${widget.recitation.surah}:${clip.ayah}'),
+                arabic: QuranTextRepository.asRecited(widget.recitation.surah, ayah, _basmala),
+                translation: ayah.translation,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Divider(height: 1, color: AppColors.primary.withValues(alpha: 0.15)),
+            const SizedBox(height: 2),
+          ],
           Row(
             children: [
               if (hasMultiple)

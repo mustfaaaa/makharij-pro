@@ -341,6 +341,51 @@ void main() {
     });
   });
 
+  group('the reciter picked on screen (FR-16)', () {
+    final alafasy = _qaris[1];
+    final sudais = _qaris[0];
+
+    test('is used when the message names no one', () {
+      final reply = parser.decide(parser.parse('Al-Ikhlas'), preferred: alafasy);
+      expect(reply.qari!.qariId, 'alafasy');
+      expect(reply.note, isNull);
+    });
+
+    test('a reciter named in the message outranks it', () {
+      final reply = parser.decide(parser.parse('Al-Ikhlas by Dosari'), preferred: alafasy);
+      expect(reply.qari!.qariId, 'yasser_ad_dussary');
+    });
+
+    test('lacking the surah, someone who has it plays -- and the reply says so', () {
+      final reply = parser.decide(parser.parse('Ayat al-Kursi'), preferred: alafasy);
+      expect(reply.plays, isTrue);
+      expect(reply.qari!.qariId, 'abdurrahmaan_as_sudais');
+      expect(reply.note, contains('Mishary Rashid Alafasy'));
+      expect(reply.note, contains('Abdul Rahman As-Sudais'));
+      expect([reply.ayahStart, reply.ayahEnd], [255, 255], reason: 'the ayat survive the switch');
+    });
+
+    test('picking a reciter for what is already playing asks for the same ayat', () {
+      final original = parser.parse('kahf 1-10');
+      final again = parser.decide(original.withQari(sudais));
+      expect([again.surah!.number, again.ayahStart, again.ayahEnd, again.qari!.qariId],
+          [18, 1, 10, 'abdurrahmaan_as_sudais']);
+    });
+
+    test('picking one who lacks what is playing is refused plainly, not swapped', () {
+      final reply = parser.decide(parser.parse('kahf 1-10').withQari(alafasy));
+      expect(reply.plays, isFalse);
+      expect(reply.message, contains("doesn't have Al-Kahf"));
+    });
+
+    test('only complete requests can be replayed by another reciter', () {
+      expect(parser.parse('kahf 1-10').isPlayable, isTrue);
+      expect(parser.parse('ikhlas ayah 7').isPlayable, isFalse);
+      expect(parser.parse('hello').isPlayable, isFalse);
+      expect(parser.parse('Al-Fatihah by Minshawi').isPlayable, isFalse);
+    });
+  });
+
   group('the welcome message', () {
     final text = parser.describeLibrary();
 
