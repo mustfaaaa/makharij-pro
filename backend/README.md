@@ -1,11 +1,12 @@
 # MakharijPro AI — Backend (Track B)
 
-FastAPI service wrapping the Track A model ([`ml/models/makharijpro_tajweed_model_v1/`](../ml/models/makharijpro_tajweed_model_v1/)).
+FastAPI service behind the MakharijPro app: word-level recitation analysis (the Quran-Lab zipformer), live feedback, sessions and progress, the Rattil Qari library, and the per-word Tajweed reference.
+
+**Model v1 (the Track A clip-level CNN) has been removed.** It was loaded at every startup and served `/api/v1/analyze`, but the app never called that endpoint, and measured on QDAT's test split the saved file does not reproduce its own model card — it answers "correct" to almost every clip (0 of 49 ghunnah mistakes caught, against the card's 47). See `ml/eval/results/drill_model_comparison.json` and the commit that recorded it. The model, its card and its serving code are in `archive/`.
 
 ## Setup
 
-Requires Python 3.12 — TensorFlow 2.20 (what the model was trained with) has no wheel for newer
-Python versions yet.
+Tested on Python 3.12. (TensorFlow is no longer a dependency — it was only needed for model v1.)
 
 ```bash
 py -3.12 -m venv .venv
@@ -34,17 +35,14 @@ project owner can generate — I can't create this on your behalf.
 4. Restart the server. You'll see `Firebase Admin initialized for project makharijpro-ai-9606e`
    instead of the "not initialized" warning.
 
-Until you do this, `/api/v1/analyze` (stateless inference) keeps working fine — only
+Until you do this, the public endpoints (Rattil, the Tajweed reference) keep working — only
 `/api/v1/sessions*` return `503` with a message pointing back here.
 
 ## Endpoints
 
 - `GET /health` — liveness check.
-- `POST /api/v1/analyze` — multipart upload, field name `audio`, no auth required. Returns
-  per-rule (Separate Madd, Ghunnah, Ikhfa) correct/incorrect + confidence, using the calibrated
-  thresholds from the model card. Stateless — nothing is saved.
-- `GET /api/v1/model-info` — model metadata, task list, thresholds, and known limitations (surface
-  these to the frontend/product team — don't let "the model works" get overclaimed).
+- **Removed:** model v1's clip-level endpoints (POST /api/v1/analyze and GET /api/v1/model-info).
+  No caller in the app, and the model behind them was not discriminating — see the top of this file.
 - **Removed:** the clip-level three-rule session endpoint (POST /api/v1/sessions/analyze).
   It scored a whole recording against three rules as "a stand-in until word-level detection
   exists" — word-level detection exists, and `POST /api/v1/sessions/analyze_word_level` (below)
@@ -119,8 +117,6 @@ separate architectural extension, tracked as future work, not a gap in this endp
 | Item | Status |
 |---|---|
 | FastAPI skeleton + model loading at startup | **done, verified** |
-| `/api/v1/analyze` — audio in, per-rule verdict out | **done, verified over real HTTP** |
-| `/api/v1/model-info` — surfaces thresholds + known limitations | **done, verified** |
 | Canonical feature extraction ported from `ml/notebooks/02_qdat_manifest.ipynb` §7, resampling added for non-16kHz uploads | **done, verified** (16kHz and 44.1kHz both tested) |
 | Local smoke test (`archive/backend/tests/smoke_test.py`) + live HTTP test (`archive/backend/tests/make_test_wav.py` + curl) — superseded by the pytest suite | **done, passed** |
 | Real-audio spot check against 3 held-out QDAT test clips with known labels | **done** — see "Real-audio validation" below |

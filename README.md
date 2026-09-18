@@ -77,10 +77,9 @@ Generate it from **Firebase Console → Project Settings → Service Accounts �
 .venv/Scripts/python -m uvicorn app.main:app --port 8000
 ```
 
-A healthy startup logs all three parts loading:
+A healthy startup logs its parts loading:
 
 ```
-INFO:app.model_service:Model loaded
 INFO:app.firebase_admin_setup:Firebase Admin initialized
 INFO:root:Phoneme analysis service loaded -- word-level analysis available
 ```

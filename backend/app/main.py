@@ -7,24 +7,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .firebase_admin_setup import init_firebase
-from .model_service import TajweedModelService
 from .phoneme_analysis_service import PhonemeAnalysisService
 from .reference_words import ReferenceWordAudio
 from .tajweed_reference import TajweedReference
-from .routers import inference, live, rattil, sessions, tajweed
+from .routers import live, rattil, sessions, tajweed
 
 logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.model_service = TajweedModelService()  # loaded once, reused across requests
     try:
         init_firebase()
     except FileNotFoundError as exc:
-        # Non-fatal: /api/v1/analyze (no auth needed) must keep working even before the
-        # service account key is set up. Auth/Firestore-dependent endpoints will 503 until
-        # it's added -- see backend/README.md for how to generate one.
+        # Non-fatal: the public endpoints (Rattil, the Tajweed reference) must keep
+        # working before the service account key is set up. Auth/Firestore-dependent
+        # endpoints will 503 until it's added -- see backend/README.md.
         logging.warning(f"Firebase not initialized, auth/session endpoints will 503: {exc}")
 
     # Gate 1+2 (approved, see makharij_audit): word-level phoneme recognition
@@ -73,7 +71,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(inference.router, prefix="/api/v1")
 app.include_router(sessions.router, prefix="/api/v1")
 app.include_router(rattil.router, prefix="/api/v1")
 app.include_router(tajweed.router, prefix="/api/v1")

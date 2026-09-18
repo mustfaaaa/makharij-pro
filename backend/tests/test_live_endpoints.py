@@ -95,7 +95,7 @@ class TestCors:
     def test_localhost_origin_allowed(self, origin):
         _require_server()
         r = httpx.options(
-            f"{BASE_URL}/api/v1/sessions/analyze",
+            f"{BASE_URL}/api/v1/sessions/analyze_word_level",
             headers={
                 "Origin": origin,
                 "Access-Control-Request-Method": "POST",
@@ -107,7 +107,7 @@ class TestCors:
     def test_external_origin_rejected(self):
         _require_server()
         r = httpx.options(
-            f"{BASE_URL}/api/v1/sessions/analyze",
+            f"{BASE_URL}/api/v1/sessions/analyze_word_level",
             headers={"Origin": "http://evil.com", "Access-Control-Request-Method": "POST"},
             timeout=10,
         )

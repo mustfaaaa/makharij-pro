@@ -1,6 +1,6 @@
 """Rattil AI recitation retrieval (FR-15/FR-17/UC-8). Deliberately simple for now: explicit
 surah/ayah numbers, not natural-language request parsing (FR-19) -- that's a layer on top of this
-once the frontend chat UI exists to actually need it. No auth required, matching /api/v1/analyze's
+once the frontend chat UI exists to actually need it. No auth required, matching the other public endpoints'
 pattern -- listening to a reference recitation isn't tied to a user's personal data the way session
 history is.
 """
