@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/errors/app_exception.dart';
+import '../../../../data/tajweed_rules.dart';
 import '../../../../models/after_clip.dart';
 import '../../../../models/ayah.dart';
 import '../../../../models/qari.dart';
+import '../../../../models/tajweed_rule.dart';
 import '../../../../models/surah.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/quran_text_repository.dart';
@@ -35,7 +37,41 @@ class _ChatMessage {
   final bool fromUser;
   final String text;
   final RecitationResult? recitation;
-  const _ChatMessage({required this.fromUser, required this.text, this.recitation});
+
+  /// How the recitation's player starts -- slower, looping -- when the
+  /// request said so ("Ayat al-Kursi on loop").
+  final Set<RattilCommand> startWith;
+
+  /// Lets later typed commands reach this message's player.
+  final _PlayerController? player;
+
+  /// A Tajweed rule this message explains, to open in the library.
+  final TajweedRule? rule;
+
+  const _ChatMessage({
+    required this.fromUser,
+    required this.text,
+    this.recitation,
+    this.startWith = const {},
+    this.player,
+    this.rule,
+  });
+}
+
+/// The chat's handle on the player it most recently put on screen, so a typed
+/// "repeat" or "slower" (FR-18) acts on it. The player attaches itself when it
+/// is built and lets go when it is disposed.
+class _PlayerController {
+  _AudioExampleCardState? _card;
+
+  bool get attached => _card != null;
+
+  /// Carries out [commands] and says what was done, in a sentence for the chat.
+  Future<String> apply(Set<RattilCommand> commands) async {
+    final card = _card;
+    if (card == null) return 'Nothing is playing yet -- ask for a surah or ayat first.';
+    return card._apply(commands);
+  }
 }
 
 class _AskAiScreenState extends State<AskAiScreen> {
@@ -56,6 +92,9 @@ class _AskAiScreenState extends State<AskAiScreen> {
   /// same ayat in their voice.
   RattilRequest? _lastRequest;
 
+  /// The player typed commands go to: the one most recently put on screen.
+  _PlayerController? _activePlayer;
+
   @override
   void initState() {
     super.initState();
@@ -67,7 +106,9 @@ class _AskAiScreenState extends State<AskAiScreen> {
       setState(() {
         _qaris = results[0] as List<Qari>;
         _surahs = results[1] as List<Surah>;
-        _parser = RattilRequestParser(surahs: _surahs, qaris: _qaris);
+        // The rules library is bundled with the app, so questions about a
+        // rule are answered offline and from the same text the library shows.
+        _parser = RattilRequestParser(surahs: _surahs, qaris: _qaris, rules: tajweedRules);
         _selectedQari = _qaris.isEmpty
             ? null
             : _qaris.reduce((a, b) => b.availableSurahs.length > a.availableSurahs.length ? b : a);
@@ -129,6 +170,31 @@ class _AskAiScreenState extends State<AskAiScreen> {
   }
 
   Future<void> _play(RattilRequest request, RattilReply reply) async {
+    // A command for the player already on screen (FR-18).
+    if (reply.controls) {
+      final player = _activePlayer;
+      final String said;
+      if (player == null) {
+        said = 'Nothing is playing yet -- ask for a surah or ayat first.';
+      } else if (!player.attached) {
+        // The list lets a player go once it scrolls far out of view, and its
+        // audio with it -- so "nothing is playing" would be untrue, not just
+        // unhelpful.
+        said = 'That recitation has scrolled out of view -- ask for it again to keep going.';
+      } else {
+        said = await player.apply(reply.commands);
+      }
+      if (!mounted) return;
+      setState(() => _messages.add(_ChatMessage(fromUser: false, text: said)));
+      _scrollToEnd();
+      return;
+    }
+    // A Tajweed rule, answered from the library, with a way into it.
+    if (reply.rule != null) {
+      setState(() => _messages.add(_ChatMessage(fromUser: false, text: reply.message!, rule: reply.rule)));
+      _scrollToEnd();
+      return;
+    }
     if (!reply.plays) {
       setState(() => _messages.add(_ChatMessage(fromUser: false, text: reply.message!)));
       _scrollToEnd();
@@ -146,10 +212,14 @@ class _AskAiScreenState extends State<AskAiScreen> {
         ayahEnd: reply.ayahEnd,
       );
       final said = '${reply.label}, recited by ${result.qariName}:';
+      final player = _PlayerController();
+      _activePlayer = player;
       setState(() => _messages.add(_ChatMessage(
             fromUser: false,
             text: reply.note == null ? said : '${reply.note}\n$said',
             recitation: result,
+            startWith: reply.commands,
+            player: player,
           )));
     } on AppException catch (e) {
       setState(() => _messages.add(_ChatMessage(fromUser: false, text: e.message)));
@@ -375,7 +445,26 @@ class _Bubble extends StatelessWidget {
                 Text(message.text, style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5)),
                 if (message.recitation != null) ...[
                   const SizedBox(height: 14),
-                  _AudioExampleCard(recitation: message.recitation!),
+                  _AudioExampleCard(
+                    recitation: message.recitation!,
+                    startWith: message.startWith,
+                    controller: message.player,
+                  ),
+                ],
+                if (message.rule != null) ...[
+                  const SizedBox(height: 10),
+                  // The chat gives the short answer; the library has the full
+                  // explanation and the example.
+                  TextButton.icon(
+                    onPressed: () => context.push(RoutePaths.ruleDetailsPath(message.rule!.id)),
+                    icon: const Icon(Icons.menu_book_rounded, size: 18),
+                    label: const Text('Open in Tajweed Rules'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primaryDark,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(48, 44),
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -389,7 +478,14 @@ class _Bubble extends StatelessWidget {
 // ── Real reference audio player embedded in the AI bubble ────────────────────
 class _AudioExampleCard extends StatefulWidget {
   final RecitationResult recitation;
-  const _AudioExampleCard({required this.recitation});
+
+  /// Settings the request asked for up front: slower, looping, playing on.
+  final Set<RattilCommand> startWith;
+
+  /// How typed commands reach this player.
+  final _PlayerController? controller;
+
+  const _AudioExampleCard({required this.recitation, this.startWith = const {}, this.controller});
 
   @override
   State<_AudioExampleCard> createState() => _AudioExampleCardState();
@@ -417,7 +513,74 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
     super.initState();
     _player.onPlayerComplete.listen((_) => _onClipEnded());
     _loadText();
+    widget.controller?._card = this;
+    // "Ayat al-Kursi slowly, on loop": the player starts set up that way.
+    final start = widget.startWith;
+    _slow = start.contains(RattilCommand.slower);
+    if (start.contains(RattilCommand.loop)) {
+      _afterClip = AfterClip.repeatOne;
+    } else if (start.contains(RattilCommand.playOn)) {
+      _afterClip = AfterClip.continueOn;
+    }
   }
+
+  /// Carries out typed commands (FR-18) and says, in a sentence, what changed.
+  ///
+  /// Order matters when several arrive together ("slower and repeat"): speed
+  /// and mode are set first, so the replay or next ayah that follows is heard
+  /// with them. A pause overrides everything else in the same message.
+  Future<String> _apply(Set<RattilCommand> commands) async {
+    if (!mounted) return 'Nothing is playing yet -- ask for a surah or ayat first.';
+    final said = <String>[];
+
+    if (commands.contains(RattilCommand.pause)) {
+      await _player.pause();
+      if (mounted) setState(() => _playing = false);
+      return 'Paused.';
+    }
+
+    if (commands.contains(RattilCommand.slower) && !_slow) {
+      await _toggleSlow();
+      said.add('Slowed down.');
+    } else if (commands.contains(RattilCommand.slower)) {
+      said.add('Already at the slower speed.');
+    } else if (commands.contains(RattilCommand.normalSpeed) && _slow) {
+      await _toggleSlow();
+      said.add('Back to normal speed.');
+    }
+
+    if (commands.contains(RattilCommand.loop)) {
+      setState(() => _afterClip = AfterClip.repeatOne);
+      said.add('Looping this ayah.');
+    } else if (commands.contains(RattilCommand.playOn)) {
+      setState(() => _afterClip = AfterClip.continueOn);
+      said.add('Playing on through the passage.');
+    }
+
+    final clips = widget.recitation.clips;
+    if (commands.contains(RattilCommand.next)) {
+      if (_clipIndex >= clips.length - 1) return [...said, 'That was the last ayah here.'].join(' ');
+      setState(() => _clipIndex += 1);
+      await _play();
+      said.add('Ayah ${clips[_clipIndex].ayah}.');
+    } else if (commands.contains(RattilCommand.previous)) {
+      if (_clipIndex == 0) return [...said, 'That is the first ayah here.'].join(' ');
+      setState(() => _clipIndex -= 1);
+      await _play();
+      said.add('Ayah ${clips[_clipIndex].ayah}.');
+    } else if (commands.contains(RattilCommand.replay)) {
+      await _play();
+      said.add('Playing it again.');
+    } else if (commands.contains(RattilCommand.resume) ||
+        (said.isNotEmpty && !_playing && commands.intersection(_startsPlayback).isNotEmpty)) {
+      await _play();
+      said.add('Playing.');
+    }
+    return said.isEmpty ? 'Okay.' : said.join(' ');
+  }
+
+  /// Asking for a loop or to play on, with nothing playing, means "play it".
+  static const _startsPlayback = {RattilCommand.loop, RattilCommand.playOn};
 
   Future<void> _loadText() async {
     final repo = QuranTextRepository.instance;
@@ -453,6 +616,7 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
 
   @override
   void dispose() {
+    if (widget.controller?._card == this) widget.controller!._card = null;
     _player.dispose();
     super.dispose();
   }

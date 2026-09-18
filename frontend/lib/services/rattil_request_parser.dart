@@ -1,5 +1,6 @@
 import '../models/qari.dart';
 import '../models/surah.dart';
+import '../models/tajweed_rule.dart';
 
 /// Understands what someone typed into Rattil AI: which surah, which reciter.
 ///
@@ -22,20 +23,32 @@ import '../models/surah.dart';
 ///
 /// Arabic input works too ("سورة الفاتحة"), as does a surah's meaning ("the
 /// Cow") and its number ("surah 18").
+///
+/// Two more kinds of message, besides asking for a recitation:
+///  * **Commands for the player** (FR-18) -- "repeat", "slower", "next",
+///    "loop", "stop", and their Roman Urdu forms ("phir se", "aahista",
+///    "agli"). The same controls existed as buttons; in a chat people type.
+///  * **Questions about a Tajweed rule** -- "what is ghunnah?", "ikhfa kya
+///    hai". Answered from the app's own [rules] library, and honestly when a
+///    rule is not in it.
 class RattilRequestParser {
   final List<Surah> surahs;
   final List<Qari> qaris;
+  final List<TajweedRule> rules;
 
   late final List<_SurahKeys> _surahKeys = [for (final s in surahs) _SurahKeys.of(s)];
   late final List<_QariKeys> _qariKeys = [for (final q in qaris) _QariKeys.of(q)];
 
-  RattilRequestParser({required this.surahs, required this.qaris});
+  RattilRequestParser({required this.surahs, required this.qaris, this.rules = const []});
 
   /// What the message asks for. Any part can be missing.
   RattilRequest parse(String text) {
     final tokens = _latinTokens(text);
     final qariMatch = _matchQari(text, tokens);
-    final usedByQari = qariMatch?.tokenIndices ?? const <int>{};
+    final ruleHit = _matchRule(text, tokens);
+    // Words spent on a reciter or a rule are never read as a surah's name.
+    final usedByQari = {...?qariMatch?.tokenIndices, ...?ruleHit?.tokenIndices};
+    final commands = _matchCommands(text);
 
     // A juz or a page is a different unit, and "juz 30" must not play surah 30.
     if (RegExp(r'\b(?:juz|juzz|para|parah|sipara|siparah|hizb|page|safha)\b').hasMatch(_fold(text))) {
@@ -89,6 +102,16 @@ class RattilRequestParser {
       if (problem == null) span = span.resolvedFor(surah);
     }
 
+    // A question about a rule. "Ghunnah" on its own is one; so is "what is
+    // madd in Al-Fatihah" -- a question word beats the surah beside it.
+    if (ruleHit != null && (surah == null || _asksAbout(text))) {
+      return RattilRequest(qari: qariMatch?.qari, rule: ruleHit.rule, unknownRule: ruleHit.unknownName);
+    }
+    if (surah == null && commands.isEmpty) {
+      final courtesy = _courtesy(text);
+      if (courtesy != null) return RattilRequest(courtesy: courtesy);
+    }
+
     String? unknownReciter;
     if (qariMatch == null) {
       // Only "by X": "from" is as often "from the beginning" as "from Sudais".
@@ -107,6 +130,7 @@ class RattilRequestParser {
       ayahEnd: problem == null ? span?.end : null,
       passage: passageName,
       problem: problem,
+      commands: commands,
     );
   }
 
@@ -119,7 +143,26 @@ class RattilRequestParser {
   /// [RattilReply.note] says so, so the switch is never silent either.
   RattilReply decide(RattilRequest request, {Qari? preferred}) {
     if (request.problem != null) return RattilReply.say(request.problem!);
+    if (request.courtesy != null) return RattilReply.say(request.courtesy!);
+
+    final rule = request.rule;
+    if (rule != null) {
+      final checked = rule.isAiDetectable
+          ? 'MakharijPro checks this when you recite.'
+          : "MakharijPro doesn't check this one automatically yet -- it's here for reference.";
+      return RattilReply.explain(rule, '${rule.title}\n${rule.shortDescription}\n$checked');
+    }
+    if (request.unknownRule != null) {
+      final have = _joinAnd([for (final r in rules) _ruleShortName(r)]);
+      return RattilReply.say("${request.unknownRule} isn't in the Tajweed library yet. "
+          '${have.isEmpty ? '' : 'It covers $have.'}');
+    }
+
     final surah = request.surah;
+    // Something for the player, not a new recitation: "repeat", "slower".
+    if (surah == null && request.commands.isNotEmpty) {
+      return RattilReply.control(request.commands);
+    }
     if (surah == null) {
       return RattilReply.say(
           "I couldn't find a surah in that. Try a name like \"Al-Kahf\" or \"Yaseen\", "
@@ -131,8 +174,14 @@ class RattilRequestParser {
           'I have ${_joinAnd(qaris.map((q) => q.nameEnglish).toList())}.');
     }
 
+    // "Ayat al-Kursi, slowly, on loop": how the new recitation should start.
+    final startWith = request.commands.intersection(_startModifiers);
     RattilReply play(Qari q, {String? note}) => RattilReply.play(q, surah,
-        ayahStart: request.ayahStart, ayahEnd: request.ayahEnd, passage: request.passage, note: note);
+        ayahStart: request.ayahStart,
+        ayahEnd: request.ayahEnd,
+        passage: request.passage,
+        note: note,
+        commands: startWith);
     // What to call this request in a suggestion. It must read back as the same
     // request, so it is written the way the parser reads it.
     final asked = request.passage ??
@@ -202,8 +251,11 @@ class RattilRequestParser {
     }
 
     final tryLine = examples.isEmpty ? '' : '\nTry ${_joinOr(examples)}.';
+    final more = rules.isEmpty
+        ? '\nWhile it plays: "repeat", "slower", "next".'
+        : '\nWhile it plays: "repeat", "slower", "next" -- or ask "what is ghunnah?"';
     return 'Ask for a surah or particular ayat, and a reciter if you like.\n'
-        '${lines.join('\n')}$tryLine';
+        '${lines.join('\n')}$tryLine$more';
   }
 
   /// The name people actually use for a reciter: the family name, without its
@@ -286,6 +338,98 @@ class RattilRequestParser {
       if (s != null) return _SurahHit(s, byBareNumber: true);
     }
     return null;
+  }
+
+  // ── Tajweed rules ───────────────────────────────────────────────────────
+
+  /// A rule named in the message: one from the library, or one it lacks.
+  _RuleHit? _matchRule(String text, List<String> tokens) {
+    // With and without the article: "ما هي الغنة" says الغنة, the alias is غنة.
+    final arabic = {for (final w in _arabicWords(text)) ...[w, _stripArabicArticle(w)]};
+    for (final rule in rules) {
+      final aliases = _ruleAliases[_ruleShortName(rule).toLowerCase()] ?? const [];
+      for (var i = 0; i < tokens.length; i++) {
+        final keys = _keys(tokens[i]);
+        for (final alias in aliases) {
+          if (_isArabic(alias)) continue;
+          for (final aliasKey in _keys(alias)) {
+            if (keys.any((k) => _distance(k, aliasKey) <= _tolerance(k, aliasKey))) {
+              return _RuleHit(rule: rule, tokenIndices: {i});
+            }
+          }
+        }
+      }
+      if (aliases.any((a) => _isArabic(a) && arabic.contains(a))) return _RuleHit(rule: rule);
+    }
+    // "Noon sakinah rules" is a family -- Izhar, Idgham, Iqlab, Ikhfa -- of
+    // which the library has only Ikhfa. Named as the family, so the answer can
+    // say what is and is not covered.
+    final folded = ' ${tokens.join(' ')} ';
+    if (RegExp(r' (?:noon|nun) (?:sakinah|sakina|saakin|sakin) | tanween | tanwin ').hasMatch(folded)) {
+      return _RuleHit(unknownName: 'The full set of noon sakinah and tanween rules');
+    }
+    for (var i = 0; i < tokens.length; i++) {
+      final name = _otherRules[tokens[i]];
+      if (name != null) return _RuleHit(unknownName: name, tokenIndices: {i});
+    }
+    return null;
+  }
+
+  /// A greeting or a thank-you: answered as one, not with "I couldn't find a
+  /// surah in that".
+  static String? _courtesy(String text) {
+    final t = _fold(text);
+    if (RegExp(r'\b(?:thanks|thank you|thankyou|shukriya|shukria|jazakallah|jazak allah|jazakallahu)\b')
+        .hasMatch(t)) {
+      return "You're welcome. Ask for another surah or ayat whenever you like.";
+    }
+    if (RegExp(r'^(?:hi|hello|hey|salam|salaam|assalamualaikum|assalamu alaikum|asalam o alaikum|aoa)\b')
+        .hasMatch(t)) {
+      return 'Wa alaikum assalam. Which surah or ayat would you like to hear?';
+    }
+    return null;
+  }
+
+  /// Whether the message is a question -- which is what turns "madd in
+  /// Al-Fatihah" from a request to play into a request to explain.
+  static bool _asksAbout(String text) =>
+      text.contains('?') ||
+      RegExp(r'\b(?:what|whats|explain|meaning|means?|define|definition|kya|kia|hota|hoti|'
+              r'matlab|batao|bataen|bataye|samjhao|samjhaen|how|kaise|kese|about|tell)\b')
+          .hasMatch(_fold(text));
+
+  // ── player commands (FR-18) ─────────────────────────────────────────────
+
+  /// The player commands in a message, in English and in Roman Urdu.
+  static Set<RattilCommand> _matchCommands(String text) {
+    final t = ' ${_fold(text)} ';
+    bool has(String pattern) => RegExp(r'\b(?:' + pattern + r')\b').hasMatch(t);
+
+    final found = <RattilCommand>{};
+    // Checked before "repeat", so "on repeat" means keep going, not once more.
+    if (has(r'loop|on repeat|keep repeating|bar bar|baar baar|barbar|baarbaar')) {
+      found.add(RattilCommand.loop);
+    } else if (has(r'repeat|again|replay|once more|one more time|phir se|phirse|dobara|dubara|dubaara')) {
+      found.add(RattilCommand.replay);
+    }
+    if (has(r'continue|play on|keep playing|play all|play through|aage chalao|chalte raho|chalta rahe')) {
+      found.add(RattilCommand.playOn);
+    }
+    if (has(r'next|agli|agla|agle|skip')) found.add(RattilCommand.next);
+    if (has(r'previous|prev|back|pichli|pichla|pichhli|pichhla|peeche|pichay')) {
+      found.add(RattilCommand.previous);
+    }
+    if (has(r'slower|slow|slowly|slow down|aahista|ahista|aahiste|ahiste|dheere|dhire|dheema')) {
+      found.add(RattilCommand.slower);
+    } else if (has(r'faster|normal speed|normal|full speed|regular speed|tez')) {
+      found.add(RattilCommand.normalSpeed);
+    }
+    if (has(r'stop|pause|ruko|ruk jao|ruk|band karo|band kro|bas karo|bas')) {
+      found.add(RattilCommand.pause);
+    } else if (has(r'play|resume|start|chalao|shuru karo|shuru')) {
+      found.add(RattilCommand.resume);
+    }
+    return found;
   }
 
   // ── ayah matching (FR-19) ───────────────────────────────────────────────
@@ -447,6 +591,19 @@ class RattilRequest {
   /// Why the ayat asked for cannot be played -- "Al-Ikhlas has 4 ayat".
   final String? problem;
 
+  /// Instructions for the player in the message: on their own ("slower"),
+  /// or shaping a new recitation ("Ayat al-Kursi on loop").
+  final Set<RattilCommand> commands;
+
+  /// A Tajweed rule the message asks about, from the library.
+  final TajweedRule? rule;
+
+  /// A rule it asks about that the library does not have, as named.
+  final String? unknownRule;
+
+  /// The reply to a greeting or a thank-you.
+  final String? courtesy;
+
   const RattilRequest({
     this.surah,
     this.qari,
@@ -455,6 +612,10 @@ class RattilRequest {
     this.ayahEnd,
     this.passage,
     this.problem,
+    this.commands = const {},
+    this.rule,
+    this.unknownRule,
+    this.courtesy,
   });
 
   /// The same ayat, asked of [reciter] by name -- what picking a reciter on
@@ -466,11 +627,34 @@ class RattilRequest {
         ayahEnd: ayahEnd,
         passage: passage,
         problem: problem,
+        commands: commands,
       );
 
   /// Whether this is something that could be played again by another reciter.
-  bool get isPlayable => surah != null && problem == null && unknownReciter == null;
+  bool get isPlayable => surah != null && problem == null && unknownReciter == null && rule == null;
 }
+
+/// What a typed command does to the player (FR-18).
+enum RattilCommand {
+  /// Play the current ayah again, once.
+  replay,
+
+  /// Keep repeating the current ayah.
+  loop,
+
+  /// Play on through the passage.
+  playOn,
+  next,
+  previous,
+  slower,
+  normalSpeed,
+  pause,
+  resume,
+}
+
+/// Commands that can shape a recitation as it starts, rather than act on one
+/// already playing.
+const _startModifiers = {RattilCommand.slower, RattilCommand.loop, RattilCommand.playOn};
 
 /// What Rattil should do with a request: play, or explain.
 class RattilReply {
@@ -485,18 +669,48 @@ class RattilReply {
   /// one picked on screen, and why.
   final String? note;
 
+  /// For [plays]: how the new recitation starts. For [controls]: what to do
+  /// to the one already playing.
+  final Set<RattilCommand> commands;
+
+  /// The rule being explained, so the screen can open it in the library.
+  final TajweedRule? rule;
+
   const RattilReply.play(Qari this.qari, Surah this.surah,
-      {this.ayahStart, this.ayahEnd, this.passage, this.note})
-      : message = null;
+      {this.ayahStart, this.ayahEnd, this.passage, this.note, this.commands = const {}})
+      : message = null,
+        rule = null;
   const RattilReply.say(String this.message)
       : qari = null,
         surah = null,
         ayahStart = null,
         ayahEnd = null,
         passage = null,
-        note = null;
+        note = null,
+        commands = const {},
+        rule = null;
+  const RattilReply.control(this.commands)
+      : qari = null,
+        surah = null,
+        ayahStart = null,
+        ayahEnd = null,
+        passage = null,
+        note = null,
+        message = null,
+        rule = null;
+  const RattilReply.explain(TajweedRule this.rule, String this.message)
+      : qari = null,
+        surah = null,
+        ayahStart = null,
+        ayahEnd = null,
+        passage = null,
+        note = null,
+        commands = const {};
 
   bool get plays => qari != null && surah != null;
+
+  /// A command for the player already on screen, with nothing new to play.
+  bool get controls => !plays && message == null && commands.isNotEmpty;
 
   /// How to name what is playing: "Ayat al-Kursi (Al-Baqarah 255)",
   /// "Al-Kahf 1–10", or just "Al-Kahf".
@@ -516,6 +730,44 @@ class _QariMatch {
   final Set<int> tokenIndices;
   _QariMatch(this.qari, this.tokenIndices);
 }
+
+class _RuleHit {
+  final TajweedRule? rule;
+
+  /// Named, but not in the library -- "Idgham".
+  final String? unknownName;
+  final Set<int> tokenIndices;
+
+  _RuleHit({this.rule, this.unknownName, this.tokenIndices = const {}});
+}
+
+/// A rule's everyday name: "Ghunnah" from "Ghunnah (Nasalization)".
+String _ruleShortName(TajweedRule r) => r.title.split(' (').first.trim();
+
+/// How people name each rule in the library, keyed by that everyday name.
+/// Arabic entries are in the normalised form [_arabicWords] produces (ة as ه,
+/// alef variants as ا).
+const _ruleAliases = <String, List<String>>{
+  'makhraj': ['makhraj', 'makharij', 'makhrij', 'articulation', 'مخرج', 'مخارج'],
+  'ghunnah': ['ghunnah', 'ghunna', 'gunnah', 'gunna', 'nasal', 'nasalization', 'nasalisation', 'غنه'],
+  'shaddah': ['shaddah', 'shadda', 'tashdeed', 'tashdid', 'doubling', 'شده'],
+  'madd': ['madd', 'maad', 'elongation', 'prolongation', 'مد'],
+  'qalqalah': ['qalqalah', 'qalqala', 'kalkala', 'qalqla', 'echo', 'bounce', 'قلقله'],
+  'ikhfa': ['ikhfa', 'ikhfaa', 'concealment', 'اخفا', 'اخفاء'],
+};
+
+/// Rules people ask about that the library does not cover yet -- named back
+/// to them, so "not in the library" is said about the right thing.
+const _otherRules = <String, String>{
+  'idgham': 'Idgham', 'idgam': 'Idgham', 'idghaam': 'Idgham',
+  'iqlab': 'Iqlab', 'iqlaab': 'Iqlab',
+  'izhar': 'Izhar', 'izhaar': 'Izhar', 'idhar': 'Izhar',
+  'tafkheem': 'Tafkheem', 'tafkhim': 'Tafkheem',
+  'tarqeeq': 'Tarqeeq', 'tarqiq': 'Tarqeeq',
+  'waqf': 'Waqf', 'tanween': 'Tanween', 'tanwin': 'Tanween', 'sifat': 'Sifat',
+};
+
+bool _isArabic(String s) => s.runes.any((r) => r >= 0x0600 && r <= 0x06FF);
 
 class _SurahHit {
   final Surah surah;
@@ -705,6 +957,17 @@ const _stopwords = {
   'aakhiri', 'akhiri', 'final', 'closing', 'opening', 'till', 'until', 'through',
   'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
   'ek', 'teen', 'char', 'chaar', 'paanch', 'panch', 'chay', 'chhe', 'saat', 'aath', 'nau', 'das',
+  // Player commands (FR-18) and question words -- never a surah's name.
+  'repeat', 'again', 'replay', 'loop', 'continue', 'next', 'previous', 'prev', 'back', 'skip',
+  'slower', 'slow', 'slowly', 'faster', 'normal', 'speed', 'stop', 'pause', 'resume', 'start',
+  'phir', 'dobara', 'dubara', 'agli', 'agla', 'pichli', 'pichla', 'aahista', 'ahista', 'dheere',
+  'ruko', 'ruk', 'band', 'bas', 'tez',
+  'what', 'whats', 'explain', 'meaning', 'mean', 'means', 'define', 'kya', 'kia', 'hai', 'hota',
+  'hoti', 'matlab', 'batao', 'samjhao', 'how', 'kaise', 'about', 'tell', 'is',
+  // Greetings and thanks -- "salam" is one letter from "Qalam", and a greeting
+  // must never play Surah Al-Qalam.
+  'salam', 'salaam', 'assalamualaikum', 'alaikum', 'assalamu', 'asalam', 'aoa', 'hello', 'hi',
+  'hey', 'thanks', 'thank', 'thankyou', 'shukriya', 'shukria', 'jazakallah', 'jazak', 'allah',
 };
 
 String _fold(String s) => s

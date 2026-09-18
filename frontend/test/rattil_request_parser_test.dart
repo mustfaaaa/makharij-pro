@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/data/tajweed_rules.dart';
 import 'package:frontend/dummy/dummy_surahs.dart';
 import 'package:frontend/models/qari.dart';
 import 'package:frontend/services/rattil_request_parser.dart';
@@ -386,12 +387,168 @@ void main() {
     });
   });
 
+  group('typed player commands (FR-18)', () {
+    Set<RattilCommand> commandsOf(String text) => parser.parse(text).commands;
+
+    final cases = <String, Set<RattilCommand>>{
+      'repeat': {RattilCommand.replay},
+      'again please': {RattilCommand.replay},
+      'phir se': {RattilCommand.replay},
+      'dobara sunao': {RattilCommand.replay},
+      'loop': {RattilCommand.loop},
+      'on repeat': {RattilCommand.loop},
+      'bar bar sunao': {RattilCommand.loop},
+      'continue': {RattilCommand.playOn},
+      'keep playing': {RattilCommand.playOn},
+      'next': {RattilCommand.next},
+      'agli ayat': {RattilCommand.next},
+      'previous': {RattilCommand.previous},
+      'pichli': {RattilCommand.previous},
+      'slower': {RattilCommand.slower},
+      'aahista': {RattilCommand.slower},
+      'normal speed': {RattilCommand.normalSpeed},
+      'stop': {RattilCommand.pause},
+      'ruko': {RattilCommand.pause},
+      'resume': {RattilCommand.resume},
+      'slower and repeat': {RattilCommand.slower, RattilCommand.replay},
+    };
+    cases.forEach((text, expected) {
+      test('"$text" -> $expected', () {
+        expect(commandsOf(text), expected);
+        final reply = parser.decide(parser.parse(text));
+        expect(reply.controls, isTrue, reason: 'a command on its own acts on the player');
+        expect(reply.plays, isFalse);
+      });
+    });
+
+    test('"on repeat" keeps going; it is not "play it once more"', () {
+      expect(commandsOf('on repeat'), isNot(contains(RattilCommand.replay)));
+    });
+
+    test('no command word is ever read as a surah', () {
+      for (final text in cases.keys) {
+        expect(parser.parse(text).surah, isNull, reason: text);
+      }
+    });
+
+    test('with a surah, speed and looping shape the new recitation', () {
+      final reply = parser.decide(parser.parse('Ayat al-Kursi on loop'));
+      expect(reply.plays, isTrue);
+      expect(reply.commands, {RattilCommand.loop});
+      expect(parser.decide(parser.parse('kahf slowly')).commands, {RattilCommand.slower});
+    });
+
+    test('...but "next" or "stop" beside a surah do not', () {
+      expect(parser.decide(parser.parse('kahf next')).commands, isEmpty);
+      expect(parser.decide(parser.parse('repeat surah ikhlas')).surah!.number, 112);
+    });
+  });
+
+  group('Tajweed questions', () {
+    final withRules = RattilRequestParser(surahs: dummySurahs, qaris: _qaris, rules: tajweedRules);
+    String? ruleOf(String text) => withRules.parse(text).rule?.title.split(' (').first;
+
+    final cases = {
+      'what is ghunnah?': 'Ghunnah',
+      'ghunnah': 'Ghunnah',
+      'gunna kya hai': 'Ghunnah',
+      'ما هي الغنة': 'Ghunnah',
+      'ikhfa kya hai': 'Ikhfa',
+      'explain madd': 'Madd',
+      'qalqala ka matlab': 'Qalqalah',
+      'what are makharij': 'Makhraj',
+      'tashdeed kya hota hai': 'Shaddah',
+      'what is madd in al-fatihah': 'Madd',
+    };
+    cases.forEach((text, rule) {
+      test('"$text" -> $rule', () => expect(ruleOf(text), rule));
+    });
+
+    test('a rule next to a surah, with no question, is still a recitation request', () {
+      final r = withRules.parse('madd in fatiha');
+      expect(r.rule, isNull);
+      expect(r.surah?.number, 1);
+    });
+
+    test('the answer is the library\'s, and says whether the app checks it', () {
+      final ghunnah = withRules.decide(withRules.parse('what is ghunnah?'));
+      expect(ghunnah.rule, isNotNull, reason: 'so the screen can open it in the library');
+      expect(ghunnah.message, contains(ghunnah.rule!.shortDescription));
+      expect(ghunnah.message, contains('checks this'));
+
+      final qalqalah = withRules.decide(withRules.parse('qalqalah'));
+      expect(qalqalah.message, contains("doesn't check"));
+    });
+
+    test('a rule the library lacks is named back, not guessed at', () {
+      final reply = withRules.decide(withRules.parse('what is idgham'));
+      expect(reply.plays, isFalse);
+      expect(reply.rule, isNull);
+      expect(reply.message, contains("Idgham isn't in the Tajweed library"));
+      expect(reply.message, contains('Ghunnah'));
+    });
+
+    test('"noon sakinah rules" names the family, and the answer lists Ikhfa as covered', () {
+      final reply = withRules.decide(withRules.parse('noon sakinah rules'));
+      expect(reply.message, contains('noon sakinah'));
+      expect(reply.message, contains('Ikhfa'));
+      expect(withRules.decide(withRules.parse('tanween kya hai')).message, contains('noon sakinah'));
+    });
+
+    test('rule names never become surahs', () {
+      for (final text in [...cases.keys, 'qalqalah', 'shaddah', 'makhraj']) {
+        final r = withRules.parse(text);
+        expect(r.surah, isNull, reason: text);
+      }
+    });
+
+    test('recitation requests still work with the rules loaded', () {
+      for (final s in dummySurahs) {
+        expect(withRules.parse(s.nameEnglish).surah?.number, s.number, reason: s.nameEnglish);
+      }
+      expect(withRules.parse('Ayat al-Kursi').ayahStart, 255);
+    });
+  });
+
+  group('greetings and thanks are answered as such', () {
+    for (final text in ['hello', 'Assalamualaikum', 'salam', 'hi there']) {
+      test('"$text"', () {
+        final reply = parser.decide(parser.parse(text));
+        expect(reply.message, contains('Wa alaikum assalam'));
+      });
+    }
+    for (final text in ['thank you', 'shukriya', 'JazakAllah']) {
+      test('"$text"', () => expect(parser.decide(parser.parse(text)).message, contains("You're welcome")));
+    }
+    test('a greeting with a request is the request', () {
+      expect(parser.decide(parser.parse('salam, play al-kahf')).plays, isTrue);
+    });
+    test('"hifz" is not "hi"', () {
+      expect(parser.decide(parser.parse('hifz')).message, isNot(contains('Wa alaikum')));
+    });
+  });
+
+  group('the library says what the app actually checks', () {
+    // tajweed_diff.py reports makhraj, madd, ghunnah (ikhfa under it) and
+    // shaddah. Qalqalah is not checked. The flags once followed model v1 and
+    // called Makhraj and Shaddah "reference only" while both were checked.
+    final checked = {
+      for (final r in tajweedRules) r.title.split(' (').first: r.isAiDetectable,
+    };
+    test('Makhraj, Ghunnah, Shaddah, Madd and Ikhfa are checked', () {
+      for (final name in ['Makhraj', 'Ghunnah', 'Shaddah', 'Madd', 'Ikhfa']) {
+        expect(checked[name], isTrue, reason: name);
+      }
+    });
+    test('Qalqalah is not', () => expect(checked['Qalqalah'], isFalse));
+  });
+
   group('the welcome message', () {
     final text = parser.describeLibrary();
 
     test('summarises instead of listing 114 surahs', () {
       expect(text, contains('the whole Quran'));
-      expect(text.length, lessThan(400), reason: text);
+      expect(text.length, lessThan(480), reason: text);
       expect(text, isNot(contains('Al-Baqarah')));
     });
 
@@ -403,7 +560,10 @@ void main() {
     test('offers examples that actually work', () {
       expect(text, contains('"Al-Kahf"'));
       expect(text, contains('"Ayat al-Kursi"'));
-      final examples = RegExp(r'"([^"]+)"').allMatches(text).map((m) => m.group(1)!).toList();
+      // The recitation examples are on the "Try" line; the commands after
+      // them are for a player already running, and are tested separately.
+      final tryLine = text.split('\n').firstWhere((l) => l.startsWith('Try '));
+      final examples = RegExp(r'"([^"]+)"').allMatches(tryLine).map((m) => m.group(1)!).toList();
       expect(examples, hasLength(greaterThanOrEqualTo(3)));
       for (final example in examples) {
         expect(parser.decide(parser.parse(example)).plays, isTrue, reason: example);

@@ -14,6 +14,7 @@ final List<TajweedRule> tajweedRules = [
     shortDescription: 'The precise point in the mouth/throat where each letter originates.',
     fullExplanation: 'Makhraj refers to the exact location in the vocal tract where a letter\'s sound is produced. Correct makhraj distinguishes similar-sounding letters like ق (Qaf) and ك (Kaf). Mispronouncing the makhraj can change the meaning of a word entirely.',
     category: 'Articulation',
+    isAiDetectable: true,
   ),
   const TajweedRule(
     id: 'r2',
@@ -31,6 +32,7 @@ final List<TajweedRule> tajweedRules = [
     shortDescription: 'A diacritic indicating a letter is doubled and pronounced with emphasis.',
     fullExplanation: 'Shaddah (ّ) doubles the letter it sits on, requiring the reciter to pause briefly on the letter before releasing it with emphasis. Skipping the shaddah changes both the sound and often the grammatical meaning of the word.',
     category: 'Emphasis',
+    isAiDetectable: true,
   ),
   const TajweedRule(
     id: 'r4',
