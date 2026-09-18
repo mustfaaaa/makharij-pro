@@ -176,3 +176,8 @@ ml/train/*.log
 # ml/train/finetune_phoneme_head.py from the cached encoder features.
 ml/train/weights/
 ml/train/phoneme_head_learner.pt
+
+# Truncated-encoder activations (one dir per depth), rebuilt by
+# ml/train/cache_truncated_features.py
+ml/train/cache_depth/
+ml/train/*.log

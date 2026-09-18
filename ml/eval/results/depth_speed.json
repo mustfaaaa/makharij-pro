@@ -1,0 +1,31 @@
+{
+  "what": "real-time factor (compute s / audio s), median over clips; <1 keeps up with speech",
+  "clips": 15,
+  "threads": 4,
+  "results": [
+    {
+      "layers": 24,
+      "params_m": 605.7,
+      "rtf_fp32": 0.563,
+      "rtf_int8": 0.337
+    },
+    {
+      "layers": 18,
+      "params_m": 460.6,
+      "rtf_fp32": 0.433,
+      "rtf_int8": 0.204
+    },
+    {
+      "layers": 12,
+      "params_m": 315.5,
+      "rtf_fp32": 0.287,
+      "rtf_int8": 0.148
+    },
+    {
+      "layers": 6,
+      "params_m": 170.4,
+      "rtf_fp32": 0.157,
+      "rtf_int8": 0.077
+    }
+  ]
+}

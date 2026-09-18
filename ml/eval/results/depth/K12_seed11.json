@@ -1,0 +1,457 @@
+{
+  "what": "candidate phoneme head fine-tuned on correctly-recited learner clips, scored on unseen speakers",
+  "head": "mlp",
+  "lr": 0.0003,
+  "epochs": 60,
+  "held_out_clips": 71,
+  "held_out_reciters": 28,
+  "train_clips": 282,
+  "candidate_before": {
+    "median_per": 1.0,
+    "mean_per": 1.0,
+    "pct_under_10pct_per": 0.0
+  },
+  "candidate_after": {
+    "median_per": 0.1429,
+    "mean_per": 0.199,
+    "pct_under_10pct_per": 29.6,
+    "measured_over": "median of the last 10 epochs"
+  },
+  "best_single_epoch": {
+    "median_per": 0.1429,
+    "mean_per": 0.1942,
+    "pct_under_10pct_per": 29.6,
+    "epoch": 34
+  },
+  "best_single_epoch_note": "not the headline -- the best of many epochs on a 71-clip held-out set mostly measures how many times we looked",
+  "production_recogniser": {
+    "clips": 67,
+    "median_per": 0.0741,
+    "mean_per": 0.1311,
+    "pct_under_10pct_per": 55.2
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 2.3326,
+      "median_per": 0.5128,
+      "mean_per": 0.532,
+      "pct_under_10pct_per": 0.0
+    },
+    {
+      "epoch": 2,
+      "train_loss": 1.1356,
+      "median_per": 0.3636,
+      "mean_per": 0.3943,
+      "pct_under_10pct_per": 0.0
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.8186,
+      "median_per": 0.2857,
+      "mean_per": 0.3264,
+      "pct_under_10pct_per": 0.0
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.6675,
+      "median_per": 0.2857,
+      "mean_per": 0.321,
+      "pct_under_10pct_per": 1.4
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.569,
+      "median_per": 0.3056,
+      "mean_per": 0.3215,
+      "pct_under_10pct_per": 1.4
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.4936,
+      "median_per": 0.25,
+      "mean_per": 0.2811,
+      "pct_under_10pct_per": 5.6
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.4388,
+      "median_per": 0.25,
+      "mean_per": 0.2784,
+      "pct_under_10pct_per": 5.6
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.3829,
+      "median_per": 0.2564,
+      "mean_per": 0.2833,
+      "pct_under_10pct_per": 4.2
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.349,
+      "median_per": 0.2381,
+      "mean_per": 0.2668,
+      "pct_under_10pct_per": 7.0
+    },
+    {
+      "epoch": 10,
+      "train_loss": 0.3078,
+      "median_per": 0.2381,
+      "mean_per": 0.2594,
+      "pct_under_10pct_per": 8.5
+    },
+    {
+      "epoch": 11,
+      "train_loss": 0.2819,
+      "median_per": 0.25,
+      "mean_per": 0.2755,
+      "pct_under_10pct_per": 2.8
+    },
+    {
+      "epoch": 12,
+      "train_loss": 0.2527,
+      "median_per": 0.2069,
+      "mean_per": 0.2425,
+      "pct_under_10pct_per": 15.5
+    },
+    {
+      "epoch": 13,
+      "train_loss": 0.23,
+      "median_per": 0.2381,
+      "mean_per": 0.2624,
+      "pct_under_10pct_per": 11.3
+    },
+    {
+      "epoch": 14,
+      "train_loss": 0.2153,
+      "median_per": 0.2188,
+      "mean_per": 0.2493,
+      "pct_under_10pct_per": 11.3
+    },
+    {
+      "epoch": 15,
+      "train_loss": 0.1977,
+      "median_per": 0.1905,
+      "mean_per": 0.2285,
+      "pct_under_10pct_per": 19.7
+    },
+    {
+      "epoch": 16,
+      "train_loss": 0.1713,
+      "median_per": 0.1905,
+      "mean_per": 0.2214,
+      "pct_under_10pct_per": 16.9
+    },
+    {
+      "epoch": 17,
+      "train_loss": 0.1604,
+      "median_per": 0.2208,
+      "mean_per": 0.2559,
+      "pct_under_10pct_per": 11.3
+    },
+    {
+      "epoch": 18,
+      "train_loss": 0.1528,
+      "median_per": 0.1905,
+      "mean_per": 0.2215,
+      "pct_under_10pct_per": 19.7
+    },
+    {
+      "epoch": 19,
+      "train_loss": 0.1353,
+      "median_per": 0.2069,
+      "mean_per": 0.2355,
+      "pct_under_10pct_per": 16.9
+    },
+    {
+      "epoch": 20,
+      "train_loss": 0.1273,
+      "median_per": 0.1724,
+      "mean_per": 0.2127,
+      "pct_under_10pct_per": 25.4
+    },
+    {
+      "epoch": 21,
+      "train_loss": 0.1195,
+      "median_per": 0.1795,
+      "mean_per": 0.2105,
+      "pct_under_10pct_per": 25.4
+    },
+    {
+      "epoch": 22,
+      "train_loss": 0.1115,
+      "median_per": 0.1875,
+      "mean_per": 0.2128,
+      "pct_under_10pct_per": 23.9
+    },
+    {
+      "epoch": 23,
+      "train_loss": 0.1016,
+      "median_per": 0.1795,
+      "mean_per": 0.2138,
+      "pct_under_10pct_per": 19.7
+    },
+    {
+      "epoch": 24,
+      "train_loss": 0.0991,
+      "median_per": 0.2069,
+      "mean_per": 0.228,
+      "pct_under_10pct_per": 23.9
+    },
+    {
+      "epoch": 25,
+      "train_loss": 0.0948,
+      "median_per": 0.1795,
+      "mean_per": 0.2102,
+      "pct_under_10pct_per": 25.4
+    },
+    {
+      "epoch": 26,
+      "train_loss": 0.0992,
+      "median_per": 0.1724,
+      "mean_per": 0.2083,
+      "pct_under_10pct_per": 22.5
+    },
+    {
+      "epoch": 27,
+      "train_loss": 0.0842,
+      "median_per": 0.1795,
+      "mean_per": 0.2114,
+      "pct_under_10pct_per": 23.9
+    },
+    {
+      "epoch": 28,
+      "train_loss": 0.0799,
+      "median_per": 0.1562,
+      "mean_per": 0.2017,
+      "pct_under_10pct_per": 25.4
+    },
+    {
+      "epoch": 29,
+      "train_loss": 0.0727,
+      "median_per": 0.1667,
+      "mean_per": 0.2049,
+      "pct_under_10pct_per": 22.5
+    },
+    {
+      "epoch": 30,
+      "train_loss": 0.0672,
+      "median_per": 0.1667,
+      "mean_per": 0.1988,
+      "pct_under_10pct_per": 22.5
+    },
+    {
+      "epoch": 31,
+      "train_loss": 0.0642,
+      "median_per": 0.1667,
+      "mean_per": 0.2037,
+      "pct_under_10pct_per": 28.2
+    },
+    {
+      "epoch": 32,
+      "train_loss": 0.0602,
+      "median_per": 0.1724,
+      "mean_per": 0.2092,
+      "pct_under_10pct_per": 25.4
+    },
+    {
+      "epoch": 33,
+      "train_loss": 0.059,
+      "median_per": 0.1538,
+      "mean_per": 0.1984,
+      "pct_under_10pct_per": 26.8
+    },
+    {
+      "epoch": 34,
+      "train_loss": 0.0562,
+      "median_per": 0.1429,
+      "mean_per": 0.1942,
+      "pct_under_10pct_per": 29.6
+    },
+    {
+      "epoch": 35,
+      "train_loss": 0.053,
+      "median_per": 0.1481,
+      "mean_per": 0.195,
+      "pct_under_10pct_per": 29.6
+    },
+    {
+      "epoch": 36,
+      "train_loss": 0.0529,
+      "median_per": 0.1724,
+      "mean_per": 0.207,
+      "pct_under_10pct_per": 26.8
+    },
+    {
+      "epoch": 37,
+      "train_loss": 0.05,
+      "median_per": 0.1724,
+      "mean_per": 0.2019,
+      "pct_under_10pct_per": 26.8
+    },
+    {
+      "epoch": 38,
+      "train_loss": 0.0457,
+      "median_per": 0.1538,
+      "mean_per": 0.1981,
+      "pct_under_10pct_per": 31.0
+    },
+    {
+      "epoch": 39,
+      "train_loss": 0.046,
+      "median_per": 0.1667,
+      "mean_per": 0.2146,
+      "pct_under_10pct_per": 25.4
+    },
+    {
+      "epoch": 40,
+      "train_loss": 0.045,
+      "median_per": 0.1538,
+      "mean_per": 0.2008,
+      "pct_under_10pct_per": 28.2
+    },
+    {
+      "epoch": 41,
+      "train_loss": 0.0455,
+      "median_per": 0.1724,
+      "mean_per": 0.2117,
+      "pct_under_10pct_per": 22.5
+    },
+    {
+      "epoch": 42,
+      "train_loss": 0.0409,
+      "median_per": 0.1429,
+      "mean_per": 0.1998,
+      "pct_under_10pct_per": 26.8
+    },
+    {
+      "epoch": 43,
+      "train_loss": 0.0419,
+      "median_per": 0.1429,
+      "mean_per": 0.1984,
+      "pct_under_10pct_per": 26.8
+    },
+    {
+      "epoch": 44,
+      "train_loss": 0.0465,
+      "median_per": 0.1429,
+      "mean_per": 0.1968,
+      "pct_under_10pct_per": 26.8
+    },
+    {
+      "epoch": 45,
+      "train_loss": 0.047,
+      "median_per": 0.1562,
+      "mean_per": 0.2055,
+      "pct_under_10pct_per": 26.8
+    },
+    {
+      "epoch": 46,
+      "train_loss": 0.0359,
+      "median_per": 0.1429,
+      "mean_per": 0.1977,
+      "pct_under_10pct_per": 25.4
+    },
+    {
+      "epoch": 47,
+      "train_loss": 0.0355,
+      "median_per": 0.1724,
+      "mean_per": 0.2022,
+      "pct_under_10pct_per": 25.4
+    },
+    {
+      "epoch": 48,
+      "train_loss": 0.0347,
+      "median_per": 0.1724,
+      "mean_per": 0.2126,
+      "pct_under_10pct_per": 21.1
+    },
+    {
+      "epoch": 49,
+      "train_loss": 0.0403,
+      "median_per": 0.1724,
+      "mean_per": 0.202,
+      "pct_under_10pct_per": 25.4
+    },
+    {
+      "epoch": 50,
+      "train_loss": 0.0418,
+      "median_per": 0.1667,
+      "mean_per": 0.1996,
+      "pct_under_10pct_per": 33.8
+    },
+    {
+      "epoch": 51,
+      "train_loss": 0.1583,
+      "median_per": 0.1667,
+      "mean_per": 0.2125,
+      "pct_under_10pct_per": 28.2
+    },
+    {
+      "epoch": 52,
+      "train_loss": 0.0543,
+      "median_per": 0.1562,
+      "mean_per": 0.2011,
+      "pct_under_10pct_per": 26.8
+    },
+    {
+      "epoch": 53,
+      "train_loss": 0.0355,
+      "median_per": 0.1481,
+      "mean_per": 0.1975,
+      "pct_under_10pct_per": 32.4
+    },
+    {
+      "epoch": 54,
+      "train_loss": 0.0291,
+      "median_per": 0.1429,
+      "mean_per": 0.1948,
+      "pct_under_10pct_per": 31.0
+    },
+    {
+      "epoch": 55,
+      "train_loss": 0.0269,
+      "median_per": 0.1429,
+      "mean_per": 0.1961,
+      "pct_under_10pct_per": 29.6
+    },
+    {
+      "epoch": 56,
+      "train_loss": 0.025,
+      "median_per": 0.1429,
+      "mean_per": 0.1979,
+      "pct_under_10pct_per": 26.8
+    },
+    {
+      "epoch": 57,
+      "train_loss": 0.0239,
+      "median_per": 0.1429,
+      "mean_per": 0.1955,
+      "pct_under_10pct_per": 32.4
+    },
+    {
+      "epoch": 58,
+      "train_loss": 0.0219,
+      "median_per": 0.1538,
+      "mean_per": 0.1992,
+      "pct_under_10pct_per": 29.6
+    },
+    {
+      "epoch": 59,
+      "train_loss": 0.0207,
+      "median_per": 0.1429,
+      "mean_per": 0.1971,
+      "pct_under_10pct_per": 29.6
+    },
+    {
+      "epoch": 60,
+      "train_loss": 0.0257,
+      "median_per": 0.1429,
+      "mean_per": 0.1979,
+      "pct_under_10pct_per": 33.8
+    }
+  ],
+  "gap_to_production_closed": "93%",
+  "verdict": "tuned candidate still loses to the recogniser in production"
+}
