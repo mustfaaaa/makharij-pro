@@ -8,6 +8,7 @@ import '../../../../models/after_clip.dart';
 import '../../../../models/qari.dart';
 import '../../../../models/surah.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/rattil_request_parser.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/animated/pressable.dart';
 import '../../../../theme/app_shadows.dart';
@@ -42,6 +43,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
   List<Qari> _qaris = const [];
   List<Surah> _surahs = const [];
   bool _ready = false;
+  late RattilRequestParser _parser;
 
   @override
   void initState() {
@@ -54,13 +56,11 @@ class _AskAiScreenState extends State<AskAiScreen> {
       setState(() {
         _qaris = results[0] as List<Qari>;
         _surahs = results[1] as List<Surah>;
+        _parser = RattilRequestParser(surahs: _surahs, qaris: _qaris);
         _ready = true;
-        final example = _qaris.isEmpty ? '' : ' — try "Al-Fatihah by ${_qaris.first.nameEnglish}"';
-        _messages.add(_ChatMessage(
-          fromUser: false,
-          text: 'Ask for a surah and (optionally) a reciter$example. '
-              '${_availableSurahNames()} are available right now.',
-        ));
+        // Summarised by reciter. It used to list every available surah by name,
+        // which became 114 names in one bubble once a reciter had the whole Quran.
+        _messages.add(_ChatMessage(fromUser: false, text: _parser.describeLibrary()));
       });
     }).catchError((_) {
       if (!mounted) return;
@@ -74,43 +74,11 @@ class _AskAiScreenState extends State<AskAiScreen> {
     });
   }
 
-  String _availableSurahNames() {
-    final numbers = _qaris.expand((q) => q.availableSurahs).toSet();
-    final names = _surahs.where((s) => numbers.contains(s.number)).map((s) => s.nameEnglish);
-    return names.isEmpty ? 'A few surahs' : names.join(', ');
-  }
-
   @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  Surah? _matchSurah(String text) {
-    final lower = text.toLowerCase();
-    for (final s in _surahs) {
-      if (lower.contains(s.nameEnglish.toLowerCase())) return s;
-    }
-    final numberMatch = RegExp(r'\b(\d{1,3})\b').firstMatch(text);
-    if (numberMatch != null) {
-      final n = int.tryParse(numberMatch.group(1)!);
-      if (n != null) {
-        for (final s in _surahs) {
-          if (s.number == n) return s;
-        }
-      }
-    }
-    return null;
-  }
-
-  Qari? _matchQari(String text) {
-    final lower = text.toLowerCase();
-    for (final q in _qaris) {
-      final firstName = q.nameEnglish.split(' ').first.toLowerCase();
-      if (lower.contains(q.nameEnglish.toLowerCase()) || lower.contains(firstName)) return q;
-    }
-    return null;
   }
 
   Future<void> _send([String? preset]) async {
@@ -121,23 +89,23 @@ class _AskAiScreenState extends State<AskAiScreen> {
     setState(() => _messages.add(_ChatMessage(fromUser: true, text: text)));
     _scrollToEnd();
 
-    final surah = _matchSurah(text);
-    if (surah == null) {
-      setState(() => _messages.add(_ChatMessage(
-            fromUser: false,
-            text: "I couldn't find a surah in that — try naming one, like \"Al-Ikhlas\" or \"surah 112\".",
-          )));
+    if (!_ready || _qaris.isEmpty) {
+      setState(() => _messages.add(const _ChatMessage(fromUser: false, text: 'No reciters are available right now.')));
       _scrollToEnd();
       return;
     }
-    final qari = _matchQari(text) ?? (_qaris.isEmpty ? null : _qaris.first);
-    if (qari == null) {
-      setState(() => _messages.add(const _ChatMessage(fromUser: false, text: 'No reciters are available right now.')));
+
+    // The parser decides, and never plays a different reciter from the one
+    // asked for -- it says who has the surah instead.
+    final reply = _parser.decide(_parser.parse(text));
+    if (!reply.plays) {
+      setState(() => _messages.add(_ChatMessage(fromUser: false, text: reply.message!)));
+      _scrollToEnd();
       return;
     }
 
     try {
-      final result = await Services.rattil.getRecitation(qariId: qari.qariId, surah: surah.number);
+      final result = await Services.rattil.getRecitation(qariId: reply.qari!.qariId, surah: reply.surah!.number);
       setState(() => _messages.add(_ChatMessage(
             fromUser: false,
             text: '${result.surahNameEnglish}, recited by ${result.qariName}:',
