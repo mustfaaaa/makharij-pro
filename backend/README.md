@@ -97,9 +97,12 @@ somewhere that needs billing set up anyway; at that point, swap `quran_metadata`
 lookup for a Storage-signed-URL lookup in `rattil.py` — the retrieval endpoint's response shape
 doesn't need to change, just where the URL points.
 
-**Not yet built**: natural-language request parsing (FR-19 — "give me Ayat al-Kursi" instead of
-explicit surah/ayah numbers). A layer on top of `/rattil/recitation`; the chat UI does simple
-name/number matching today.
+**FR-19 request parsing** is built, client-side, in `frontend/lib/services/rattil_request_parser.dart`
+and pinned by 229 tests: named passages ("Ayat al-Kursi" → 2:255), colon references (`18:1-10`),
+a surah plus ayat ("baqarah 255", "kahf 1 se 10 tak"), first/last N ayat, surah names in common
+spellings and in Arabic, and reciters by the names people use. It is rule-based, not a language
+model: it covers the phrasings it was written for, and says so rather than guessing when it cannot
+read a request.
 
 **FR-18 playback** is built, in the player on the Ask AI screen: play/pause, previous/next ayah,
 play again, slow (0.75x), and a three-state end-of-clip mode — stop, play on through the passage,
@@ -137,8 +140,7 @@ Everything from the original 60% iteration checklist is now done and verified ag
 model, a real Firebase project, and real audio/session data — not just scaffolded. Frontend
 integration (Track C) is now wired end-to-end too: Practice Plan, Ask AI/Rattil, Progress
 Dashboard, Achievements, Notifications, and the Tajweed Rules library all call these real
-endpoints instead of dummy data. Remaining work: Rattil AI's full natural-language request parsing
-(FR-19 — the chat UI does simple name/number matching today, not free-form NLU).
+endpoints instead of dummy data. Rattil AI's request parsing (FR-19) is rule-based — see above.
 
 ## Real-audio validation
 
