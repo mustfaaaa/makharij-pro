@@ -86,6 +86,26 @@ class ApiClient {
     return _decode(response);
   }
 
+  /// A JSON body, for endpoints that take structure rather than form fields
+  /// (Rattil's assistant takes a message plus the conversation so far).
+  Future<Map<String, dynamic>> postJson(
+    String path,
+    Map<String, dynamic> body, {
+    bool authRequired = true,
+  }) async {
+    final headers = {
+      ...await _authHeader(required: authRequired),
+      'Content-Type': 'application/json',
+    };
+    final http.Response response;
+    try {
+      response = await http.post(Uri.parse('$kApiBaseUrl$path'), headers: headers, body: jsonEncode(body));
+    } catch (_) {
+      throw const AppException('Could not reach the server. Check your connection and try again.');
+    }
+    return _decode(response);
+  }
+
   /// Fetches a binary body (reference audio). Returns null rather than
   /// throwing: playing a Qari's word is a convenience layered on the results
   /// screen, and the 15 surahs with reference audio are a real, current limit

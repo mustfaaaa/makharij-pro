@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../data/tajweed_rules.dart';
 import '../../../../models/after_clip.dart';
+import '../../../../models/assistant_answer.dart';
 import '../../../../models/ayah.dart';
 import '../../../../models/qari.dart';
 import '../../../../models/tajweed_rule.dart';
@@ -21,11 +22,14 @@ import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
 import '../widgets/rattil_widgets.dart';
 
-/// Rattil AI — reference-recitation retrieval (FR-15 to FR-19), not a general
-/// Tajweed-knowledge chatbot. There is no language model behind it: a typed
-/// request is read by [RattilRequestParser] -- rule-based, and tested -- into a
-/// surah or particular ayat and a reciter. The reciter can also be picked on
-/// screen (FR-16), and the ayah being recited is shown as it plays.
+/// Rattil AI — reference recitations (FR-15 to FR-19) and questions about
+/// reciting. A typed message is read first by [RattilRequestParser] --
+/// rule-based, tested, instant and offline -- into a surah or ayat, a reciter,
+/// a player command or a Tajweed rule. Only a message it cannot read goes to
+/// Rattil's assistant (Google Gemini, through the backend), and whatever that
+/// asks to do is validated by the same parser before anything plays. The
+/// reciter can also be picked on screen (FR-16), and the ayah being recited is
+/// shown as it plays.
 class AskAiScreen extends StatefulWidget {
   const AskAiScreen({super.key});
 
@@ -48,6 +52,10 @@ class _ChatMessage {
   /// A Tajweed rule this message explains, to open in the library.
   final TajweedRule? rule;
 
+  /// Written by Rattil's assistant (Google Gemini) rather than the app's own
+  /// rules -- said under the bubble, since the user's question went to Google.
+  final bool viaAssistant;
+
   const _ChatMessage({
     required this.fromUser,
     required this.text,
@@ -55,6 +63,7 @@ class _ChatMessage {
     this.startWith = const {},
     this.player,
     this.rule,
+    this.viaAssistant = false,
   });
 }
 
@@ -94,6 +103,13 @@ class _AskAiScreenState extends State<AskAiScreen> {
 
   /// The player typed commands go to: the one most recently put on screen.
   _PlayerController? _activePlayer;
+
+  /// Waiting on Rattil's assistant.
+  bool _thinking = false;
+
+  /// The server said it has no assistant configured. Not asked again this
+  /// visit: the answer will not change until the server restarts with a key.
+  bool _assistantOff = false;
 
   @override
   void initState() {
@@ -153,7 +169,80 @@ class _AskAiScreenState extends State<AskAiScreen> {
     // The parser decides, and never plays a different reciter from the one
     // asked for -- it says who has the surah instead.
     final request = _parser.parse(text);
-    await _play(request, _parser.decide(request, preferred: _selectedQari));
+    final reply = _parser.decide(request, preferred: _selectedQari);
+    // Only what the rules could not read goes to the assistant: everything
+    // they can handle stays instant, free, offline and tested.
+    if (reply.unread && !_assistantOff) {
+      await _askAssistant(text, fallback: reply.message!);
+      return;
+    }
+    await _play(request, reply);
+  }
+
+  /// Rattil's assistant (Google Gemini, via the backend), for a message the
+  /// app's own parser could not read.
+  ///
+  /// Whatever it asks to do goes back through the parser's own [decide] --
+  /// the same validation a typed request gets -- so a surah it names is played
+  /// only if it exists, the ayat are in range, and the reciter has it.
+  Future<void> _askAssistant(String text, {required String fallback}) async {
+    setState(() => _thinking = true);
+    _scrollToEnd();
+
+    AssistantAnswer? answer;
+    String? failure;
+    try {
+      answer = await Services.rattil.ask(text, history: _historyForAssistant());
+    } on AppException catch (e) {
+      if (e.statusCode == 503 && e.message.contains('GEMINI_API_KEY')) _assistantOff = true;
+      // A busy assistant says so; any other failure just gets the parser's
+      // own reply, as if the assistant did not exist.
+      failure = e.statusCode == 429 ? e.message : null;
+    }
+    if (!mounted) return;
+    setState(() => _thinking = false);
+
+    if (answer == null) {
+      setState(() => _messages.add(_ChatMessage(fromUser: false, text: failure ?? fallback)));
+      _scrollToEnd();
+      return;
+    }
+    if (answer.reply.isNotEmpty) {
+      setState(() => _messages.add(_ChatMessage(fromUser: false, text: answer!.reply, viaAssistant: true)));
+      _scrollToEnd();
+    }
+    for (final action in answer.actions) {
+      switch (action) {
+        case PlayAction():
+          final surah = _surahs.where((s) => s.number == action.surah).firstOrNull;
+          final qari = _qaris.where((q) => q.qariId == action.qariId).firstOrNull;
+          if (surah == null || qari == null) continue;
+          final request = RattilRequest(
+              surah: surah, qari: qari, ayahStart: action.ayahStart, ayahEnd: action.ayahEnd);
+          await _play(request, _parser.decide(request));
+        case RuleAction():
+          final rule = tajweedRules
+              .where((r) => r.title.toLowerCase().startsWith(action.rule.toLowerCase()))
+              .firstOrNull;
+          if (rule == null) continue;
+          final request = RattilRequest(rule: rule);
+          await _play(request, _parser.decide(request));
+      }
+    }
+  }
+
+  /// The last few turns, oldest first, for the assistant's context. The
+  /// newest user message is excluded -- it is sent as the message itself --
+  /// and so is the welcome, which is long and says nothing about this chat.
+  List<Map<String, String>> _historyForAssistant() {
+    final turns = <Map<String, String>>[];
+    final before = _messages.length - 2; // everything but the welcome and the newest
+    for (final m in _messages.skip(1).take(before < 0 ? 0 : before)) {
+      if (m.text.isEmpty) continue;
+      final text = m.text.length > 1200 ? m.text.substring(0, 1200) : m.text;
+      turns.add({'role': m.fromUser ? 'user' : 'model', 'text': text});
+    }
+    return turns.length > 6 ? turns.sublist(turns.length - 6) : turns;
   }
 
   /// Picking a reciter (FR-16): the default from now on, and -- if something
@@ -310,6 +399,15 @@ class _AskAiScreenState extends State<AskAiScreen> {
                 padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 8, AppSpacing.screenPadding, 16),
                 children: [
                   for (final m in _messages) _Bubble(message: m),
+                  if (_thinking)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 46, bottom: 16),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Text('Rattil is thinking…',
+                            style: textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
+                      ),
+                    ),
                   if (_ready) ...[
                     const SizedBox(height: AppSpacing.lg),
                     const _PracticeNowCard(),
@@ -443,6 +541,13 @@ class _Bubble extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(message.text, style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5)),
+                if (message.viaAssistant) ...[
+                  const SizedBox(height: 6),
+                  // The user's question went to Google to get this; say so, and
+                  // that it can be wrong -- the app's own answers are not marked.
+                  Text('Answered with Google Gemini · can make mistakes',
+                      style: textTheme.labelSmall?.copyWith(color: AppColors.textMuted)),
+                ],
                 if (message.recitation != null) ...[
                   const SizedBox(height: 14),
                   _AudioExampleCard(

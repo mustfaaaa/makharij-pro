@@ -421,6 +421,21 @@ void main() {
       });
     });
 
+    test('a sentence that merely contains a command word is not a command', () {
+      for (final text in [
+        'which surah should I learn next',
+        'I want to go back to basics with tajweed',
+        'how do I stop rushing when I recite',
+      ]) {
+        final reply = parser.decide(parser.parse(text));
+        expect(reply.controls, isFalse, reason: text);
+      }
+      // ...while short commands with a word of their own still are.
+      for (final text in ['go back', 'thoda aahista', 'can you play it again', 'next ayah please']) {
+        expect(parser.decide(parser.parse(text)).controls, isTrue, reason: text);
+      }
+    });
+
     test('"on repeat" keeps going; it is not "play it once more"', () {
       expect(commandsOf('on repeat'), isNot(contains(RattilCommand.replay)));
     });

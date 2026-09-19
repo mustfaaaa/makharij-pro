@@ -1,9 +1,16 @@
+import '../models/assistant_answer.dart';
 import '../models/qari.dart';
 import 'api_client.dart';
 
 abstract class RattilService {
   Future<List<Qari>> getQaris();
   Future<RecitationResult> getRecitation({required String qariId, required int surah, int? ayahStart, int? ayahEnd});
+
+  /// Rattil's assistant, for a message the app's own parser could not read.
+  /// [history] is the conversation so far as {role: user|model, text}, oldest
+  /// first. Throws [AppException]: 503 when the server has no assistant
+  /// configured, 429 when its free-tier limit is reached.
+  Future<AssistantAnswer> ask(String message, {List<Map<String, String>> history = const []});
 }
 
 /// Real backend-backed implementation. No auth required -- reference audio
@@ -30,5 +37,12 @@ class ApiRattilService implements RattilService {
     final query = params.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&');
     final json = await _client.get('/api/v1/rattil/recitation?$query', authRequired: false);
     return RecitationResult.fromJson(json);
+  }
+
+  @override
+  Future<AssistantAnswer> ask(String message, {List<Map<String, String>> history = const []}) async {
+    // Signed-in: the assistant's tools read the user's own progress.
+    final json = await _client.postJson('/api/v1/rattil/chat', {'message': message, 'history': history});
+    return AssistantAnswer.fromJson(json);
   }
 }

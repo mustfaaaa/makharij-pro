@@ -131,6 +131,7 @@ class RattilRequestParser {
       passage: passageName,
       problem: problem,
       commands: commands,
+      commandOnly: commands.isNotEmpty && _isCommandOnly(text),
     );
   }
 
@@ -160,11 +161,14 @@ class RattilRequestParser {
 
     final surah = request.surah;
     // Something for the player, not a new recitation: "repeat", "slower".
-    if (surah == null && request.commands.isNotEmpty) {
+    // Only when that is all the message says -- see [_isCommandOnly].
+    if (surah == null && request.commands.isNotEmpty && request.commandOnly) {
       return RattilReply.control(request.commands);
     }
     if (surah == null) {
-      return RattilReply.say(
+      // Nothing here the rules could read. The screen hands exactly these to
+      // Rattil's assistant, and shows this text only if it is unavailable.
+      return RattilReply.unread(
           "I couldn't find a surah in that. Try a name like \"Al-Kahf\" or \"Yaseen\", "
           'or a number like "surah 112".');
     }
@@ -400,6 +404,26 @@ class RattilRequestParser {
 
   // ── player commands (FR-18) ─────────────────────────────────────────────
 
+  /// Every phrase [_matchCommands] recognises, for [_isCommandOnly].
+  static const _commandPhrases = r'loop|on repeat|keep repeating|bar bar|baar baar|barbar|baarbaar|'
+      r'repeat|again|replay|once more|one more time|phir se|phirse|dobara|dubara|dubaara|'
+      r'continue|play on|keep playing|play all|play through|aage chalao|chalte raho|chalta rahe|'
+      r'next|agli|agla|agle|skip|previous|prev|back|pichli|pichla|pichhli|pichhla|peeche|pichay|'
+      r'slower|slow|slowly|slow down|aahista|ahista|aahiste|ahiste|dheere|dhire|dheema|'
+      r'faster|normal speed|normal|full speed|regular speed|tez|'
+      r'stop|pause|ruko|ruk jao|ruk|band karo|band kro|bas karo|bas|'
+      r'play|resume|start|chalao|shuru karo|shuru';
+
+  /// Whether the message is a command and nothing more. "Which surah should I
+  /// learn next" contains "next" and is a question, not an instruction to skip
+  /// an ayah: once command words, stopwords and articles are taken out, a
+  /// command leaves at most one word behind ("go back", "thoda aahista").
+  static bool _isCommandOnly(String text) {
+    final rest = ' ${_fold(text)} '.replaceAll(RegExp(r'\b(?:' + _commandPhrases + r')\b'), ' ');
+    final left = _latinTokens(rest).where((t) => !_stopwords.contains(t) && !_articles.contains(t));
+    return left.length <= 1;
+  }
+
   /// The player commands in a message, in English and in Roman Urdu.
   static Set<RattilCommand> _matchCommands(String text) {
     final t = ' ${_fold(text)} ';
@@ -604,6 +628,11 @@ class RattilRequest {
   /// The reply to a greeting or a thank-you.
   final String? courtesy;
 
+  /// The message is a player command and nothing else ("go back"), as
+  /// opposed to a sentence that merely contains a command word ("which surah
+  /// should I learn next").
+  final bool commandOnly;
+
   const RattilRequest({
     this.surah,
     this.qari,
@@ -616,6 +645,7 @@ class RattilRequest {
     this.rule,
     this.unknownRule,
     this.courtesy,
+    this.commandOnly = false,
   });
 
   /// The same ayat, asked of [reciter] by name -- what picking a reciter on
@@ -676,10 +706,15 @@ class RattilReply {
   /// The rule being explained, so the screen can open it in the library.
   final TajweedRule? rule;
 
+  /// The rules could not read the message at all -- the one case worth
+  /// asking Rattil's assistant about. [message] is the fallback if it can't.
+  final bool unread;
+
   const RattilReply.play(Qari this.qari, Surah this.surah,
       {this.ayahStart, this.ayahEnd, this.passage, this.note, this.commands = const {}})
       : message = null,
-        rule = null;
+        rule = null,
+        unread = false;
   const RattilReply.say(String this.message)
       : qari = null,
         surah = null,
@@ -688,7 +723,18 @@ class RattilReply {
         passage = null,
         note = null,
         commands = const {},
-        rule = null;
+        rule = null,
+        unread = false;
+  const RattilReply.unread(String this.message)
+      : qari = null,
+        surah = null,
+        ayahStart = null,
+        ayahEnd = null,
+        passage = null,
+        note = null,
+        commands = const {},
+        rule = null,
+        unread = true;
   const RattilReply.control(this.commands)
       : qari = null,
         surah = null,
@@ -697,7 +743,8 @@ class RattilReply {
         passage = null,
         note = null,
         message = null,
-        rule = null;
+        rule = null,
+        unread = false;
   const RattilReply.explain(TajweedRule this.rule, String this.message)
       : qari = null,
         surah = null,
@@ -705,7 +752,8 @@ class RattilReply {
         ayahEnd = null,
         passage = null,
         note = null,
-        commands = const {};
+        commands = const {},
+        unread = false;
 
   bool get plays => qari != null && surah != null;
 

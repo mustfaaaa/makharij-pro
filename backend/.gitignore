@@ -7,3 +7,10 @@ __pycache__/
 # database and mint a token as any user. The repository is public.
 serviceAccountKey.json
 *serviceAccountKey*.json
+
+# API keys (GEMINI_API_KEY for Rattil AI's assistant, and any others). Never
+# commit: the repository is public, and a leaked key is billed to its owner
+# and abused within minutes of being pushed.
+.env
+.env.*
+!.env.example

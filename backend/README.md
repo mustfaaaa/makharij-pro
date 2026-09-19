@@ -97,6 +97,18 @@ somewhere that needs billing set up anyway; at that point, swap `quran_metadata`
 lookup for a Storage-signed-URL lookup in `rattil.py` — the retrieval endpoint's response shape
 doesn't need to change, just where the URL points.
 
+**Rattil's assistant** — `POST /api/v1/rattil/chat`, signed-in. The app sends a message here only
+when its own parser cannot read it, so open-ended questions ("how do I fix my ghunnah?") get an
+answer while every request the parser handles stays instant, free and offline. Backed by Google
+Gemini's free tier over REST (`app/rattil_assistant.py`), enabled by `GEMINI_API_KEY` in
+`backend/.env` (see `.env.example`; the file is git-ignored) and off without it — the endpoint then
+returns 503 and the app keeps its parser's reply. Body `{"message", "history"}`, reply
+`{"reply", "actions"}` where an action is `{"type": "play", "surah", "ayah_start", "ayah_end",
+"qari_id"}` or `{"type": "rule", "rule"}`. The model never supplies Quranic text: it can only ask the
+app to play a verified recitation or show its library entry, and vocalised Arabic runs in its
+reply are removed before they reach the screen. Nothing identifying is sent — free-tier content is
+used by Google to improve its products. Pinned by `tests/test_rattil_assistant.py` (36 tests).
+
 **FR-19 request parsing** is built, client-side, in `frontend/lib/services/rattil_request_parser.dart`
 and pinned by 229 tests: named passages ("Ayat al-Kursi" → 2:255), colon references (`18:1-10`),
 a surah plus ayat ("baqarah 255", "kahf 1 se 10 tak"), first/last N ayat, surah names in common

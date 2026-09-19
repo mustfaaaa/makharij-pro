@@ -10,7 +10,9 @@ from .firebase_admin_setup import init_firebase
 from .phoneme_analysis_service import PhonemeAnalysisService
 from .reference_words import ReferenceWordAudio
 from .tajweed_reference import TajweedReference
-from .routers import live, rattil, sessions, tajweed
+from . import config
+from .rattil_assistant import AssistantUnavailable, FirestoreAssistantData, GeminiClient, RattilAssistant
+from .routers import assistant, live, rattil, sessions, tajweed
 
 logging.basicConfig(level=logging.INFO)
 
@@ -54,6 +56,17 @@ async def lifespan(app: FastAPI):
             "Tajweed reference table missing, /api/v1/tajweed/* will 503 "
             "(generate it with ml/tools/extract_tajweed_reference.py)")
 
+    # Rattil AI's assistant (Google Gemini). Optional: without a key the app
+    # keeps reading requests with its own rule-based parser, and only the
+    # open-ended questions go unanswered.
+    try:
+        app.state.rattil_assistant = RattilAssistant(
+            GeminiClient(config.GEMINI_API_KEY, config.GEMINI_MODEL), FirestoreAssistantData())
+        logging.info(f"Rattil assistant ready ({config.GEMINI_MODEL})")
+    except AssistantUnavailable as exc:
+        app.state.rattil_assistant = None
+        logging.warning(f"Rattil assistant off: {exc} -- set it in backend/.env (see .env.example)")
+
     yield
 
 
@@ -73,6 +86,7 @@ app.add_middleware(
 
 app.include_router(sessions.router, prefix="/api/v1")
 app.include_router(rattil.router, prefix="/api/v1")
+app.include_router(assistant.router, prefix="/api/v1")
 app.include_router(tajweed.router, prefix="/api/v1")
 # Live word-position streaming (WebSocket) for highlighting words as the
 # user recites -- see routers/live.py for the protocol.
