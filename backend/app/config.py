@@ -27,7 +27,9 @@ _load_dotenv(BACKEND_DIR / ".env")
 # Rattil AI's assistant (Google Gemini, free tier). Unset key = the assistant
 # is simply off: the app keeps its own rule-based reading of requests.
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+# Used when the main model is at its free-tier limit; its quota is separate.
+GEMINI_FALLBACK_MODEL = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-3.8-flash")
 
 # Firebase project ID from frontend/lib/firebase_options.dart -- not itself a secret, but the
 # service account key (path below) is and must never be committed. See README.md for how to

@@ -115,9 +115,11 @@ def test_a_server_error_is_unavailable():
 def test_a_network_failure_is_unavailable():
     def boom(request):
         raise httpx.ConnectError("no route")
-    client = GeminiClient("k", "m", http=httpx.Client(transport=httpx.MockTransport(boom)))
-    with pytest.raises(AssistantUnavailable):
+    client = GeminiClient("k", "m", http=httpx.Client(transport=httpx.MockTransport(boom)), retry_delay=0)
+    with pytest.raises(AssistantUnavailable) as raised:
         RattilAssistant(client, FakeData()).ask(UID, "hi")
+    # A dropped connection is "can't be reached", not "too many questions".
+    assert not isinstance(raised.value, AssistantBusy)
 
 
 # ── privacy ──────────────────────────────────────────────────────────────────
@@ -345,3 +347,76 @@ def test_it_needs_a_signed_in_user():
     app.dependency_overrides.clear()
     r = TestClient(app).post("/api/v1/rattil/chat", json={"message": "hi"})
     assert r.status_code == 401
+
+
+# ── the free tier's two real failures ────────────────────────────────────────
+# Both measured against the live API: a handful of questions produced a 503
+# ("overloaded") and then 429s (the per-model free quota).
+
+def scripted(*steps, fallback="gemini-lite"):
+    """Gemini that answers each request with the next (status, body) step."""
+    sent, queue = [], list(steps)
+
+    def handler(request):
+        sent.append(str(request.url))
+        status, body = queue.pop(0)
+        return httpx.Response(status, json=body if body is not None else {"error": {"message": "x"}})
+
+    client = GeminiClient("k", "gemini-main", http=httpx.Client(transport=httpx.MockTransport(handler)),
+                          fallback_model=fallback, retry_delay=0)
+    return RattilAssistant(client, FakeData()), sent
+
+
+def test_an_overloaded_model_is_tried_once_more():
+    bot, sent = scripted((503, None), (200, text("ok")))
+    assert bot.ask(UID, "hi").text == "ok"
+    assert [("gemini-main" in u) for u in sent] == [True, True]
+
+
+def test_a_model_at_its_limit_hands_over_to_the_fallback():
+    bot, sent = scripted((429, None), (200, text("from the fallback")))
+    assert bot.ask(UID, "hi").text == "from the fallback"
+    assert "gemini-main" in sent[0] and "gemini-lite" in sent[1]
+
+
+def test_a_model_overloaded_twice_hands_over_to_the_fallback():
+    bot, sent = scripted((503, None), (503, None), (200, text("ok")))
+    assert bot.ask(UID, "hi").text == "ok"
+    assert "gemini-lite" in sent[2]
+
+
+def test_no_fallback_in_the_middle_of_a_tool_round_trip():
+    """After a tool call the history holds the first model's thought
+    signatures; they are not handed to a different model."""
+    bot, sent = scripted((200, call("list_reciters", signature="sig")), (429, None))
+    with pytest.raises(AssistantBusy):
+        bot.ask(UID, "who recites here?")
+    assert all("gemini-lite" not in u for u in sent)
+
+
+def test_both_models_at_their_limit_is_busy():
+    bot, _ = scripted((429, None), (429, None))
+    with pytest.raises(AssistantBusy):
+        bot.ask(UID, "hi")
+
+
+def test_other_errors_are_not_retried():
+    bot, sent = scripted((400, None))
+    with pytest.raises(AssistantUnavailable):
+        bot.ask(UID, "hi")
+    assert len(sent) == 1
+
+
+def test_a_dropped_connection_is_retried():
+    """Measured live: one of eight questions lost its connection mid-request."""
+    attempts = []
+
+    def flaky(request):
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise httpx.RemoteProtocolError("peer closed connection")
+        return httpx.Response(200, json=text("ok"))
+
+    client = GeminiClient("k", "m", http=httpx.Client(transport=httpx.MockTransport(flaky)), retry_delay=0)
+    assert RattilAssistant(client, FakeData()).ask(UID, "hi").text == "ok"
+    assert len(attempts) == 2

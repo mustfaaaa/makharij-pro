@@ -61,7 +61,8 @@ async def lifespan(app: FastAPI):
     # open-ended questions go unanswered.
     try:
         app.state.rattil_assistant = RattilAssistant(
-            GeminiClient(config.GEMINI_API_KEY, config.GEMINI_MODEL), FirestoreAssistantData())
+            GeminiClient(config.GEMINI_API_KEY, config.GEMINI_MODEL,
+                         fallback_model=config.GEMINI_FALLBACK_MODEL), FirestoreAssistantData())
         logging.info(f"Rattil assistant ready ({config.GEMINI_MODEL})")
     except AssistantUnavailable as exc:
         app.state.rattil_assistant = None

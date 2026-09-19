@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -154,6 +155,11 @@ class AssistantBusy(AssistantUnavailable):
     """Gemini's rate limit was reached (HTTP 429) -- a wait, not a failure."""
 
 
+class AssistantTransient(AssistantUnavailable):
+    """A failure that usually clears in seconds: Gemini overloaded (HTTP 503),
+    or the connection dropped mid-request. Worth one retry."""
+
+
 class AssistantData(Protocol):
     """Where tools get their answers. Injected, so tests need no Firestore."""
 
@@ -200,18 +206,65 @@ def scrub_quranic_text(text: str, min_words: int = 3) -> str:
 # ── Gemini over REST ───────────────────────────────────────────────────────
 
 class GeminiClient:
+    """Gemini's generateContent over REST, with the two failures the free tier
+    actually produces handled rather than passed on.
+
+    Measured against the live API with this project's key, a handful of
+    questions was enough to hit both: 503 ("the model is overloaded", which
+    clears in seconds) and 429 (the free per-minute quota, which is per model).
+    So a 503 or a dropped connection is retried once after a short pause, and
+    a 429 -- or a failure that persists -- moves to [fallback_model], whose
+    quota is separate.
+
+    Which model is primary was measured too: gemini-3.8-flash returned 503 on
+    its second call even after a minute's rest, while gemini-3.5-flash-lite
+    answered twelve calls in a row, and then passed the same eight live
+    scenarios (tool use, refusing to write Quranic text, declining fatwa and
+    off-topic questions, replying in Roman Urdu) in 2-8 seconds each. So the
+    lighter model leads and the heavier one is the fallback.
+
+    The fallback is only taken on a conversation's first call. After a tool
+    round-trip the history carries the first model's thought signatures, which
+    are its own; handing them to another model mid-conversation is not
+    something to rely on. A later failure is reported instead.
+    """
+
     def __init__(self, api_key: str, model: str, http: httpx.Client | None = None,
-                 timeout: float = 30.0):
+                 timeout: float = 30.0, fallback_model: str | None = None,
+                 retry_delay: float = 1.5):
         if not api_key:
             raise AssistantUnavailable("GEMINI_API_KEY is not set")
         self._key = api_key
         self._model = model
+        self._fallback = fallback_model if fallback_model and fallback_model != model else None
+        self._retry_delay = retry_delay
         self._http = http or httpx.Client(timeout=timeout)
 
     def generate(self, contents: list[dict]) -> dict:
+        first_call = not any(p.get("functionCall") or p.get("thoughtSignature")
+                             for c in contents for p in c.get("parts", []))
+        last: AssistantUnavailable
+        try:
+            return self._generate_once(self._model, contents)
+        except AssistantBusy as exc:
+            last = exc
+        except AssistantTransient:
+            time.sleep(self._retry_delay)
+            try:
+                return self._generate_once(self._model, contents)
+            except (AssistantBusy, AssistantTransient) as exc:
+                last = exc
+        if self._fallback and first_call:
+            logger.info("Gemini %s unavailable, using %s", self._model, self._fallback)
+            return self._generate_once(self._fallback, contents)
+        # Reported as what it was: a limit reads "try again in a minute", a
+        # dropped connection reads "can't be reached" -- not the other way round.
+        raise last
+
+    def _generate_once(self, model: str, contents: list[dict]) -> dict:
         try:
             r = self._http.post(
-                GEMINI_URL.format(model=self._model),
+                GEMINI_URL.format(model=model),
                 headers={"x-goog-api-key": self._key, "Content-Type": "application/json"},
                 json={
                     "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
@@ -224,9 +277,13 @@ class GeminiClient:
                 },
             )
         except httpx.HTTPError as exc:
-            raise AssistantUnavailable(f"could not reach Gemini: {type(exc).__name__}") from exc
+            # Measured live: a dropped connection (RemoteProtocolError) cost one
+            # of eight test questions. Retried like an overload.
+            raise AssistantTransient(f"could not reach Gemini: {type(exc).__name__}") from exc
         if r.status_code == 429:
             raise AssistantBusy("Gemini rate limit reached")
+        if r.status_code == 503:
+            raise AssistantTransient("Gemini returned HTTP 503")
         if r.status_code >= 400:
             # The body can echo the request; log the status only.
             raise AssistantUnavailable(f"Gemini returned HTTP {r.status_code}")
