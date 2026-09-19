@@ -30,6 +30,11 @@ abstract class TajweedReferenceService {
 
   /// Real Quranic words carrying a rule, for the Tajweed rules screen.
   Future<List<TajweedWordInfo>> examples(String rule, {int limit = 20});
+
+  /// Every word of an ayah keyed by the app's own display index (0-based,
+  /// Basmala counted), for the reading page's transliteration line and rule
+  /// highlighting. Empty when there is no reference to show.
+  Future<Map<int, TajweedWordInfo>> ayahByDisplayIndex({required int surah, required int ayah});
 }
 
 class ApiTajweedReferenceService implements TajweedReferenceService {
@@ -81,6 +86,27 @@ class ApiTajweedReferenceService implements TajweedReferenceService {
           .toList();
     } on AppException {
       return const [];
+    }
+  }
+
+  final Map<String, Map<int, TajweedWordInfo>> _ayahCache = {};
+
+  @override
+  Future<Map<int, TajweedWordInfo>> ayahByDisplayIndex({required int surah, required int ayah}) async {
+    final key = '$surah:$ayah';
+    final cached = _ayahCache[key];
+    if (cached != null) return cached;
+    try {
+      final json = await _client.get('/api/v1/tajweed/ayah/$surah/$ayah', authRequired: false);
+      // The table indexes words from 1 and leaves out the Basmala the app
+      // prepends to ayah 1; the response says how many words that prefix is.
+      final prefix = json['basmala_prefix_len'] as int? ?? 0;
+      final words = ((json['words'] as List?) ?? const []).cast<Map<String, dynamic>>().map(TajweedWordInfo.fromJson);
+      final map = {for (final w in words) w.wordIndex - 1 + prefix: w};
+      _ayahCache[key] = map;
+      return map;
+    } on AppException {
+      return const {};
     }
   }
 

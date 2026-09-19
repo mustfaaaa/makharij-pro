@@ -286,6 +286,8 @@ class ApiSessionService implements SessionService {
       totalWords: json['total_words'] as int? ?? wordVerdicts.length,
       audioPcm: audioPcm,
       hasanahEarned: _hasanahForVerdicts(recited),
+      fromAyah: json['from_ayah'] as int? ?? fromAyah,
+      toAyah: json['to_ayah'] as int? ?? toAyah,
     );
     _lastResult = result;
     return result;
@@ -356,6 +358,8 @@ class ApiSessionService implements SessionService {
       errors: _errorsFromStored(json['mistakes'] as List? ?? const []),
       wordsRecited: json['wordsRecited'] as int? ?? 0,
       totalWords: json['totalWords'] as int? ?? 0,
+      fromAyah: json['fromAyah'] as int?,
+      toAyah: json['toAyah'] as int?,
     );
   }
 }

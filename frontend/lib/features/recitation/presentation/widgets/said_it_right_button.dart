@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../services/service_locator.dart';
+import '../../../../shared/ui/action_styles.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 
@@ -77,7 +78,7 @@ class _SaidItRightButtonState extends State<SaidItRightButton> {
             Icon(Icons.check_circle_outline, size: 16, color: AppColors.success),
             const SizedBox(width: 6),
             Text(
-              _sending ? 'Noting that…' : 'Noted — thank you',
+              _sending ? 'Noting that…' : 'Noted. Thank you',
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
@@ -92,11 +93,7 @@ class _SaidItRightButtonState extends State<SaidItRightButton> {
       onPressed: _mark,
       icon: const Icon(Icons.thumb_up_alt_outlined, size: 18),
       label: const Text('I said it right'),
-      style: TextButton.styleFrom(
-        foregroundColor: AppColors.textSecondary,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        visualDensity: VisualDensity.compact,
-      ),
+      style: ActionStyles.quiet,
     );
   }
 }

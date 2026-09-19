@@ -84,21 +84,10 @@ class _WordTajweedSheetState extends State<WordTajweedSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Center(
-              child: Container(
-                width: 38,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(AppRadii.xs),
-                ),
-              ),
-            ),
-            Center(
               child: Text(
                 widget.displayWord,
                 textDirection: TextDirection.rtl,
-                style: AppTypography.arabicVerse(fontSize: 34),
+                style: AppTypography.quran(fontSize: 40, height: 1.9),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -248,15 +237,7 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Text(
-        label.toUpperCase(),
-        style: TextStyle(
-          fontSize: 10.5,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.6,
-          color: AppColors.textMuted,
-        ),
-      ),
+      child: Text(label, style: Theme.of(context).textTheme.titleSmall),
     );
   }
 }

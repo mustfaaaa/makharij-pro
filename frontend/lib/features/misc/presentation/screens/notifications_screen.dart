@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/base_list_cubit.dart';
+import '../../../../core/utils/relative_time.dart';
 import '../../../../models/notification_item.dart';
 import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
 import '../../../../shared/widgets/responsive_center.dart';
 import '../../../../shared/widgets/states/empty_state_widget.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
-import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../bloc/notifications_cubit.dart';
@@ -42,45 +41,60 @@ class NotificationsScreen extends StatelessWidget {
               return ErrorStateWidget(message: state.errorMessage ?? 'Could not load notifications.', onRetry: () => context.read<NotificationsCubit>().load());
             }
             if (state.items.isEmpty) {
-              return const EmptyStateWidget(icon: Icons.notifications_none_rounded, title: 'No notifications', message: 'You\'re all caught up.');
+              return const EmptyStateWidget(icon: Icons.notifications_none_rounded, title: 'Nothing new', message: 'Milestones and updates will appear here.');
             }
-            return ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.screenPadding),
+            return ListView.builder(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, AppSpacing.sm, AppSpacing.screenPadding, AppSpacing.xl),
               itemCount: state.items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
               itemBuilder: (context, i) {
                 final n = state.items[i];
-                return Container(
-                  padding: const EdgeInsets.all(AppSpacing.cardPadding),
-                  decoration: BoxDecoration(
-                    color: n.isRead ? AppColors.surface : AppColors.primarySurface,
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(color: AppColors.surface, shape: BoxShape.circle),
-                        alignment: Alignment.center,
-                        child: Icon(_iconFor(n.type), size: 18, color: AppColors.primaryDark),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(n.title, style: Theme.of(context).textTheme.titleSmall),
-                            const SizedBox(height: 2),
-                            Text(n.message, style: Theme.of(context).textTheme.bodySmall),
-                            const SizedBox(height: 4),
-                            Text(DateFormat.MMMd().add_jm().format(n.dateTime), style: Theme.of(context).textTheme.labelSmall),
-                          ],
+                final textTheme = Theme.of(context).textTheme;
+                return Semantics(
+                  label: '${n.isRead ? '' : 'New. '}${n.title}. ${n.message}. ${relativeTime(n.dateTime)}',
+                  excludeSemantics: true,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.divider))),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: n.type == NotificationType.achievement ? AppColors.goldWash : AppColors.primarySurface,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(_iconFor(n.type),
+                              size: 20,
+                              color: n.type == NotificationType.achievement ? AppColors.goldInk : AppColors.onPrimarySurface),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(n.title,
+                                  style: textTheme.titleMedium?.copyWith(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w700)),
+                              const SizedBox(height: 2),
+                              Text(n.message, style: textTheme.bodyMedium),
+                              const SizedBox(height: 6),
+                              Text(relativeTime(n.dateTime), style: textTheme.labelSmall),
+                            ],
+                          ),
+                        ),
+                        if (!n.isRead)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8, top: 6),
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 );
               },

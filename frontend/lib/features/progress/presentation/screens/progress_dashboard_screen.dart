@@ -2,40 +2,41 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart' show DateFormat;
 
 import '../../../../app/cubit/hasanah_cubit.dart';
-import '../../../../core/utils/current_user_display.dart';
 import '../../../../core/utils/number_format.dart';
+import '../../../../core/utils/relative_time.dart';
+import '../../../../dummy/dummy_surahs.dart';
 import '../../../../models/achievement.dart';
 import '../../../../models/progress_point.dart';
 import '../../../../models/progress_summary.dart';
+import '../../../../models/session_result.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/service_locator.dart';
-import '../../../../theme/app_shadows.dart';
-import '../widgets/performance_hero.dart';
+import '../../../../shared/ui/ornaments.dart';
+import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
+import '../../../../shared/widgets/section_header.dart';
+import '../../../../shared/widgets/states/empty_state_widget.dart';
+import '../../../../shared/widgets/states/error_state_widget.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
+import '../../../../theme/app_typography.dart';
+import '../widgets/performance_hero.dart';
 
-// ── Tajweed Mastery: dot colors cycle across the rules the model actually
-// covers (3 of them -- see model_card.json known_limitations) rather than
-// naming a fixed rule list, since which rules have session history varies.
-/// Mastery dots are read against a light card, so these are the ink golds
-/// rather than the fill golds -- the old set sat between 2.4:1 and 3.1:1.
-const _masteryDotColors = [Color(0xFF806839), Color(0xFF6F5622), Color(0xFF9C5218)];
-
-/// Drops the Arabic parenthetical from a backend rule label (e.g. "Separate
-/// Madd (المد المنفصل)" -> "Separate Madd") so it fits the bar row's fixed
-/// name column instead of overflowing.
+/// Drops the parenthetical from a backend rule label ("Madd (elongation)" ->
+/// "Madd") so it fits the bar row.
 String _shortRuleLabel(String label) => label.split(' (').first;
 
-List<List<int>> _emptyHeatmap() => List.generate(10, (_) => List.filled(7, 0));
-
-
-/// Progress tab rebuilt to the provided mockup: performance dashboard hero
-/// on the provided Quran photo, stat cards, Tajweed Mastery bars, the
-/// 14-day Accuracy Trend chart, the 10-week Practice Activity heatmap and
-/// the Achievements badge row.
+/// Progress: the reciter's own history, read as a learning journey rather
+/// than a business dashboard -- a streak, the surahs they have recited mapped
+/// across the whole Quran, how their recitations have gone over time, which
+/// rules to practise, milestones, and the recitations themselves.
+///
+/// Every figure comes from `/progress`, `/sessions`, `/achievements` or the
+/// hasanah total in Firestore. Nothing is estimated or dressed up: a new
+/// reciter sees one invitation, not a wall of zeros.
 class ProgressDashboardScreen extends StatefulWidget {
   const ProgressDashboardScreen({super.key});
 
@@ -44,710 +45,643 @@ class ProgressDashboardScreen extends StatefulWidget {
 }
 
 class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
-  ProgressSummary? _summary;
-  List<ProgressPoint> _points = const [];
-  List<Achievement> _achievements = const [];
+  late Future<ProgressSummary> _summary;
+  late Future<List<ProgressPoint>> _points;
+  late Future<List<Achievement>> _achievements;
+  late Future<List<SessionResult>> _sessions;
 
   @override
   void initState() {
     super.initState();
-    Services.progress.getSummary().then((s) {
-      if (mounted) setState(() => _summary = s);
-    });
-    Services.progress.getProgressPoints().then((p) {
-      if (mounted) setState(() => _points = p);
-    });
-    Services.achievement.getAchievements().then((a) {
-      if (mounted) setState(() => _achievements = a);
-    });
+    _load();
+  }
+
+  void _load() {
+    _summary = Services.progress.getSummary();
+    _points = Services.progress.getProgressPoints().catchError((_) => <ProgressPoint>[]);
+    _achievements = Services.achievement.getAchievements().catchError((_) => <Achievement>[]);
+    _sessions = Services.session.getSessions().catchError((_) => <SessionResult>[]);
+  }
+
+  Future<void> _refresh() async {
+    setState(_load);
+    await _summary.then((_) {}, onError: (_) {});
   }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final bottomPad =
-        AppSpacing.bottomNavClearance + MediaQuery.of(context).padding.bottom;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            AppSpacing.screenPadding,
-            12,
-            AppSpacing.screenPadding,
-            bottomPad,
-          ),
-          children: [
-            // ── Header row ───────────────────────────────────────────────
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          color: AppColors.primary,
+          child: FutureBuilder<ProgressSummary>(
+            future: _summary,
+            builder: (context, snap) {
+              final header = [
+                Text('Progress', style: textTheme.displayMedium),
+                const SizedBox(height: 2),
+                Text('Measured from your own recitations', style: textTheme.bodyMedium),
+                const SizedBox(height: AppSpacing.lg),
+              ];
+              final List<Widget> body;
+              if (snap.hasError) {
+                body = [
+                  const SizedBox(height: AppSpacing.xl),
+                  ErrorStateWidget(
+                    title: 'Your progress could not load',
+                    message: 'Check your connection and try again.',
+                    onRetry: () => setState(_load),
                   ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    currentUserInitial(),
-                    style: TextStyle(
-                      color: AppColors.textOnPrimary,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
+                ];
+              } else if (snap.connectionState != ConnectionState.done) {
+                body = const [
+                  ShimmerBox(height: 110, borderRadius: BorderRadius.all(Radius.circular(20))),
+                  SizedBox(height: AppSpacing.md),
+                  ShimmerBox(height: 220, borderRadius: BorderRadius.all(Radius.circular(20))),
+                  SizedBox(height: AppSpacing.md),
+                  ShimmerBox(height: 140, borderRadius: BorderRadius.all(Radius.circular(20))),
+                ];
+              } else if (snap.data!.totalSessions == 0) {
+                body = [
+                  const SizedBox(height: AppSpacing.lg),
+                  EmptyStateWidget(
+                    icon: Icons.auto_graph_rounded,
+                    title: 'Your progress starts with a recitation',
+                    message:
+                        'Recite any passage and this page fills in: your streak, the surahs you have recited, and the rules worth practising.',
+                    actionLabel: 'Choose a surah',
+                    onAction: () => context.go(RoutePaths.quran),
+                  ),
+                ];
+              } else {
+                final s = snap.data!;
+                body = [
+                  _StreakSection(summary: s),
+                  const SizedBox(height: AppSpacing.lg),
+                  PerformanceHero(overallAccuracy: s.overallAccuracy, totalSessions: s.totalSessions),
+                  const SizedBox(height: AppSpacing.xl),
+                  _QuranMap(sessions: _sessions),
+                  const SizedBox(height: AppSpacing.xl),
+                  SectionHeader(title: 'Over time', subtitle: 'Words matched on each day you recited'),
+                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(
+                    height: 190,
+                    child: FutureBuilder<List<ProgressPoint>>(
+                      future: _points,
+                      builder: (context, p) => _TrendChart(points: p.data ?? const []),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        currentUserName(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      Text(
-                        'Your Performance',
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: AppRadii.pillRadius,
-                    boxShadow: AppShadows.sm,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.local_fire_department_rounded,
-                        size: 16,
-                        color: AppColors.warning,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        '${_summary?.currentStreak ?? 0} days',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            // ── Performance dashboard hero ───────────────────────────────
-            PerformanceHero(overallAccuracy: _summary?.overallAccuracy ?? 0),
-            const SizedBox(height: AppSpacing.md),
-            // ── Stat cards ───────────────────────────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    icon: Icons.menu_book_rounded,
-                    value: '${_summary?.totalSessions ?? 0}',
-                    label: 'Sessions',
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _StatCard(
-                    icon: Icons.water_drop_rounded,
-                    value: '${_summary?.currentStreak ?? 0}d',
-                    label: 'Streak',
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: BlocBuilder<HasanahCubit, int>(
-                    builder: (context, hasanah) => _StatCard(
-                      icon: Icons.auto_awesome,
-                      value: formatWithCommas(hasanah),
-                      label: 'Hasanah',
+                  if (s.ruleMastery.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.xl),
+                    SectionHeader(
+                      title: 'By rule',
+                      subtitle: 'Recited words not flagged for each rule, last 20 recitations',
                     ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            // ── Tajweed Mastery ──────────────────────────────────────────
-            _SectionCard(
-              icon: Icons.nightlight_round,
-              title: 'Tajweed Mastery',
-              subtitle: 'Your accuracy by rule',
-              child: (_summary?.ruleMastery.isEmpty ?? true)
-                  ? Padding(
-                      padding: const EdgeInsets.only(top: 14),
-                      child: Text(
-                        'Recite a few sessions to see your accuracy by rule.',
-                        style: textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        for (final entry in _summary!.ruleMastery.entries.toList().asMap().entries)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 14),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: _masteryDotColors[entry.key % _masteryDotColors.length],
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                SizedBox(
-                                  width: 100,
-                                  child: Text(
-                                    _shortRuleLabel(entry.value.key),
-                                    style: textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.textPrimary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(child: _MasteryBar(pct: entry.value.value.round())),
-                                const SizedBox(width: 10),
-                                SizedBox(
-                                  width: 40,
-                                  child: Text(
-                                    '${entry.value.value.round()}%',
-                                    textAlign: TextAlign.right,
-                                    style: TextStyle(
-                                      color: AppColors.primaryDark,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            // ── Accuracy Trend ───────────────────────────────────────────
-            _SectionCard(
-              icon: Icons.trending_up_rounded,
-              title: 'Accuracy Trend',
-              subtitle: 'Last 14 days',
-              trailing: GestureDetector(
-                onTap: () => context.push(RoutePaths.statistics),
-                child: Text(
-                  'Statistics',
-                  style: TextStyle(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: SizedBox(height: 140, child: _TrendChart(points: _points)),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            // ── Practice Activity heatmap ────────────────────────────────
-            _SectionCard(
-              icon: Icons.grid_view_rounded,
-              title: 'Practice Activity',
-              subtitle: 'Last 10 weeks',
-              child: Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: _ActivityHeatmap(heatmap: _summary?.activityHeatmap ?? _emptyHeatmap()),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            // ── Achievements ─────────────────────────────────────────────
-            _SectionCard(
-              icon: Icons.emoji_events_rounded,
-              title: 'Achievements',
-              subtitle: '${_achievements.where((a) => a.isUnlocked).length} of ${_achievements.length} unlocked',
-              trailing: GestureDetector(
-                onTap: () => context.push(RoutePaths.achievements),
-                child: Text(
-                  'View all',
-                  style: TextStyle(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.only(top: 18),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final badge in _achievements.take(5))
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: badge.isUnlocked
-                                    ? LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          AppColors.primaryLight,
-                                          AppColors.primaryDark,
-                                        ],
-                                      )
-                                    : null,
-                                color: badge.isUnlocked
-                                    ? null
-                                    : AppColors.surfaceAlt,
-                              ),
-                              child: Icon(
-                                badge.icon,
-                                color: badge.isUnlocked
-                                    ? Colors.white
-                                    : AppColors.textMuted,
-                                size: 22,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              badge.title,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                height: 1.25,
-                                fontWeight: FontWeight.w600,
-                                color: badge.isUnlocked
-                                    ? AppColors.textSecondary
-                                    : AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    const SizedBox(height: AppSpacing.md),
+                    for (final e in (s.ruleMastery.entries.toList()..sort((a, b) => a.value.compareTo(b.value))))
+                      _RuleBar(label: _shortRuleLabel(e.key), value: e.value),
                   ],
-                ),
-              ),
-            ),
-          ],
+                  const SizedBox(height: AppSpacing.xl),
+                  _Milestones(achievements: _achievements),
+                  const SizedBox(height: AppSpacing.xl),
+                  SectionHeader(title: 'Activity', subtitle: 'Recitations per day, last 10 weeks'),
+                  const SizedBox(height: AppSpacing.md),
+                  _ActivityHeatmap(heatmap: s.activityHeatmap),
+                  const SizedBox(height: AppSpacing.xl),
+                  _RecentRecitations(sessions: _sessions),
+                ];
+              }
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screenPadding, AppSpacing.md, AppSpacing.screenPadding, AppSpacing.bottomNavClearance),
+                children: [...header, ...body],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 }
 
-// ── Small stat card ───────────────────────────────────────────────────────────
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-  const _StatCard({
-    required this.icon,
-    required this.value,
-    required this.label,
-  });
+// ── Streak ───────────────────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.lgRadius,
-        boxShadow: AppShadows.sm,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppColors.primarySurface,
-              borderRadius: AppRadii.smRadius,
-            ),
-            child: Icon(icon, size: 18, color: AppColors.primaryDark),
-          ),
-          const SizedBox(height: 12),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                fontSize: 22,
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Reusable white section card with icon + title + subtitle ─────────────────
-class _SectionCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Widget? trailing;
-  final Widget child;
-  const _SectionCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.child,
-    this.trailing,
-  });
+class _StreakSection extends StatelessWidget {
+  final ProgressSummary summary;
+  const _StreakSection({required this.summary});
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.lgRadius,
-        boxShadow: AppShadows.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius: AppRadii.mdRadius,
-                ),
-                child: Icon(icon, size: 20, color: AppColors.primaryDark),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              ?trailing,
-            ],
-          ),
-          child,
-        ],
-      ),
-    );
-  }
-}
+    // The heatmap is the last 70 days in order, oldest first; its last 14
+    // entries are the last two weeks ending today.
+    final days = summary.activityHeatmap.expand((w) => w).toList();
+    final last14 = days.length >= 14 ? days.sublist(days.length - 14) : days;
+    final streak = summary.currentStreak;
 
-// ── Gradient mastery bar ──────────────────────────────────────────────────────
-class _MasteryBar extends StatelessWidget {
-  final int pct;
-  const _MasteryBar({required this.pct});
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => Stack(
-        children: [
-          Container(
-            height: 10,
-            decoration: BoxDecoration(
-              color: AppColors.creamDark,
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-            ),
-          ),
-          Container(
-            height: 10,
-            width: constraints.maxWidth * pct / 100,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppColors.brandCardGradient,
-              ),
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Real accuracy trend line chart, one point per day with activity ──────────
-class _TrendChart extends StatelessWidget {
-  final List<ProgressPoint> points;
-  const _TrendChart({required this.points});
-
-  @override
-  Widget build(BuildContext context) {
-    if (points.isEmpty) {
-      return Center(
-        child: Text(
-          'Recite a few times to see your trend here.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-        ),
-      );
-    }
-
-    final scores = points.map((p) => p.score).toList();
-    final minScore = scores.reduce((a, b) => a < b ? a : b);
-    final maxScore = scores.reduce((a, b) => a > b ? a : b);
-    // A little headroom above/below the real range so the line/dots aren't
-    // clipped against the chart edges, clamped to the valid score range.
-    final minY = (minScore - 5).clamp(0, 100).toDouble();
-    final maxY = (maxScore + 5).clamp(0, 100).toDouble();
-
-    // Label a handful of evenly-spaced days rather than every single one,
-    // which would overlap for any real multi-week history.
-    final labelIndexes = <int>{0, if (points.length > 1) points.length - 1};
-    if (points.length > 2) labelIndexes.add((points.length - 1) ~/ 2);
-
-    return LineChart(
-      LineChartData(
-        minY: minY,
-        maxY: maxY,
-        gridData: const FlGridData(show: false),
-        borderData: FlBorderData(show: false),
-        titlesData: FlTitlesData(
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          // Without a value axis the line showed a shape but no numbers --
-          // it could have been 40% or 90% and looked identical.
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 34,
-              interval: ((maxY - minY) / 2).clamp(1, 100),
-              getTitlesWidget: (value, meta) => Text(
-                '${value.round()}%',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 10),
-              ),
-            ),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 24,
-              interval: 1,
-              getTitlesWidget: (value, meta) {
-                final i = value.toInt();
-                if (!labelIndexes.contains(i) || i < 0 || i >= points.length) {
-                  return const SizedBox.shrink();
-                }
-                final date = points[i].date;
-                const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    weekdays[date.weekday - 1],
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        lineTouchData: LineTouchData(
-          enabled: true,
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (_) => AppColors.textPrimary,
-            getTooltipItems: (spots) => spots
-                .map((s) => LineTooltipItem(
-                      '${s.y.round()}%',
-                      TextStyle(
-                          color: AppColors.textOnInverse, fontWeight: FontWeight.w700),
-                    ))
-                .toList(),
-          ),
-        ),
-        lineBarsData: [
-          LineChartBarData(
-            spots: [
-              for (int i = 0; i < points.length; i++)
-                FlSpot(i.toDouble(), points[i].score),
-            ],
-            isCurved: true,
-            curveSmoothness: 0.32,
-            barWidth: 2.6,
-            color: AppColors.accent,
-            dotData: FlDotData(
-              show: true,
-              checkToShowDot: (spot, data) => spot.x == points.length - 1,
-              getDotPainter: (spot, pct, bar, index) => FlDotCirclePainter(
-                radius: 4.5,
-                color: AppColors.accent,
-                strokeWidth: 0,
-              ),
-            ),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.accent.withValues(alpha: 0.35),
-                  AppColors.accent.withValues(alpha: 0.0),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Semantics(
+              label: '$streak day streak',
+              excludeSemantics: true,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text('$streak', style: AppTypography.numeric(fontSize: 52)),
+                  const SizedBox(width: 8),
+                  Text(streak == 1 ? 'day in a row' : 'days in a row',
+                      style: textTheme.titleMedium?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── 10-week practice heatmap grid ─────────────────────────────────────────────
-const _weekdayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-class _ActivityHeatmap extends StatelessWidget {
-  final List<List<int>> heatmap;
-  const _ActivityHeatmap({required this.heatmap});
-
-  /// A deliberately monotonic five-step ramp.
-  ///
-  /// The previous set was drawn from unrelated brand tokens and did not get
-  /// darker as the value rose: level 3 (`primary`) was *lighter* than level 2
-  /// (`accentLight`) -- 0.386 vs 0.343 relative luminance -- so a busier week
-  /// could render paler than a quieter one. These five step down evenly, with
-  /// every neighbouring pair at least 1.3:1 apart so adjacent levels stay
-  /// distinguishable.
-  Color _shade(int level) {
-    final dark = AppColors.brightness == Brightness.dark;
-    const light = [
-      Color(0xFFEDE5D5),
-      Color(0xFFE0C98F),
-      Color(0xFFC9A94F),
-      Color(0xFFA5822F),
-      Color(0xFF6F5622),
-    ];
-    const night = [
-      Color(0xFF241E14),
-      Color(0xFF4A3C1F),
-      Color(0xFF7A6330),
-      Color(0xFFAD8C45),
-      Color(0xFFE0BD4A),
-    ];
-    final ramp = dark ? night : light;
-    return ramp[level.clamp(0, ramp.length - 1)];
-  }
-
-  static const _levelLabels = ['no practice', 'light', 'moderate', 'active', 'heavy'];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 7 rows (days) × 10 columns (weeks), like the mockup.
-        for (int day = 0; day < 7; day++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+            const Spacer(),
+            BlocBuilder<HasanahCubit, int>(
+              builder: (context, h) => h <= 0
+                  ? const SizedBox.shrink()
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(formatWithCommas(h), style: AppTypography.numeric(fontSize: 20, color: AppColors.goldInk)),
+                        Text('hasanah', style: textTheme.bodySmall),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (last14.isNotEmpty)
+          Semantics(
+            label: 'Recited on ${last14.where((d) => d > 0).length} of the last ${last14.length} days',
+            excludeSemantics: true,
             child: Row(
               children: [
-                for (int week = 0; week < heatmap.length; week++) ...[
-                  if (week > 0) const SizedBox(width: 6),
+                for (var i = 0; i < last14.length; i++) ...[
                   Expanded(
                     child: AspectRatio(
                       aspectRatio: 1,
-                      // Colour is the only visual signal here, so each cell
-                      // carries the same information as text for anyone who
-                      // cannot read the shade.
-                      child: Semantics(
-                        label:
-                            '${_weekdayNames[day]}, week ${week + 1}: ${_levelLabels[heatmap[week][day].clamp(0, 4)]}',
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: _shade(heatmap[week][day]),
-                            borderRadius: BorderRadius.circular(AppRadii.sm),
-                          ),
-                        ),
+                      child: RosetteBadge(
+                        size: 22,
+                        stroke: last14[i] > 0 ? AppColors.gold : AppColors.border,
+                        fill: last14[i] > 0 ? AppColors.goldWash : Colors.transparent,
                       ),
                     ),
                   ),
+                  if (i < last14.length - 1) const SizedBox(width: 3),
                 ],
               ],
             ),
           ),
         const SizedBox(height: 6),
         Row(
-          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text(
-              'Less',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 11.5),
-            ),
-            const SizedBox(width: 6),
-            for (int i = 0; i < 5; i++) ...[
-              Container(
-                width: 13,
-                height: 13,
-                margin: const EdgeInsets.only(right: 4),
-                decoration: BoxDecoration(
-                  color: _shade(i),
-                  borderRadius: BorderRadius.circular(AppRadii.xs),
-                ),
-              ),
-            ],
-            const SizedBox(width: 2),
-            Text(
-              'More',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 11.5),
-            ),
+            Text('Two weeks ago', style: textTheme.labelSmall),
+            const Spacer(),
+            Text('Today', style: textTheme.labelSmall),
           ],
         ),
       ],
+    );
+  }
+}
+
+// ── Quran map ────────────────────────────────────────────────────────────────
+
+/// All 114 surahs in order, the ones recited filled in. The honest version of
+/// "surah completion": it records that a surah has been recited, not that it
+/// has been mastered.
+class _QuranMap extends StatelessWidget {
+  final Future<List<SessionResult>> sessions;
+  const _QuranMap({required this.sessions});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<SessionResult>>(
+      future: sessions,
+      builder: (context, snap) {
+        final recited = {for (final s in snap.data ?? const <SessionResult>[]) s.surahNumber};
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: 'Your Quran map',
+              subtitle: '${recited.length} of 114 surahs recited · tap one to open it',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            LayoutBuilder(builder: (context, constraints) {
+              const perRow = 19;
+              const gap = 4.0;
+              final cell = (constraints.maxWidth - gap * (perRow - 1)) / perRow;
+              return Semantics(
+                label: '${recited.length} of 114 surahs recited',
+                child: Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: [
+                    for (var n = 1; n <= 114; n++)
+                      Tooltip(
+                        message: dummySurahs.where((s) => s.number == n).firstOrNull?.nameEnglish ?? 'Surah $n',
+                        child: InkWell(
+                          onTap: () => context.push(RoutePaths.surahDetailsPath(n)),
+                          borderRadius: BorderRadius.circular(4),
+                          child: Container(
+                            width: cell,
+                            height: cell,
+                            decoration: BoxDecoration(
+                              color: recited.contains(n) ? AppColors.emerald : AppColors.container,
+                              borderRadius: BorderRadius.circular(cell * 0.28),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text('Al-Fatihah', style: Theme.of(context).textTheme.labelSmall),
+                const Spacer(),
+                Text('An-Nas', style: Theme.of(context).textTheme.labelSmall),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ── Trend ────────────────────────────────────────────────────────────────────
+
+class _TrendChart extends StatelessWidget {
+  final List<ProgressPoint> points;
+  const _TrendChart({required this.points});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    if (points.length < 2) {
+      return Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(borderRadius: AppRadii.lgRadius, border: Border.all(color: AppColors.border)),
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Text('Recite on two different days to see how your recitations change over time.',
+            textAlign: TextAlign.center, style: textTheme.bodyMedium),
+      );
+    }
+
+    final labelIndexes = <int>{0, points.length - 1};
+    final labelStyle = textTheme.labelSmall;
+    return Semantics(
+      label: 'Words matched per day, from ${points.first.score.round()} percent to ${points.last.score.round()} percent',
+      child: LineChart(
+        LineChartData(
+          minY: 0,
+          maxY: 100,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 50,
+            getDrawingHorizontalLine: (_) => FlLine(color: AppColors.divider, strokeWidth: 1),
+          ),
+          borderData: FlBorderData(show: false),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 36,
+                interval: 50,
+                getTitlesWidget: (value, meta) => Text('${value.round()}%', style: labelStyle),
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 26,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  final i = value.toInt();
+                  if (!labelIndexes.contains(i) || i < 0 || i >= points.length) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(DateFormat.MMMd().format(points[i].date), style: labelStyle),
+                  );
+                },
+              ),
+            ),
+          ),
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (_) => AppColors.textPrimary,
+              getTooltipItems: (spots) => spots
+                  .map((s) => LineTooltipItem(
+                        '${DateFormat.MMMd().format(points[s.x.toInt()].date)}\n${s.y.round()}% matched',
+                        TextStyle(color: AppColors.textOnInverse, fontWeight: FontWeight.w600, fontFamily: 'Figtree'),
+                      ))
+                  .toList(),
+            ),
+          ),
+          lineBarsData: [
+            LineChartBarData(
+              spots: [for (int i = 0; i < points.length; i++) FlSpot(i.toDouble(), points[i].score)],
+              isCurved: true,
+              curveSmoothness: 0.25,
+              preventCurveOverShooting: true,
+              barWidth: 2.4,
+              color: AppColors.primary,
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, pct, bar, index) => FlDotCirclePainter(
+                  radius: index == points.length - 1 ? 4.5 : 2.5,
+                  color: index == points.length - 1 ? AppColors.gold : AppColors.primary,
+                  strokeWidth: 0,
+                ),
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [AppColors.primary.withValues(alpha: 0.16), AppColors.primary.withValues(alpha: 0.0)],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Rules ────────────────────────────────────────────────────────────────────
+
+class _RuleBar extends StatelessWidget {
+  final String label;
+  final double value;
+  const _RuleBar({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    return Semantics(
+      label: '$label: ${value.round()} percent of recited words not flagged',
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(label, style: textTheme.titleSmall)),
+                Text('${value.round()}%', style: AppTypography.numeric(fontSize: 14)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: reduce ? value / 100 : 0, end: value / 100),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.easeOutCubic,
+                builder: (context, v, _) => LinearProgressIndicator(
+                  value: v,
+                  minHeight: 8,
+                  color: AppColors.emerald,
+                  backgroundColor: AppColors.container,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Milestones ───────────────────────────────────────────────────────────────
+
+class _Milestones extends StatelessWidget {
+  final Future<List<Achievement>> achievements;
+  const _Milestones({required this.achievements});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return FutureBuilder<List<Achievement>>(
+      future: achievements,
+      builder: (context, snap) {
+        final items = [...(snap.data ?? const <Achievement>[])]
+          ..sort((a, b) => (b.isUnlocked ? 1 : 0).compareTo(a.isUnlocked ? 1 : 0));
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: 'Milestones',
+              subtitle: '${items.where((a) => a.isUnlocked).length} of ${items.length} reached',
+              actionLabel: 'All',
+              onActionTap: () => context.push(RoutePaths.achievements),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 148,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 14),
+                itemBuilder: (context, i) {
+                  final a = items[i];
+                  return Semantics(
+                    label: '${a.title}. ${a.description}. ${a.isUnlocked ? 'Reached' : '${(a.progress * 100).round()} percent of the way'}',
+                    excludeSemantics: true,
+                    child: SizedBox(
+                      width: 96,
+                      child: Column(
+                        children: [
+                          RosetteBadge(
+                            size: 64,
+                            stroke: a.isUnlocked ? AppColors.gold : AppColors.border,
+                            fill: a.isUnlocked ? AppColors.goldWash : Colors.transparent,
+                            child: Icon(a.icon, size: 24, color: a.isUnlocked ? AppColors.goldInk : AppColors.textMuted),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(a.title,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.labelMedium?.copyWith(
+                                color: a.isUnlocked ? AppColors.textPrimary : AppColors.textSecondary,
+                              )),
+                          const SizedBox(height: 4),
+                          if (!a.isUnlocked)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: a.progress.clamp(0.0, 1.0),
+                                minHeight: 3,
+                                color: AppColors.gold,
+                                backgroundColor: AppColors.container,
+                              ),
+                            )
+                          else
+                            Text('Reached', style: textTheme.labelSmall?.copyWith(color: AppColors.goldInk)),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ── Activity ─────────────────────────────────────────────────────────────────
+
+class _ActivityHeatmap extends StatelessWidget {
+  final List<List<int>> heatmap;
+  const _ActivityHeatmap({required this.heatmap});
+
+  Color _level(int v) => switch (v) {
+        0 => AppColors.container,
+        1 => Color.lerp(AppColors.container, AppColors.emerald, 0.35)!,
+        2 => Color.lerp(AppColors.container, AppColors.emerald, 0.6)!,
+        3 => Color.lerp(AppColors.container, AppColors.emerald, 0.8)!,
+        _ => AppColors.emerald,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final weeks = heatmap.isEmpty ? List.generate(10, (_) => List.filled(7, 0)) : heatmap;
+    final days = weeks.expand((w) => w).where((v) => v > 0).length;
+    return Semantics(
+      label: 'Recited on $days of the last ${weeks.length * 7} days',
+      excludeSemantics: true,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              for (var w = 0; w < weeks.length; w++) ...[
+                Expanded(
+                  child: Column(
+                    children: [
+                      for (var d = 0; d < weeks[w].length; d++) ...[
+                        AspectRatio(
+                          aspectRatio: 1,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: _level(weeks[w][d]),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                        if (d < weeks[w].length - 1) const SizedBox(height: 4),
+                      ],
+                    ],
+                  ),
+                ),
+                if (w < weeks.length - 1) const SizedBox(width: 4),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text('10 weeks ago', style: textTheme.labelSmall),
+              const Spacer(),
+              Text('Less', style: textTheme.labelSmall),
+              const SizedBox(width: 6),
+              for (final v in [0, 1, 2, 4]) ...[
+                Container(width: 12, height: 12, decoration: BoxDecoration(color: _level(v), borderRadius: BorderRadius.circular(3))),
+                const SizedBox(width: 3),
+              ],
+              const SizedBox(width: 3),
+              Text('More', style: textTheme.labelSmall),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Recent recitations ───────────────────────────────────────────────────────
+
+class _RecentRecitations extends StatelessWidget {
+  final Future<List<SessionResult>> sessions;
+  const _RecentRecitations({required this.sessions});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return FutureBuilder<List<SessionResult>>(
+      future: sessions,
+      builder: (context, snap) {
+        final items = (snap.data ?? const <SessionResult>[]).take(6).toList();
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(title: 'Recent recitations', actionLabel: 'Statistics', onActionTap: () => context.push(RoutePaths.statistics)),
+            const SizedBox(height: AppSpacing.sm),
+            for (final s in items)
+              InkWell(
+                onTap: () => context.push(RoutePaths.detailedFeedbackPath(s.id)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.divider))),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              [
+                                dummySurahs.where((x) => x.number == s.surahNumber).firstOrNull?.nameEnglish ?? s.surahName,
+                                if (s.fromAyah != null)
+                                  (s.toAyah == null || s.toAyah == s.fromAyah) ? 'ayah ${s.fromAyah}' : 'ayahs ${s.fromAyah}–${s.toAyah}',
+                              ].join(' · '),
+                              style: textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              [
+                                if (s.wordsRecited > 0)
+                                  '${(s.wordsRecited - s.errors.length).clamp(0, s.wordsRecited)} of ${s.wordsRecited} words matched',
+                                relativeTime(s.dateTime),
+                              ].join(' · '),
+                              style: textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

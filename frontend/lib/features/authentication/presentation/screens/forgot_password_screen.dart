@@ -4,11 +4,10 @@ import '../../../../core/utils/validators.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/feedback/app_snackbar.dart';
-import '../../../../shared/widgets/inputs/custom_text_field.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
-import '../widgets/auth_shell.dart';
+import '../widgets/arch_auth_shell.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -44,7 +43,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _sent = true;
         _sentTo = _emailController.text.trim();
       });
-      AppSnackbar.show(context, 'Reset link sent — check your inbox');
+      AppSnackbar.show(context, 'Reset link sent. Check your inbox.');
     } catch (e) {
       if (!mounted) return;
       AppSnackbar.show(
@@ -59,18 +58,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AuthShell(
-      title: 'Reset Password',
-      subtitle: 'Enter your email and we\'ll send you a reset link',
+    return ArchAuthShell(
+      title: 'Reset your password',
+      subtitle: 'Enter the email you signed up with and we will send you a link to choose a new password.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CustomTextField(
-            label: 'Email',
-            hint: 'you@example.com',
+          AuthField(
+            hint: 'Email',
+            icon: Icons.mail_outline_rounded,
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
-            prefixIcon: Icons.mail_outline,
+            autofillHints: const [AutofillHints.email],
+            textInputAction: TextInputAction.done,
+            onSubmitted: _submit,
             errorText: _emailError,
             onChanged: (_) {
               if (_emailError != null) {
@@ -80,7 +81,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
           PrimaryButton(
-            label: 'Send Reset Link',
+            label: 'Email me a reset link',
             onPressed: _submit,
             isLoading: _loading,
           ),
@@ -116,7 +117,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         const SizedBox(height: 4),
                         Text(
                           'If an account exists for ${_sentTo ?? 'that email'}, a reset link is being sent. '
-                          'Check your inbox — and your spam folder if you don\'t see it.',
+                          'Check your inbox, and your spam folder if you do not see it.',
                           style: Theme.of(
                             context,
                           ).textTheme.bodySmall?.copyWith(height: 1.4),

@@ -79,7 +79,16 @@ abstract class RoutePaths {
   static const String devStyleGuide = '/dev/style-guide';
   static const String devComponents = '/dev/components';
 
-  static String surahDetailsPath(int number) => '/surah/$number';
+  /// The reader for [number]. [from]/[to] preselect a practice range and
+  /// [ayah] scrolls to one ayah; all optional, so existing links still work.
+  static String surahDetailsPath(int number, {int? from, int? to, int? ayah}) {
+    final query = <String, String>{
+      if (from != null) 'from': '$from',
+      if (to != null) 'to': '$to',
+      if (ayah != null) 'ayah': '$ayah',
+    };
+    return Uri(path: '/surah/$number', queryParameters: query.isEmpty ? null : query).toString();
+  }
   static String recitationPath(int number) => '/recitation/$number';
   static String listeningPath(int number) => '/recitation/$number/listening';
   static String processingPath(int number) => '/recitation/$number/processing';

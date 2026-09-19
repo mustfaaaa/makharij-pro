@@ -1,4 +1,5 @@
-/// Comfortable, consistent spacing scale used across the app.
+/// Spacing scale on a 4pt base (see DESIGN.md). Related items sit 8-12 apart,
+/// sections 32 apart, reading surfaces breathe at 48.
 abstract class AppSpacing {
   static const double xs = 4;
   static const double sm = 8;
@@ -10,9 +11,9 @@ abstract class AppSpacing {
   static const double screenPadding = 20;
   static const double cardPadding = 16;
 
-  /// Fixed clearance a scrollable screen needs above its content's natural
-  /// bottom padding so the floating frosted bottom nav (see [AppBottomNav])
-  /// never overlaps the last item. Add the device's bottom safe-area inset
-  /// on top of this per screen.
-  static const double bottomNavClearance = 90;
+  /// Space a scrollable tab screen leaves below its last item. The bottom
+  /// navigation bar is opaque and part of the Scaffold now, so the body no
+  /// longer runs underneath it; this is ordinary end-of-list breathing room,
+  /// not clearance for a floating bar.
+  static const double bottomNavClearance = 24;
 }

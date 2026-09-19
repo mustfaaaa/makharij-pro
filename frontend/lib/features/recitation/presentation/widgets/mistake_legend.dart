@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../models/tajweed_error.dart';
-import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/tajweed_rule_style.dart';
+import '../../../../shared/ui/tajweed_marks.dart';
 
 /// Says what the colours and underlines under the verse mean.
 ///
@@ -44,7 +44,7 @@ class MistakeLegend extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'These mark your mistakes — not every Tajweed rule in the verse.',
+          'These mark words to review, not every Tajweed rule in the verse.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
         ),
       ],
@@ -58,43 +58,12 @@ class _LegendChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = TajweedRuleStyle.color(rule);
+    // The same shape the verse uses, drawn on a blank sample so the shape is
+    // what the reader matches on, not the word underneath it.
     return Semantics(
       label: '${rule.label}, shown ${TajweedRuleStyle.shapeHint(rule)}',
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(AppRadii.lg),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // The same underline the verse uses, drawn on a blank sample so the
-            // shape is what the reader matches on, not the word underneath it.
-            Text(
-              '——',
-              style: TextStyle(
-                color: Colors.transparent,
-                fontSize: 12,
-                decoration: TajweedRuleStyle.decoration(rule),
-                decorationStyle: TajweedRuleStyle.decorationStyle(rule),
-                decorationColor: color,
-                decorationThickness: 2,
-              ),
-            ),
-            const SizedBox(width: 7),
-            Text(
-              rule.label,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: color, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
+      excludeSemantics: true,
+      child: RuleChip(rule: rule, compact: true),
     );
   }
 }
@@ -108,7 +77,7 @@ class _NotRecitedChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
+        borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.border),
       ),
       child: Text(
@@ -116,7 +85,7 @@ class _NotRecitedChip extends StatelessWidget {
         style: Theme.of(context)
             .textTheme
             .bodySmall
-            ?.copyWith(color: AppColors.textMuted, fontWeight: FontWeight.w600),
+            ?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
       ),
     );
   }

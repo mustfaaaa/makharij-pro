@@ -63,7 +63,33 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/images/photos/
+    - assets/icons/google_logo.svg
     - assets/quran/
+
+  # Bundled, not fetched at runtime: the Quran must render in its own face on
+  # a first launch with no connection. All three families are SIL OFL 1.1;
+  # the licence texts sit beside the files in assets/fonts/.
+  fonts:
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/Figtree-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Figtree-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Figtree-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Figtree-Bold.ttf
+          weight: 700
+    - family: Amiri
+      fonts:
+        - asset: assets/fonts/Amiri-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Amiri-Bold.ttf
+          weight: 700
+    - family: AmiriQuran
+      fonts:
+        - asset: assets/fonts/AmiriQuran-Regular.ttf
 
 flutter_launcher_icons:
   android: true

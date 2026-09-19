@@ -6,6 +6,7 @@ import 'package:record/record.dart';
 
 import '../../../../models/reattempt_outcome.dart';
 import '../../../../services/service_locator.dart';
+import '../../../../shared/ui/action_styles.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 
@@ -107,7 +108,7 @@ class _TryWordAgainButtonState extends State<TryWordAgainButton> {
       if (mounted) {
         setState(() {
           _phase = _Phase.idle;
-          _message = 'That was too short to hear — hold while you recite the word.';
+          _message = 'That was too short to hear. Recite the whole word, then tap when done.';
         });
       }
       return;
@@ -133,19 +134,19 @@ class _TryWordAgainButtonState extends State<TryWordAgainButton> {
       if (!mounted) return;
       setState(() {
         _phase = _Phase.idle;
-        _message = "Couldn't send that take — check your connection and try again.";
+        _message = "That take could not be sent. Check your connection and try again.";
       });
     }
   }
 
   String _outcomeMessage(ReattemptOutcome outcome) {
-    if (outcome.corrected.isNotEmpty) return 'That one sounded right — fixed.';
+    if (outcome.corrected.isNotEmpty) return 'That sounded right. The flag is cleared.';
     if (outcome.notReached.isNotEmpty) {
       // Not a verdict. Saying "still wrong" here would be the app inventing a
       // judgement out of a word it never heard.
       return "That take didn't reach the word — try once more.";
     }
-    return 'Still not quite — listen to the Qari above, then try once more.';
+    return 'Not quite yet. Listen to the Qari, then try once more.';
   }
 
   @override
@@ -154,10 +155,10 @@ class _TryWordAgainButtonState extends State<TryWordAgainButton> {
 
     final text = Theme.of(context).textTheme;
     final label = switch (_phase) {
-      _Phase.idle => 'Try again',
+      _Phase.idle => 'Try this word',
       _Phase.recording => 'Tap when done',
       _Phase.sending => 'Checking…',
-      _Phase.done => 'Fixed',
+      _Phase.done => 'Cleared',
     };
 
     return Column(
@@ -179,15 +180,12 @@ class _TryWordAgainButtonState extends State<TryWordAgainButton> {
             size: 18,
           ),
           label: Text(label),
-          style: TextButton.styleFrom(
-            foregroundColor: switch (_phase) {
-              _Phase.recording => AppColors.error,
-              _Phase.done => AppColors.success,
-              _ => AppColors.textSecondary,
-            },
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            visualDensity: VisualDensity.compact,
-          ),
+          style: switch (_phase) {
+            _Phase.recording => ActionStyles.pill(background: AppColors.error, foreground: AppColors.textOnAccent),
+            _Phase.sending => ActionStyles.pill(background: AppColors.container, foreground: AppColors.textSecondary),
+            _Phase.done => ActionStyles.pill(background: AppColors.successLight, foreground: AppColors.success),
+            _ => ActionStyles.pill(background: AppColors.primary, foreground: AppColors.textOnPrimary),
+          },
         ),
         if (_message != null)
           Padding(

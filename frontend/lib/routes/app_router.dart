@@ -110,7 +110,14 @@ final GoRouter appRouter = GoRouter(
       name: RouteNames.surahDetails,
       pageBuilder: (c, s) => fadeSlidePage(
         key: s.pageKey,
-        child: ThemeReactive(builder: (_) => SurahDetailsScreen(surahNumber: int.parse(s.pathParameters['surahNumber']!))),
+        child: ThemeReactive(
+          builder: (_) => SurahDetailsScreen(
+            surahNumber: int.parse(s.pathParameters['surahNumber']!),
+            initialFromAyah: int.tryParse(s.uri.queryParameters['from'] ?? ''),
+            initialToAyah: int.tryParse(s.uri.queryParameters['to'] ?? ''),
+            scrollToAyah: int.tryParse(s.uri.queryParameters['ayah'] ?? ''),
+          ),
+        ),
       ),
     ),
     // Recitation used to have its own screen plus a separate "listening"

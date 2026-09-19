@@ -31,10 +31,11 @@ class GoogleSignInButton extends StatelessWidget {
                   onPressed!();
                 },
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            constraints: const BoxConstraints(minHeight: 52),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: AppSpacing.md),
             decoration: BoxDecoration(
               borderRadius: AppRadii.mdRadius,
-              border: Border.all(color: AppColors.border, width: 1.4),
+              border: Border.all(color: AppColors.borderStrong.withValues(alpha: 0.7)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,

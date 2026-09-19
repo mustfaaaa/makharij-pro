@@ -15,11 +15,13 @@ import '../../../../routes/route_names.dart';
 import '../../../../services/quran_text_repository.dart';
 import '../../../../services/rattil_request_parser.dart';
 import '../../../../services/service_locator.dart';
-import '../../../../shared/widgets/animated/pressable.dart';
-import '../../../../theme/app_shadows.dart';
+import '../../../../shared/audio/qari_player_controller.dart';
+import '../../../../shared/ui/ornaments.dart';
+import '../../../../shared/ui/photo.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_spacing.dart';
+import '../../../../theme/app_typography.dart';
 import '../widgets/rattil_widgets.dart';
 
 /// Rattil AI — reference recitations (FR-15 to FR-19) and questions about
@@ -30,6 +32,11 @@ import '../widgets/rattil_widgets.dart';
 /// asks to do is validated by the same parser before anything plays. The
 /// reciter can also be picked on screen (FR-16), and the ayah being recited is
 /// shown as it plays.
+///
+/// It is laid out as a listening room rather than a chat window: reciters as
+/// name plates always in reach, answers as study notes, and every player
+/// control (once, continue, repeat; slow, normal, fast) visible rather than
+/// only typeable.
 class AskAiScreen extends StatefulWidget {
   const AskAiScreen({super.key});
 
@@ -53,7 +60,7 @@ class _ChatMessage {
   final TajweedRule? rule;
 
   /// Written by Rattil's assistant (Google Gemini) rather than the app's own
-  /// rules -- said under the bubble, since the user's question went to Google.
+  /// rules -- said under the note, since the user's question went to Google.
   final bool viaAssistant;
 
   const _ChatMessage({
@@ -78,10 +85,20 @@ class _PlayerController {
   /// Carries out [commands] and says what was done, in a sentence for the chat.
   Future<String> apply(Set<RattilCommand> commands) async {
     final card = _card;
-    if (card == null) return 'Nothing is playing yet -- ask for a surah or ayat first.';
+    if (card == null) return 'Nothing is playing yet. Ask for a surah or ayat first.';
     return card._apply(commands);
   }
 }
+
+/// Suggested starts, grouped by what the reciter wants to do. Each one is a
+/// message the parser or the assistant genuinely handles.
+const _promptGroups = [
+  ('Listen', ['Al-Fatihah', 'Ayat al-Kursi on loop', 'Al-Ikhlas by Alafasy', 'Al-Mulk slowly']),
+  ('Learn', ['What is Ghunnah?', 'What is Madd?', 'What is Qalqalah?']),
+  ('Your practice', ['What should I practise next?']),
+];
+
+enum _LibraryStatus { loading, ready, failed }
 
 class _AskAiScreenState extends State<AskAiScreen> {
   final _controller = TextEditingController();
@@ -90,8 +107,10 @@ class _AskAiScreenState extends State<AskAiScreen> {
 
   List<Qari> _qaris = const [];
   List<Surah> _surahs = const [];
-  bool _ready = false;
+  _LibraryStatus _status = _LibraryStatus.loading;
   late RattilRequestParser _parser;
+
+  bool get _ready => _status != _LibraryStatus.loading;
 
   /// The reciter picked on screen (FR-16): who plays when a message names no
   /// one. Starts on whoever has the most of the Quran.
@@ -114,6 +133,14 @@ class _AskAiScreenState extends State<AskAiScreen> {
   @override
   void initState() {
     super.initState();
+    _loadLibrary();
+  }
+
+  /// Loads the reciters and surah list. It used to mark the screen "ready"
+  /// even when this failed, so a green status sat beside an error; the status
+  /// now says what actually happened, and a failure can be retried.
+  void _loadLibrary() {
+    setState(() => _status = _LibraryStatus.loading);
     Future.wait([
       Services.rattil.getQaris(),
       Services.surah.getSurahs(),
@@ -128,22 +155,21 @@ class _AskAiScreenState extends State<AskAiScreen> {
         _selectedQari = _qaris.isEmpty
             ? null
             : _qaris.reduce((a, b) => b.availableSurahs.length > a.availableSurahs.length ? b : a);
-        _ready = true;
-        // Summarised by reciter. It used to list every available surah by name,
-        // which became 114 names in one bubble once a reciter had the whole Quran.
-        _messages.add(_ChatMessage(fromUser: false, text: _parser.describeLibrary()));
+        _status = _LibraryStatus.ready;
+        _messages.removeWhere((m) => !m.fromUser && m.recitation == null && m.text == _unreachable);
+        // Summarised by reciter rather than listing 114 surah names.
+        if (_messages.isEmpty) _messages.add(_ChatMessage(fromUser: false, text: _parser.describeLibrary()));
       });
     }).catchError((_) {
       if (!mounted) return;
       setState(() {
-        _ready = true;
-        _messages.add(const _ChatMessage(
-          fromUser: false,
-          text: 'Could not reach the recitation library. Check your connection and try again.',
-        ));
+        _status = _LibraryStatus.failed;
+        if (_messages.isEmpty) _messages.add(const _ChatMessage(fromUser: false, text: _unreachable));
       });
     });
   }
+
+  static const _unreachable = 'The reciters could not be reached. Check your connection, then tap Retry above.';
 
   @override
   void dispose() {
@@ -160,7 +186,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
     setState(() => _messages.add(_ChatMessage(fromUser: true, text: text)));
     _scrollToEnd();
 
-    if (!_ready || _qaris.isEmpty) {
+    if (_status != _LibraryStatus.ready || _qaris.isEmpty) {
       setState(() => _messages.add(const _ChatMessage(fromUser: false, text: 'No reciters are available right now.')));
       _scrollToEnd();
       return;
@@ -183,8 +209,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
   /// app's own parser could not read.
   ///
   /// Whatever it asks to do goes back through the parser's own [decide] --
-  /// the same validation a typed request gets -- so a surah it names is played
-  /// only if it exists, the ayat are in range, and the reciter has it.
+  /// the same validation a typed request gets.
   Future<void> _askAssistant(String text, {required String fallback}) async {
     setState(() => _thinking = true);
     _scrollToEnd();
@@ -217,8 +242,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
           final surah = _surahs.where((s) => s.number == action.surah).firstOrNull;
           final qari = _qaris.where((q) => q.qariId == action.qariId).firstOrNull;
           if (surah == null || qari == null) continue;
-          final request = RattilRequest(
-              surah: surah, qari: qari, ayahStart: action.ayahStart, ayahEnd: action.ayahEnd);
+          final request = RattilRequest(surah: surah, qari: qari, ayahStart: action.ayahStart, ayahEnd: action.ayahEnd);
           await _play(request, _parser.decide(request));
         case RuleAction():
           final rule = tajweedRules
@@ -236,7 +260,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
   /// and so is the welcome, which is long and says nothing about this chat.
   List<Map<String, String>> _historyForAssistant() {
     final turns = <Map<String, String>>[];
-    final before = _messages.length - 2; // everything but the welcome and the newest
+    final before = _messages.length - 2;
     for (final m in _messages.skip(1).take(before < 0 ? 0 : before)) {
       if (m.text.isEmpty) continue;
       final text = m.text.length > 1200 ? m.text.substring(0, 1200) : m.text;
@@ -246,8 +270,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
   }
 
   /// Picking a reciter (FR-16): the default from now on, and -- if something
-  /// has already played -- the same ayat again in their voice, which is what
-  /// comparing reciters actually needs.
+  /// has already played -- the same ayat again in their voice.
   Future<void> _pickQari(Qari qari) async {
     if (_selectedQari?.qariId == qari.qariId) return;
     HapticFeedback.selectionClick();
@@ -264,12 +287,9 @@ class _AskAiScreenState extends State<AskAiScreen> {
       final player = _activePlayer;
       final String said;
       if (player == null) {
-        said = 'Nothing is playing yet -- ask for a surah or ayat first.';
+        said = 'Nothing is playing yet. Ask for a surah or ayat first.';
       } else if (!player.attached) {
-        // The list lets a player go once it scrolls far out of view, and its
-        // audio with it -- so "nothing is playing" would be untrue, not just
-        // unhelpful.
-        said = 'That recitation has scrolled out of view -- ask for it again to keep going.';
+        said = 'That recitation has scrolled out of view. Ask for it again to keep going.';
       } else {
         said = await player.apply(reply.commands);
       }
@@ -295,12 +315,11 @@ class _AskAiScreenState extends State<AskAiScreen> {
       final result = await Services.rattil.getRecitation(
         qariId: reply.qari!.qariId,
         surah: reply.surah!.number,
-        // FR-19: particular ayat, when asked for. The backend already took a
-        // range; the chat just never read one out of a message.
+        // FR-19: particular ayat, when asked for.
         ayahStart: reply.ayahStart,
         ayahEnd: reply.ayahEnd,
       );
-      final said = '${reply.label}, recited by ${result.qariName}:';
+      final said = '${reply.label}, recited by ${result.qariName}.';
       final player = _PlayerController();
       _activePlayer = player;
       setState(() => _messages.add(_ChatMessage(
@@ -321,8 +340,8 @@ class _AskAiScreenState extends State<AskAiScreen> {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOut,
+          duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
         );
       }
     });
@@ -330,145 +349,128 @@ class _AskAiScreenState extends State<AskAiScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final top = MediaQuery.paddingOf(context).top;
+    final conversationStarted = _messages.any((m) => m.fromUser);
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            // ── Header: Rattil AI · Reference recitations ────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 12, AppSpacing.screenPadding, 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: AppColors.brandControlGradient,
+      body: Column(
+        children: [
+          Expanded(
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                _RattilHeader(topPadding: top, status: _status, onRetry: _loadLibrary),
+                if (_ready && _qaris.isNotEmpty)
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _PinnedPicker(
+                      child: QariPicker(
+                        qaris: _qaris,
+                        selected: _selectedQari,
+                        totalSurahs: _surahs.length,
+                        onPick: _pickQari,
                       ),
-                      boxShadow: [
-                        BoxShadow(color: AppColors.primary.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4)),
-                      ],
-                    ),
-                    child: Icon(Icons.auto_awesome, color: AppColors.textOnPrimary, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Rattil AI', style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(color: _ready ? AppColors.success : AppColors.textMuted, shape: BoxShape.circle),
-                            ),
-                            const SizedBox(width: 6),
-                            Text('Reference recitation library',
-                                style: textTheme.bodyMedium?.copyWith(color: _ready ? AppColors.success : AppColors.textMuted)),
-                          ],
-                        ),
-                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            // ── Reciter picker (FR-16) ───────────────────────────────────
-            // Outside the scrolling chat so it is always in reach: before this
-            // the only way to change reciter was to know a name and type it.
-            if (_ready && _qaris.isNotEmpty)
-              QariPicker(
-                qaris: _qaris,
-                selected: _selectedQari,
-                totalSurahs: _surahs.length,
-                onPick: _pickQari,
-              ),
-            // ── Chat + cards ─────────────────────────────────────────────
-            Expanded(
-              child: ListView(
-                controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 8, AppSpacing.screenPadding, 16),
-                children: [
-                  for (final m in _messages) _Bubble(message: m),
-                  if (_thinking)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 46, bottom: 16),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, AppSpacing.md, AppSpacing.screenPadding, AppSpacing.md),
+                  sliver: SliverList.builder(
+                    itemCount: _messages.length,
+                    itemBuilder: (context, i) => _Message(message: _messages[i]),
+                  ),
+                ),
+                if (_thinking)
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 0, AppSpacing.screenPadding, AppSpacing.md),
+                    sliver: SliverToBoxAdapter(
                       child: Semantics(
                         liveRegion: true,
-                        child: Text('Rattil is thinking…',
-                            style: textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
-                      ),
-                    ),
-                  if (_ready) ...[
-                    const SizedBox(height: AppSpacing.lg),
-                    const _PracticeNowCard(),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text('Try these', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        for (final n in const ['Al-Fatihah', 'Ayat al-Kursi', 'Al-Ikhlas', 'Al-Kawthar', 'An-Nas'])
-                          _QuestionChip(label: n, onTap: () => _send(n)),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            // ── Composer ─────────────────────────────────────────────────
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.screenPadding,
-                4,
-                AppSpacing.screenPadding,
-                AppSpacing.bottomNavClearance + MediaQuery.of(context).padding.bottom,
-              ),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(18, 4, 6, 4),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppRadii.xl),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: AppShadows.md,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        onSubmitted: (_) => _send(),
-                        textInputAction: TextInputAction.send,
-                        decoration: InputDecoration(
-                          hintText: 'Ask for a surah, e.g. "Al-Ikhlas by Alafasy"',
-                          hintStyle: TextStyle(color: AppColors.textMuted),
-                          border: InputBorder.none,
-                          isDense: true,
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                            const SizedBox(width: 10),
+                            Text('Rattil is thinking', style: Theme.of(context).textTheme.bodyMedium),
+                          ],
                         ),
                       ),
                     ),
-                    Pressable(
-                      onTap: _send,
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                        child: Icon(Icons.arrow_upward_rounded, color: AppColors.textOnPrimary, size: 22),
-                      ),
-                    ),
+                  ),
+                if (_ready && !conversationStarted && _status == _LibraryStatus.ready)
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 0, AppSpacing.screenPadding, AppSpacing.lg),
+                    sliver: SliverToBoxAdapter(child: _PromptGroups(onPick: _send)),
+                  ),
+              ],
+            ),
+          ),
+          if (conversationStarted && _status == _LibraryStatus.ready) _PromptStrip(onPick: _send),
+          _Composer(controller: _controller, onSend: _send, enabled: _ready),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Header ───────────────────────────────────────────────────────────────────
+
+class _RattilHeader extends StatelessWidget {
+  final double topPadding;
+  final _LibraryStatus status;
+  final VoidCallback onRetry;
+  const _RattilHeader({required this.topPadding, required this.status, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return SliverAppBar(
+      pinned: true,
+      expandedHeight: 196,
+      backgroundColor: AppColors.photoScrim,
+      foregroundColor: AppColors.textOnPhoto,
+      automaticallyImplyLeading: false,
+      flexibleSpace: FlexibleSpaceBar(
+        titlePadding: const EdgeInsetsDirectional.only(start: AppSpacing.screenPadding, bottom: 14),
+        expandedTitleScale: 1.6,
+        title: Text('Rattil', style: AppTypography.displayText(fontSize: 22, color: AppColors.textOnPhoto, height: 1.1)),
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            const AppPhoto(AppPhotos.rehalCarved, alignment: Alignment(0.3, 0)),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.photoScrim.withValues(alpha: 0.55),
+                    AppColors.photoScrim.withValues(alpha: 0.30),
+                    AppColors.photoScrim.withValues(alpha: 0.85),
                   ],
                 ),
               ),
+            ),
+            Positioned(
+              left: AppSpacing.screenPadding,
+              right: AppSpacing.screenPadding,
+              top: topPadding + 16,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Listen to a Qari. Ask about Tajweed.',
+                      style: textTheme.bodyMedium?.copyWith(color: AppColors.textOnPhotoSecondary),
+                    ),
+                  ),
+                  _StatusChip(status: status, onRetry: onRetry),
+                ],
+              ),
+            ),
+            Positioned(
+              right: AppSpacing.screenPadding,
+              bottom: 8,
+              child: Text('رَتِّل',
+                  textDirection: TextDirection.rtl,
+                  style: AppTypography.quran(fontSize: 44, color: AppColors.gold, height: 1.5)),
             ),
           ],
         ),
@@ -477,110 +479,164 @@ class _AskAiScreenState extends State<AskAiScreen> {
   }
 }
 
-// ── Chat bubble ───────────────────────────────────────────────────────────────
-class _Bubble extends StatelessWidget {
-  final _ChatMessage message;
-  const _Bubble({required this.message});
+class _StatusChip extends StatelessWidget {
+  final _LibraryStatus status;
+  final VoidCallback onRetry;
+  const _StatusChip({required this.status, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    if (message.fromUser) {
-      return Align(
-        alignment: Alignment.centerRight,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 16, left: 48),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: AppColors.brandControlGradient,
-            ),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-              bottomLeft: Radius.circular(20),
-              bottomRight: Radius.circular(6),
-            ),
-          ),
-          child: Text(message.text, style: textTheme.bodyLarge?.copyWith(color: AppColors.textOnPrimary, height: 1.45)),
-        ),
-      );
-    }
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          margin: const EdgeInsets.only(top: 4),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.primary, width: 1.5),
-          ),
-          child: Icon(Icons.auto_awesome, size: 15, color: AppColors.primaryDark),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(6),
-                topRight: Radius.circular(20),
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-              boxShadow: AppShadows.sm,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(message.text, style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5)),
-                if (message.viaAssistant) ...[
-                  const SizedBox(height: 6),
-                  // The user's question went to Google to get this; say so, and
-                  // that it can be wrong -- the app's own answers are not marked.
-                  Text('Answered with Google Gemini · can make mistakes',
-                      style: textTheme.labelSmall?.copyWith(color: AppColors.textMuted)),
-                ],
-                if (message.recitation != null) ...[
-                  const SizedBox(height: 14),
-                  _AudioExampleCard(
-                    recitation: message.recitation!,
-                    startWith: message.startWith,
-                    controller: message.player,
-                  ),
-                ],
-                if (message.rule != null) ...[
-                  const SizedBox(height: 10),
-                  // The chat gives the short answer; the library has the full
-                  // explanation and the example.
-                  TextButton.icon(
-                    onPressed: () => context.push(RoutePaths.ruleDetailsPath(message.rule!.id)),
-                    icon: const Icon(Icons.menu_book_rounded, size: 18),
-                    label: const Text('Open in Tajweed Rules'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primaryDark,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: const Size(48, 44),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
+    final (Color dot, String label) = switch (status) {
+      _LibraryStatus.loading => (AppColors.textOnPhotoSecondary, 'Loading reciters'),
+      _LibraryStatus.ready => (const Color(0xFF7FD6A6), 'Reciters ready'),
+      _LibraryStatus.failed => (const Color(0xFFF2B8A0), 'Offline'),
+    };
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.photoScrim.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.textOnPhoto.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 7, height: 7, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          Text(label, style: textTheme.labelSmall?.copyWith(color: AppColors.textOnPhoto)),
+          if (status == _LibraryStatus.failed) ...[
+            const SizedBox(width: 8),
+            Text('Retry', style: textTheme.labelMedium?.copyWith(color: AppColors.textOnPhoto, decoration: TextDecoration.underline, decorationColor: AppColors.textOnPhoto)),
+          ],
+        ],
+      ),
+    );
+    return Semantics(
+      liveRegion: true,
+      button: status == _LibraryStatus.failed,
+      label: status == _LibraryStatus.failed ? 'Reciters could not be reached. Retry' : label,
+      excludeSemantics: true,
+      child: status == _LibraryStatus.failed
+          ? InkWell(onTap: onRetry, borderRadius: BorderRadius.circular(999), child: chip)
+          : chip,
     );
   }
 }
 
-// ── Real reference audio player embedded in the AI bubble ────────────────────
+class _PinnedPicker extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  _PinnedPicker({required this.child});
+
+  @override
+  double get minExtent => 108;
+  @override
+  double get maxExtent => 108;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border(bottom: BorderSide(color: overlapsContent || shrinkOffset > 0 ? AppColors.divider : Colors.transparent)),
+      ),
+      child: Padding(padding: const EdgeInsets.only(top: 6), child: child),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_PinnedPicker old) => old.child != child;
+}
+
+// ── Messages ─────────────────────────────────────────────────────────────────
+
+class _Message extends StatelessWidget {
+  final _ChatMessage message;
+  const _Message({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    final Widget body;
+    if (message.fromUser) {
+      body = Align(
+        alignment: Alignment.centerRight,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.78),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            decoration: BoxDecoration(
+              color: AppColors.container,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(18),
+                topRight: Radius.circular(18),
+                bottomLeft: Radius.circular(18),
+                bottomRight: Radius.circular(4),
+              ),
+            ),
+            child: Text(message.text, style: textTheme.bodyLarge),
+          ),
+        ),
+      );
+    } else {
+      // A study note, not a speech bubble: Rattil's words sit on the page.
+      body = Padding(
+        padding: const EdgeInsets.only(bottom: 22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                RosetteBadge(size: 18, fill: AppColors.goldWash),
+                const SizedBox(width: 8),
+                Text('Rattil', style: textTheme.labelMedium?.copyWith(color: AppColors.goldInk, fontWeight: FontWeight.w700)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(message.text, style: textTheme.bodyLarge?.copyWith(height: 1.55)),
+            if (message.viaAssistant) ...[
+              const SizedBox(height: 6),
+              // The user's question went to Google to get this; say so, and
+              // that it can be wrong. The app's own answers are not marked.
+              Text('Answered with Google Gemini · can make mistakes', style: textTheme.labelSmall),
+            ],
+            if (message.recitation != null) ...[
+              const SizedBox(height: 14),
+              _AudioExampleCard(
+                recitation: message.recitation!,
+                startWith: message.startWith,
+                controller: message.player,
+              ),
+            ],
+            if (message.rule != null) ...[
+              const SizedBox(height: 10),
+              // The chat gives the short answer; the library has the full
+              // explanation and the examples.
+              OutlinedButton.icon(
+                onPressed: () => context.push(RoutePaths.ruleDetailsPath(message.rule!.id)),
+                icon: const Icon(Icons.menu_book_rounded, size: 18),
+                label: Text('Read about ${message.rule!.title.split(' (').first}'),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: reduce ? 1 : 0, end: 1),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) =>
+          Opacity(opacity: t, child: Transform.translate(offset: Offset(0, (1 - t) * 8), child: child)),
+      child: body,
+    );
+  }
+}
+
+// ── The listening card ───────────────────────────────────────────────────────
+
 class _AudioExampleCard extends StatefulWidget {
   final RecitationResult recitation;
 
@@ -599,9 +655,11 @@ class _AudioExampleCard extends StatefulWidget {
 class _AudioExampleCardState extends State<_AudioExampleCard> {
   final _player = AudioPlayer();
   bool _playing = false;
-  bool _slow = false;
+  QariSpeed _speed = QariSpeed.normal;
   int _clipIndex = 0;
   AfterClip _afterClip = AfterClip.stop;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
 
   /// Set while we stop the player ourselves. Some platform implementations
   /// deliver a completion event for a stop we asked for, which would look
@@ -617,11 +675,17 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
   void initState() {
     super.initState();
     _player.onPlayerComplete.listen((_) => _onClipEnded());
+    _player.onPositionChanged.listen((p) {
+      if (mounted) setState(() => _position = p);
+    });
+    _player.onDurationChanged.listen((d) {
+      if (mounted) setState(() => _duration = d);
+    });
     _loadText();
     widget.controller?._card = this;
     // "Ayat al-Kursi slowly, on loop": the player starts set up that way.
     final start = widget.startWith;
-    _slow = start.contains(RattilCommand.slower);
+    if (start.contains(RattilCommand.slower)) _speed = QariSpeed.slow;
     if (start.contains(RattilCommand.loop)) {
       _afterClip = AfterClip.repeatOne;
     } else if (start.contains(RattilCommand.playOn)) {
@@ -635,7 +699,7 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
   /// and mode are set first, so the replay or next ayah that follows is heard
   /// with them. A pause overrides everything else in the same message.
   Future<String> _apply(Set<RattilCommand> commands) async {
-    if (!mounted) return 'Nothing is playing yet -- ask for a surah or ayat first.';
+    if (!mounted) return 'Nothing is playing yet. Ask for a surah or ayat first.';
     final said = <String>[];
 
     if (commands.contains(RattilCommand.pause)) {
@@ -644,22 +708,22 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
       return 'Paused.';
     }
 
-    if (commands.contains(RattilCommand.slower) && !_slow) {
-      await _toggleSlow();
+    if (commands.contains(RattilCommand.slower) && _speed != QariSpeed.slow) {
+      await _setSpeed(QariSpeed.slow);
       said.add('Slowed down.');
     } else if (commands.contains(RattilCommand.slower)) {
       said.add('Already at the slower speed.');
-    } else if (commands.contains(RattilCommand.normalSpeed) && _slow) {
-      await _toggleSlow();
+    } else if (commands.contains(RattilCommand.normalSpeed) && _speed != QariSpeed.normal) {
+      await _setSpeed(QariSpeed.normal);
       said.add('Back to normal speed.');
     }
 
     if (commands.contains(RattilCommand.loop)) {
       setState(() => _afterClip = AfterClip.repeatOne);
-      said.add('Looping this ayah.');
+      said.add('Repeating this ayah.');
     } else if (commands.contains(RattilCommand.playOn)) {
       setState(() => _afterClip = AfterClip.continueOn);
-      said.add('Playing on through the passage.');
+      said.add('Continuing through the passage.');
     }
 
     final clips = widget.recitation.clips;
@@ -706,8 +770,7 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
         await _play();
       case AfterClip.continueOn:
         // Runs on to the end of the passage and stops there rather than
-        // looping back to the first ayah -- wrapping around would be the app
-        // deciding to start the surah again on its own.
+        // looping back to the first ayah.
         if (_clipIndex < widget.recitation.clips.length - 1) {
           setState(() => _clipIndex += 1);
           await _play();
@@ -731,7 +794,7 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
     _stoppingOurselves = true;
     await _player.stop();
     _stoppingOurselves = false;
-    await _player.setPlaybackRate(_slow ? 0.75 : 1.0);
+    await _player.setPlaybackRate(_speed.rate);
     await _player.play(UrlSource(clip.url));
     if (mounted) setState(() => _playing = true);
   }
@@ -745,9 +808,9 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
     await _play();
   }
 
-  Future<void> _toggleSlow() async {
-    setState(() => _slow = !_slow);
-    if (_playing) await _player.setPlaybackRate(_slow ? 0.75 : 1.0);
+  Future<void> _setSpeed(QariSpeed speed) async {
+    setState(() => _speed = speed);
+    if (_playing) await _player.setPlaybackRate(speed.rate);
   }
 
   /// "Ayah 3 of 7" for a whole surah, where the ayah number and the position
@@ -757,7 +820,7 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
     final clips = widget.recitation.clips;
     if (!hasMultiple) return 'Ayah $ayah';
     if (clips.first.ayah == 1) return 'Ayah $ayah of ${clips.length}';
-    return 'Ayah $ayah  ·  ${_clipIndex + 1} of ${clips.length}';
+    return 'Ayah $ayah · ${_clipIndex + 1} of ${clips.length}';
   }
 
   Future<void> _skip(int delta) async {
@@ -769,20 +832,56 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     final clip = widget.recitation.clips[_clipIndex];
     final hasMultiple = widget.recitation.clips.length > 1;
     final ayah = _ayahs[clip.ayah];
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final progress = _duration.inMilliseconds <= 0
+        ? 0.0
+        : (_position.inMilliseconds / _duration.inMilliseconds).clamp(0.0, 1.0);
+    final qariName = widget.recitation.qariName;
+
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: AppRadii.mdRadius),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.lgRadius,
+        border: Border.all(color: AppColors.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // The words being recited, so the listener can follow along -- the
-          // point of a reference recitation. Before this the card showed only
-          // "Ayah 255".
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.goldWash,
+                  border: Border.all(color: AppColors.gold, width: 1.2),
+                ),
+                child: Icon(Icons.graphic_eq_rounded, size: 18, color: AppColors.goldInk),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(qariName, maxLines: 1, overflow: TextOverflow.ellipsis, style: textTheme.titleSmall),
+                    Text('${widget.recitation.surahNameEnglish} · ${_ayahLabel(clip.ayah, hasMultiple)}',
+                        style: textTheme.bodySmall),
+                  ],
+                ),
+              ),
+            ],
+          ),
           if (ayah != null) ...[
+            const SizedBox(height: 10),
+            // The words being recited, so the listener can follow along -- the
+            // point of a reference recitation.
             AnimatedSwitcher(
               duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 220),
               child: RattilAyahText(
@@ -791,69 +890,66 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
                 translation: ayah.translation,
               ),
             ),
-            const SizedBox(height: 6),
-            Divider(height: 1, color: AppColors.primary.withValues(alpha: 0.15)),
-            const SizedBox(height: 2),
           ],
+          const SizedBox(height: 10),
+          // Real playback position through this ayah's recording.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(value: progress, minHeight: 3),
+          ),
+          const SizedBox(height: 6),
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (hasMultiple)
-                IconButton(
-                  icon: const Icon(Icons.skip_previous_rounded),
-                  color: AppColors.primary,
-                  onPressed: _clipIndex > 0 ? () => _skip(-1) : null,
-                  tooltip: 'Previous ayah',
-                ),
-              Pressable(
-                onTap: _toggle,
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                  child: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: AppColors.textOnPrimary, size: 26),
-                ),
+              IconButton(
+                tooltip: 'Play again',
+                icon: const Icon(Icons.replay_rounded),
+                onPressed: _play,
               ),
-              if (hasMultiple)
-                IconButton(
-                  icon: const Icon(Icons.skip_next_rounded),
-                  color: AppColors.primary,
-                  onPressed: _clipIndex < widget.recitation.clips.length - 1 ? () => _skip(1) : null,
-                  tooltip: 'Next ayah',
+              IconButton(
+                tooltip: 'Previous ayah',
+                icon: const Icon(Icons.skip_previous_rounded),
+                onPressed: hasMultiple && _clipIndex > 0 ? () => _skip(-1) : null,
+              ),
+              const SizedBox(width: 6),
+              IconButton.filled(
+                tooltip: _playing ? 'Pause' : 'Play',
+                onPressed: _toggle,
+                iconSize: 30,
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.textOnPrimary,
+                  fixedSize: const Size(56, 56),
+                ),
+                icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
+              ),
+              const SizedBox(width: 6),
+              IconButton(
+                tooltip: 'Next ayah',
+                icon: const Icon(Icons.skip_next_rounded),
+                onPressed: hasMultiple && _clipIndex < widget.recitation.clips.length - 1 ? () => _skip(1) : null,
+              ),
+              const SizedBox(width: 48),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final (mode, label) in const [
+                (AfterClip.stop, 'Once'),
+                (AfterClip.continueOn, 'Continue'),
+                (AfterClip.repeatOne, 'Repeat ayah'),
+              ])
+                _Toggle(
+                  label: label,
+                  selected: _afterClip == mode,
+                  onTap: () => setState(() => _afterClip = mode),
                 ),
               const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  _ayahLabel(clip.ayah, hasMultiple),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.replay_rounded),
-                color: AppColors.textSecondary,
-                onPressed: _play,
-                tooltip: 'Play again',
-              ),
-              IconButton(
-                icon: Icon(
-                  _afterClip == AfterClip.repeatOne
-                      ? Icons.repeat_one_rounded
-                      : Icons.repeat_rounded,
-                  color: _afterClip == AfterClip.stop
-                      ? AppColors.textSecondary
-                      : AppColors.primary,
-                ),
-                onPressed: () => setState(() => _afterClip = _afterClip.next),
-                tooltip: switch (_afterClip) {
-                  AfterClip.stop => 'Keep playing through the passage',
-                  AfterClip.continueOn => 'Loop this ayah',
-                  AfterClip.repeatOne => 'Stop at the end',
-                },
-              ),
-              IconButton(
-                icon: Icon(Icons.slow_motion_video_rounded, color: _slow ? AppColors.primary : AppColors.textSecondary),
-                onPressed: _toggleSlow,
-                tooltip: _slow ? 'Normal speed' : 'Slow down',
-              ),
+              for (final s in QariSpeed.values)
+                _Toggle(label: s.label, selected: _speed == s, onTap: () => _setSpeed(s)),
             ],
           ),
         ],
@@ -862,76 +958,171 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
   }
 }
 
-// ── Practice Now card ─────────────────────────────────────────────────────────
-class _PracticeNowCard extends StatelessWidget {
-  const _PracticeNowCard();
+class _Toggle extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _Toggle({required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.lgRadius,
-        border: Border.all(color: AppColors.primary, width: 1.5),
-        boxShadow: AppShadows.md,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: AppRadii.mdRadius),
-            child: Icon(Icons.mic_rounded, color: AppColors.primaryDark, size: 24),
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 160),
+          constraints: const BoxConstraints(minHeight: 36),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primarySurface : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: selected ? AppColors.primary : AppColors.border),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Ready to practice?', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text('Recite along and get real Tajweed feedback', style: textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-              ],
-            ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: selected ? AppColors.onPrimarySurface : AppColors.textSecondary,
+                ),
           ),
-          const SizedBox(width: 8),
-          Pressable(
-            onTap: () => context.go(RoutePaths.quran),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadii.pillRadius),
-              child: Text('Practice',
-                  style: TextStyle(
-                      color: AppColors.textOnPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ── Suggested question chip ───────────────────────────────────────────────────
-class _QuestionChip extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  const _QuestionChip({required this.label, required this.onTap});
+// ── Prompts and composer ─────────────────────────────────────────────────────
+
+class _PromptGroups extends StatelessWidget {
+  final ValueChanged<String> onPick;
+  const _PromptGroups({required this.onPick});
 
   @override
   Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: AppRadii.pillRadius,
-          border: Border.all(color: AppColors.border),
-          boxShadow: AppShadows.sm,
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const OrnamentDivider(verticalPadding: 8),
+        for (final (title, prompts) in _promptGroups) ...[
+          const SizedBox(height: 10),
+          Text(title, style: textTheme.titleSmall),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [for (final p in prompts) _PromptChip(label: p, onTap: () => onPick(p))],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _PromptStrip extends StatelessWidget {
+  final ValueChanged<String> onPick;
+  const _PromptStrip({required this.onPick});
+
+  @override
+  Widget build(BuildContext context) {
+    final prompts = [for (final (_, p) in _promptGroups) ...p];
+    return SizedBox(
+      height: 52,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 4, AppSpacing.screenPadding, 4),
+        itemCount: prompts.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, i) => _PromptChip(label: prompts[i], onTap: () => onPick(prompts[i])),
+      ),
+    );
+  }
+}
+
+class _PromptChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _PromptChip({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: StadiumBorder(side: BorderSide(color: AppColors.border)),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 42),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 13.5)),
         ),
-        child: Text(label, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.5)),
+      ),
+    );
+  }
+}
+
+class _Composer extends StatelessWidget {
+  final TextEditingController controller;
+  final VoidCallback onSend;
+  final bool enabled;
+  const _Composer({required this.controller, required this.onSend, required this.enabled});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border(top: BorderSide(color: AppColors.divider)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding - 4, 10, AppSpacing.screenPadding - 4, 10),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 4, 5, 4),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.borderStrong.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  enabled: enabled,
+                  onSubmitted: (_) => onSend(),
+                  textInputAction: TextInputAction.send,
+                  minLines: 1,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    hintText: 'Ask for a surah, a reciter or a rule',
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              IconButton.filled(
+                tooltip: 'Send',
+                onPressed: enabled ? onSend : null,
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.textOnPrimary,
+                  fixedSize: const Size(46, 46),
+                ),
+                icon: const Icon(Icons.arrow_upward_rounded),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

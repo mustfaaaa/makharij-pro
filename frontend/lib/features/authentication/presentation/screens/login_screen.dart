@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     if (!_webGoogleReady) {
       return const SizedBox(
-        height: 44,
+        height: 52,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2.4)),
       );
     }
@@ -133,14 +133,14 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return ArchAuthShell(
-      title: 'MakharijPro AI',
-      subtitle: 'Login to Your Journey',
+      title: 'Welcome back',
+      subtitle: 'Sign in to keep your recitations and progress in sync.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildGoogleButton(),
           const SizedBox(height: 20),
-          const AuthOrDivider(label: 'Or log in with email'),
+          const AuthOrDivider(label: 'or use your email'),
           const SizedBox(height: 20),
           // AutofillGroup + hints let a password manager recognise this as a
           // sign-in form and fill both fields. Without them the OS never
@@ -195,26 +195,21 @@ class _LoginScreenState extends State<LoginScreen> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => context.push(RoutePaths.forgotPassword),
-              child: Text(
-                'Forgot password?',
-                style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700, fontSize: 15),
-              ),
+              child: const Text('Forgot password?'),
             ),
           ),
           const SizedBox(height: 18),
-          AuthGoldButton(label: 'Login', onPressed: _submit, isLoading: _loading),
+          AuthGoldButton(label: 'Sign in', onPressed: _submit, isLoading: _loading),
           const SizedBox(height: 22),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Don't have an account? ",
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary)),
+              Flexible(
+                child: Text('New here?', style: Theme.of(context).textTheme.bodyMedium),
+              ),
               TextButton(
                 onPressed: () => context.pushReplacement(RoutePaths.register),
-                child: Text(
-                  'Sign Up',
-                  style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w800, fontSize: 16),
-                ),
+                child: const Text('Create an account'),
               ),
             ],
           ),

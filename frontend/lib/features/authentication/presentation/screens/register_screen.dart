@@ -93,14 +93,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return ArchAuthShell(
-      title: 'Create Your Account',
-      subtitle: 'Begin your recitation journey with MakharijPro AI',
+      title: 'Create your account',
+      subtitle: 'Your recitations, feedback and progress are saved to it.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           GoogleSignInButton(onPressed: _googleSignIn, isLoading: _googleLoading),
           const SizedBox(height: 20),
-          const AuthOrDivider(label: 'Or sign up with email'),
+          const AuthOrDivider(label: 'or use your email'),
           const SizedBox(height: 20),
           // Grouped so a password manager sees one sign-up form and offers to
           // save the new credentials; the hints tell it which field is which.
@@ -109,7 +109,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 AuthField(
-                  hint: 'Full Name',
+                  hint: 'Full name',
                   icon: Icons.person_rounded,
                   controller: _nameController,
                   autofillHints: const [AutofillHints.name],
@@ -134,7 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 AuthField(
-                  hint: 'Create Password',
+                  hint: 'Create a password',
                   icon: Icons.lock_rounded,
                   controller: _passwordController,
                   obscureText: _obscure,
@@ -158,50 +158,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          // ── Terms of Service checkbox row ────────────────────────────
-          Row(
-            children: [
-              Semantics(
-                checked: _agreedToTerms,
-                label: 'Agree to the Terms of Service',
-                child: GestureDetector(
-                onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: _agreedToTerms ? AppColors.primary : AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppRadii.sm),
-                    border: Border.all(color: _agreedToTerms ? AppColors.primary : AppColors.border, width: 1.5),
+          // ── Terms of Service ─────────────────────────────────────────
+          // A real 48dp checkbox row: the whole line toggles, and a screen
+          // reader hears one checkbox with its label.
+          MergeSemantics(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+              onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: _agreedToTerms,
+                    onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
+                    activeColor: AppColors.primary,
+                    checkColor: AppColors.textOnPrimary,
+                    side: BorderSide(color: AppColors.borderStrong, width: 1.5),
                   ),
-                  child: _agreedToTerms
-                      ? Icon(Icons.check_rounded, size: 18, color: AppColors.textOnPrimary)
-                      : null,
-                ),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(children: [
+                        const TextSpan(text: 'I agree to the '),
+                        TextSpan(
+                          text: 'Terms of Service',
+                          style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700),
+                        ),
+                      ]),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
               ),
-              ),
-              const SizedBox(width: 10),
-              Text('I agree to the ',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary)),
-              Text('Terms of Service',
-                  style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w800, fontSize: 16)),
-            ],
+            ),
           ),
           const SizedBox(height: 20),
-          AuthGoldButton(label: 'Sign Up', onPressed: _submit, isLoading: _loading),
-          const SizedBox(height: 22),
+          AuthGoldButton(label: 'Create account', onPressed: _submit, isLoading: _loading),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Already have an account? ',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary)),
-              GestureDetector(
-                onTap: () => context.pushReplacement(RoutePaths.login),
-                child: Text(
-                  'Login',
-                  style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w800, fontSize: 16),
-                ),
+              Flexible(child: Text('Already have an account?', style: Theme.of(context).textTheme.bodyMedium)),
+              TextButton(
+                onPressed: () => context.pushReplacement(RoutePaths.login),
+                child: const Text('Sign in'),
               ),
             ],
           ),

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../theme/app_radii.dart';
+import '../../../../shared/ui/ornaments.dart';
+import '../../../../shared/ui/photo.dart';
 import '../../../../theme/app_colors.dart';
-import '../../../../theme/app_typography.dart';
+import '../../../../theme/app_radii.dart';
+import '../../../../theme/app_spacing.dart';
 
-/// New auth layout matching the provided mockups: the ornamental arch-door
-/// photo fills the top of the screen, a cream sheet with rounded top corners
-/// holds the form, and a gold-ringed 'م' logo circle straddles the sheet edge.
+/// The frame of every sign-in screen: a calm photograph of arched windows
+/// that melts into the page, the brand mark, a headline in Amiri, and the
+/// form. The photograph is decoration and shrinks away when the keyboard is
+/// up, so the fields and the button stay in view.
 class ArchAuthShell extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -23,109 +26,74 @@ class ArchAuthShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final height = MediaQuery.of(context).size.height;
-    // The sheet starts roughly a third of the way down, like the mockup.
-    final imageHeight = height * 0.38;
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final top = MediaQuery.paddingOf(context).top;
+    final photoHeight = keyboard ? top + 56 : MediaQuery.sizeOf(context).height * 0.26 + top;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF3A2C1B),
-        body: Stack(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Arch door photo across the top ─────────────────────────
-            // Aligned toward the top so the arch's upper corners stay
-            // visible, then blended softly into the sheet below.
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: imageHeight + 60,
+            AnimatedContainer(
+              duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+              height: photoHeight,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(
-                    'assets/images/arch_door.jpg',
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                  ),
+                  const AppPhoto(AppPhotos.archesIvory, alignment: Alignment(0, -0.2)),
                   DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        stops: const [0.0, 0.55, 1.0],
+                        stops: const [0.0, 0.5, 1.0],
                         colors: [
-                          Colors.black.withValues(alpha: 0.22),
-                          Colors.transparent,
-                          AppColors.background.withValues(alpha: 0.85),
+                          AppColors.photoScrim.withValues(alpha: 0.35),
+                          AppColors.background.withValues(alpha: 0.25),
+                          AppColors.background,
                         ],
                       ),
                     ),
                   ),
+                  if (Navigator.of(context).canPop())
+                    Positioned(
+                      top: top + 4,
+                      left: 8,
+                      child: IconButton(
+                        tooltip: 'Back',
+                        onPressed: () => context.pop(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.surface.withValues(alpha: 0.85),
+                          foregroundColor: AppColors.textPrimary,
+                        ),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                      ),
+                    ),
                 ],
               ),
             ),
-            // ── Cream sheet with the form ───────────────────────────────
-            Positioned.fill(
-              top: imageHeight,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                ),
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    24,
-                    58, // room for the overlapping logo circle
-                    24,
-                    24 + MediaQuery.of(context).padding.bottom,
-                  ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding + 4, 0, AppSpacing.screenPadding + 4, AppSpacing.xl),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 28,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        subtitle,
-                        textAlign: TextAlign.center,
-                        style: textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 24),
+                      if (!keyboard) ...[
+                        const Align(alignment: Alignment.centerLeft, child: BrandMark(size: 52)),
+                        const SizedBox(height: AppSpacing.md),
+                      ],
+                      Semantics(header: true, child: Text(title, style: textTheme.displaySmall)),
+                      const SizedBox(height: 4),
+                      Text(subtitle, style: textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary)),
+                      const SizedBox(height: AppSpacing.lg),
                       child,
                     ],
-                  ),
-                ),
-              ),
-            ),
-            // ── Gold-ringed 'م' logo straddling the sheet edge ──────────
-            Positioned(
-              top: imageHeight - 52,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  width: 104,
-                  height: 104,
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySurface,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary, width: 2.5),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 18, offset: const Offset(0, 6)),
-                    ],
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    'م',
-                    style: AppTypography.arabicVerse(fontSize: 44, color: AppColors.primaryDark, height: 1.0),
                   ),
                 ),
               ),
@@ -137,28 +105,29 @@ class ArchAuthShell extends StatelessWidget {
   }
 }
 
-/// "Or … with email" divider with hairline rules either side.
+/// "or" between Google and email sign-in.
 class AuthOrDivider extends StatelessWidget {
   final String label;
   const AuthOrDivider({super.key, required this.label});
 
   @override
   Widget build(BuildContext context) {
+    final line = Expanded(child: Container(height: 1, color: AppColors.divider));
     return Row(
       children: [
-        Expanded(child: Divider(color: AppColors.border)),
+        line,
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
         ),
-        Expanded(child: Divider(color: AppColors.border)),
+        line,
       ],
     );
   }
 }
 
-/// Rounded white input pill with a gold prefix icon, matching the mockup
-/// fields exactly.
+/// A form field with its label always visible above it -- never a placeholder
+/// that disappears as you type -- an icon, a focus ring and an inline error.
 class AuthField extends StatelessWidget {
   final String hint;
   final IconData icon;
@@ -170,12 +139,9 @@ class AuthField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
 
   /// Autofill hints, so a password manager can recognise and fill the field.
-  /// WCAG 2.2 SC 3.3.8 wants authentication not to depend on the user
-  /// recalling a secret unaided; without these the OS never offers to fill.
   final List<String>? autofillHints;
 
-  /// Keyboard action, so the email field advances to the password field
-  /// instead of dead-ending on a "done" key.
+  /// Keyboard action, so the email field advances to the password field.
   final TextInputAction? textInputAction;
   final FocusNode? focusNode;
   final VoidCallback? onSubmitted;
@@ -198,55 +164,52 @@ class AuthField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    // The field carries the label for screen readers; the visible copy above
+    // it is excluded so it is not announced twice.
     return Semantics(
       textField: true,
       label: hint,
-      value: controller.text,
       hint: errorText,
       child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-            border: Border.all(color: errorText != null ? AppColors.error : AppColors.border),
+        ExcludeSemantics(
+          child: Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 6),
+            child: Text(hint, style: textTheme.labelLarge?.copyWith(color: AppColors.textSecondary)),
           ),
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            obscureText: obscureText,
-            keyboardType: keyboardType,
-            onChanged: onChanged,
-            autofillHints: autofillHints,
-            textInputAction: textInputAction,
-            onSubmitted: onSubmitted == null ? null : (_) => onSubmitted!(),
-            style: Theme.of(context).textTheme.bodyLarge,
-            decoration: InputDecoration(
-              // The hint doubles as the field's name for a screen reader --
-              // a placeholder alone leaves the control unlabelled.
-              labelText: null,
-              hintText: hint,
-              hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 16),
-              prefixIcon: Icon(icon, color: AppColors.primaryDark, size: 22),
-              suffixIcon: suffixIcon,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        ),
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          onChanged: onChanged,
+          autofillHints: autofillHints,
+          textInputAction: textInputAction,
+          onSubmitted: onSubmitted == null ? null : (_) => onSubmitted!(),
+          style: textTheme.bodyLarge,
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, size: 21),
+            suffixIcon: suffixIcon,
+            errorText: errorText,
+            filled: true,
+            fillColor: AppColors.surface,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: AppRadii.mdRadius,
+              borderSide: BorderSide(color: AppColors.borderStrong.withValues(alpha: 0.7)),
             ),
           ),
         ),
-        if (errorText != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 6, left: 8),
-            child: Text(errorText!, style: TextStyle(color: AppColors.error, fontSize: 12)),
-          ),
       ],
-    ),
+      ),
     );
   }
 }
 
-/// The wide gold gradient CTA button (Login / Sign Up) from the mockups.
+/// The primary action of an auth form: deep green, full width, with an inline
+/// spinner that keeps the button's size while the request is in flight.
 class AuthGoldButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
@@ -265,38 +228,23 @@ class AuthGoldButton extends StatelessWidget {
       button: true,
       enabled: !isLoading,
       label: isLoading ? '$label, in progress' : label,
-      child: GestureDetector(
-      onTap: isLoading ? null : onPressed,
-      child: Container(
-        height: 58,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: AppColors.brandControlGradient,
+      excludeSemantics: true,
+      child: SizedBox(
+        height: 54,
+        child: FilledButton(
+          onPressed: isLoading ? null : onPressed,
+          style: FilledButton.styleFrom(
+            disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.85),
           ),
-          borderRadius: BorderRadius.circular(AppRadii.lg),
-          boxShadow: [
-            BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 14, offset: const Offset(0, 6)),
-          ],
+          child: isLoading
+              ? SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.textOnPrimary),
+                )
+              : Text(label),
         ),
-        child: isLoading
-            ? SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2.4, color: AppColors.textOnPrimary),
-              )
-            : Text(
-                label,
-                style: TextStyle(
-                    color: AppColors.textOnPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18),
-              ),
       ),
-    ),
     );
   }
 }

@@ -2,41 +2,39 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 
-/// The three elevation tiers the app is allowed to use.
+/// Elevation tiers. The app is flat by default -- things sit on parchment and
+/// are separated by space and hairlines -- so these are for the few things
+/// that genuinely float: the practice dock, the mini-player, a raised hero
+/// block overlapping a photograph.
 ///
-/// Screens had drifted to nine different blur radii (8, 10, 12, 14, 16, 18,
-/// 20, 22) declared inline, against a single `AppTheme.cardDecoration` that
-/// only four call sites actually used. Cards on adjacent screens sat at
-/// visibly different heights for no reason.
-///
-/// These are getters, not `const`, because [AppColors.cardShadow] resolves
-/// per theme — a dark page needs a deeper shadow, since there is no border
-/// contrast to lean on.
+/// All of them resolve through [AppColors.cardShadow], which is transparent
+/// in dark mode: there, elevation is a lighter surface, never a shadow.
 abstract class AppShadows {
-  /// Chips, small pills, list rows — barely lifted.
+  /// Barely lifted: a chip or row that must separate from a photo.
   static List<BoxShadow> get sm => [
-        BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: const Offset(0, 2)),
+        BoxShadow(color: AppColors.cardShadow, blurRadius: 6, offset: const Offset(0, 1)),
       ];
 
-  /// The default card. Most surfaces in the app want this one.
+  /// A block resting on the page.
   static List<BoxShadow> get md => [
-        BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: const Offset(0, 4)),
+        BoxShadow(color: AppColors.cardShadow, blurRadius: 18, offset: const Offset(0, 6)),
       ];
 
-  /// Floating chrome that sits above the page: the frosted bottom nav, the
-  /// raised Ask-AI circle, the recording pill.
+  /// Floating chrome: the dock, the mini-player, a block overlapping a hero.
   static List<BoxShadow> get lg => [
-        BoxShadow(color: AppColors.cardShadow, blurRadius: 20, offset: const Offset(0, 6)),
+        BoxShadow(color: AppColors.cardShadow, blurRadius: 28, offset: const Offset(0, 10)),
+        BoxShadow(color: AppColors.cardShadow, blurRadius: 4, offset: const Offset(0, 1)),
       ];
 
-  /// A gold glow under an interactive brand element (the mic, the Ask-AI
-  /// circle). Tinted rather than neutral, so it reads as the control's own
-  /// light rather than as depth.
+  /// A soft green halo under the record button, so it reads as the one live
+  /// control on the page. Nothing in dark mode.
   static List<BoxShadow> get brandGlow => [
         BoxShadow(
-          color: AppColors.primary.withValues(alpha: 0.40),
-          blurRadius: 20,
-          offset: const Offset(0, 6),
+          color: AppColors.brightness == Brightness.dark
+              ? const Color(0x00000000)
+              : AppColors.primary.withValues(alpha: 0.28),
+          blurRadius: 22,
+          offset: const Offset(0, 8),
         ),
       ];
 }

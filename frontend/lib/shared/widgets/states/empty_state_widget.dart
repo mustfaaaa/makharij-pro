@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
+import '../../ui/ornaments.dart';
 import '../buttons/primary_button.dart';
 
+/// An empty state that says what belongs here and how to get it: a rosette
+/// holding the subject's icon, a title in Amiri, one sentence, one action.
 class EmptyStateWidget extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -22,28 +25,30 @@ class EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(color: AppColors.surfaceAlt, shape: BoxShape.circle),
-              alignment: Alignment.center,
-              child: Icon(icon, size: 40, color: AppColors.textMuted),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(title, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
-            const SizedBox(height: AppSpacing.sm),
-            Text(message, style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
-            if (actionLabel != null) ...[
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RosetteBadge(
+                size: 92,
+                fill: AppColors.goldWash,
+                child: ExcludeSemantics(child: Icon(icon, size: 34, color: AppColors.goldInk)),
+              ),
               const SizedBox(height: AppSpacing.lg),
-              PrimaryButton(label: actionLabel!, onPressed: onAction, fullWidth: false),
+              Text(title, style: textTheme.headlineSmall, textAlign: TextAlign.center),
+              const SizedBox(height: AppSpacing.sm),
+              Text(message, style: textTheme.bodyMedium, textAlign: TextAlign.center),
+              if (actionLabel != null) ...[
+                const SizedBox(height: AppSpacing.lg),
+                PrimaryButton(label: actionLabel!, onPressed: onAction, fullWidth: false),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

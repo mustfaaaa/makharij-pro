@@ -4,7 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/audio/wav_encoder.dart';
-import '../../../../theme/app_colors.dart';
+import '../../../../shared/ui/action_styles.dart';
 
 /// Plays back the exact slice of the user's own recording that a flagged word
 /// was spoken in.
@@ -72,11 +72,7 @@ class _WordPlaybackButtonState extends State<WordPlaybackButton> {
       onPressed: _playing ? null : _play,
       icon: Icon(_playing ? Icons.graphic_eq_rounded : Icons.play_circle_outline_rounded, size: 18),
       label: Text(_playing ? 'Playing…' : widget.label),
-      style: TextButton.styleFrom(
-        foregroundColor: AppColors.primaryDark,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        visualDensity: VisualDensity.compact,
-      ),
+      style: ActionStyles.listen,
     );
   }
 }

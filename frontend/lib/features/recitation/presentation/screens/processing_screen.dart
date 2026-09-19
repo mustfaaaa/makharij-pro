@@ -1,17 +1,28 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../dummy/dummy_surahs.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../shared/ui/geometric_pattern.dart';
+import '../../../../shared/ui/ornaments.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
+import '../../../../theme/app_typography.dart';
 import '../bloc/recitation_cubit.dart';
 import '../bloc/recitation_state.dart';
 
+/// While the recording is analysed.
+///
+/// This used to narrate four pipeline steps ("Extracting MFCC features...")
+/// on a 650ms timer, whatever the backend was doing -- and the recogniser is
+/// a phoneme model, not an MFCC pipeline. Now it says only what is true: the
+/// recording has been sent, each recited word is being compared with its
+/// expected pronunciation, and how long that has taken so far. The motion is
+/// an indeterminate indicator; it claims no progress it cannot measure.
 class ProcessingScreen extends StatefulWidget {
   final int surahNumber;
   const ProcessingScreen({super.key, required this.surahNumber});
@@ -20,57 +31,23 @@ class ProcessingScreen extends StatefulWidget {
   State<ProcessingScreen> createState() => _ProcessingScreenState();
 }
 
-class _ProcessingScreenState extends State<ProcessingScreen> with TickerProviderStateMixin {
-  // Continuous intra-phase motion.
-  late final AnimationController _motion;
-  // Smoothly eases the visualization between its four phases (0..3), matched
-  // to the pipeline steps below: audio -> MFCC bars -> comparison -> result.
-  late final AnimationController _phase;
-
-  final List<String> _steps = [
-    'Uploading audio...',
-    'Extracting MFCC features...',
-    'Comparing with reference recitation...',
-    'Generating feedback...',
-  ];
-  int _stepIndex = 0;
-  Timer? _stepTimer;
+class _ProcessingScreenState extends State<ProcessingScreen> with SingleTickerProviderStateMixin {
+  late final AnimationController _breath =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 2400));
   Timer? _elapsedTimer;
   Duration _elapsed = Duration.zero;
 
-  /// After this long the wait stops being ordinary and the screen says so,
-  /// and offers a way out. Analysis normally lands well inside it.
+  /// After this long the wait stops being ordinary and the screen says so.
   static const _slowAfter = Duration(seconds: 20);
-
   bool get _isSlow => _elapsed >= _slowAfter;
 
   @override
   void initState() {
     super.initState();
-    _motion = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
-    _phase = AnimationController(vsync: this, lowerBound: 0, upperBound: 3, duration: const Duration(milliseconds: 700));
-
-    // A continuously repeating animation is exactly what "reduce motion" is
-    // meant to stop, so only spin it up when the user has not asked for less.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!MediaQuery.of(context).disableAnimations) _motion.repeat();
+      if (!MediaQuery.disableAnimationsOf(context)) _breath.repeat(reverse: true);
     });
-
-    _stepTimer = Timer.periodic(const Duration(milliseconds: 650), (timer) {
-      if (_stepIndex < _steps.length - 1) {
-        setState(() => _stepIndex++);
-        _phase.animateTo(_stepIndex.toDouble(), curve: Curves.easeInOut);
-      } else {
-        timer.cancel();
-      }
-    });
-
-    // The step captions are a rough narration of the pipeline, not a progress
-    // bar -- they always reach the last step in about two seconds regardless
-    // of how long the backend actually takes. This clock is the honest signal:
-    // it keeps counting, and after [_slowAfter] the screen admits the wait is
-    // longer than usual instead of sitting on "Generating feedback..." forever.
     _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _elapsed += const Duration(seconds: 1));
     });
@@ -78,9 +55,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> with TickerProvider
 
   @override
   void dispose() {
-    _motion.dispose();
-    _phase.dispose();
-    _stepTimer?.cancel();
+    _breath.dispose();
     _elapsedTimer?.cancel();
     super.dispose();
   }
@@ -96,6 +71,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return BlocConsumer<RecitationCubit, RecitationState>(
       listener: (context, state) {
         if (state.status == RecitationStatus.result) {
@@ -105,187 +81,100 @@ class _ProcessingScreenState extends State<ProcessingScreen> with TickerProvider
       builder: (context, state) {
         if (state.status == RecitationStatus.error) {
           return Scaffold(
+            appBar: AppBar(
+              leading: IconButton(tooltip: 'Back', icon: const Icon(Icons.arrow_back_rounded), onPressed: _cancel),
+            ),
             body: ErrorStateWidget(
-              title: 'Analysis failed',
-              message: state.errorMessage ?? 'Something went wrong while analyzing your recitation.',
+              title: 'The recitation could not be checked',
+              message: state.errorMessage ?? 'Something went wrong while checking your recitation.',
               onRetry: () => context.read<RecitationCubit>().stopAndProcess(),
             ),
           );
         }
+
+        final surah = dummySurahs.where((s) => s.number == widget.surahNumber).firstOrNull;
+        final to = state.toAyah;
+        final range = state.isWholeSurah
+            ? 'Whole surah'
+            : (to == null || to == state.fromAyah ? 'Ayah ${state.fromAyah}' : 'Ayahs ${state.fromAyah}–$to');
+
         return Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 260,
-                  height: 150,
-                  child: AnimatedBuilder(
-                    animation: Listenable.merge([_motion, _phase]),
-                    builder: (context, _) => CustomPaint(
-                      painter: _MfccPainter(t: _motion.value, phase: _phase.value),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                Text('Analyzing Your Recitation', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: AppSpacing.sm),
-                // liveRegion: a screen reader otherwise announces this once
-                // and stays silent through every later step.
-                Semantics(
-                  liveRegion: true,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    child: Text(
-                      _steps[_stepIndex],
-                      key: ValueKey(_stepIndex),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  _isSlow
-                      ? 'Still working — this is taking longer than usual (${_elapsed.inSeconds}s).'
-                      : '${_elapsed.inSeconds}s',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: _isSlow ? AppColors.warning : AppColors.textMuted,
+          body: Stack(
+            children: [
+              Positioned.fill(child: GeometricPattern(color: AppColors.gold, opacity: 0.06, cellSize: 52)),
+              SafeArea(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(AppSpacing.xl),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 380),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedBuilder(
+                            animation: _breath,
+                            builder: (context, child) => Transform.scale(
+                              scale: 1 + 0.04 * Curves.easeInOut.transform(_breath.value),
+                              child: child,
+                            ),
+                            child: RosetteBadge(
+                              size: 112,
+                              fill: AppColors.goldWash,
+                              child: Icon(Icons.graphic_eq_rounded, size: 40, color: AppColors.goldInk),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                          if (surah != null)
+                            Text(surah.nameArabic,
+                                textDirection: TextDirection.rtl,
+                                style: AppTypography.arabicWord(fontSize: 26, color: AppColors.goldInk, weight: FontWeight.w700)),
+                          Semantics(
+                            liveRegion: true,
+                            child: Text('Checking your recitation',
+                                textAlign: TextAlign.center, style: textTheme.headlineMedium),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            '${surah?.nameEnglish ?? 'Surah ${widget.surahNumber}'} · $range',
+                            style: textTheme.titleSmall?.copyWith(color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            'Each word you recited is being compared with its expected pronunciation.',
+                            textAlign: TextAlign.center,
+                            style: textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: const SizedBox(width: 200, child: LinearProgressIndicator(minHeight: 3)),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            _isSlow
+                                ? 'Taking longer than usual (${_elapsed.inSeconds}s). Longer passages take longer.'
+                                : '${_elapsed.inSeconds}s',
+                            textAlign: TextAlign.center,
+                            style: AppTypography.numeric(
+                              fontSize: 13,
+                              weight: FontWeight.w500,
+                              color: _isSlow ? AppColors.warning : AppColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          // Always reachable: without it a hung request left
+                          // the user on a screen with no way out.
+                          TextButton(onPressed: _cancel, child: Text(_isSlow ? 'Cancel and go back' : 'Cancel')),
+                        ],
                       ),
-                  textAlign: TextAlign.center,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                // Always reachable: without it a hung request left the user on
-                // a screen with no back button and no way out.
-                TextButton(
-                  onPressed: _cancel,
-                  child: Text(_isSlow ? 'Cancel and go back' : 'Cancel'),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
     );
   }
-}
-
-/// Visualizes the recitation-analysis pipeline as a set of points that morph
-/// through four phases:
-///   0  flowing audio waveform
-///   1  vertical MFCC-style frequency bars
-///   2  scattered "neural" dot-field with links (model comparison)
-///   3  points converge and settle (feedback ready)
-class _MfccPainter extends CustomPainter {
-  final double t; // 0..1 continuous
-  final double phase; // 0..3
-  _MfccPainter({required this.t, required this.phase});
-
-  static const int n = 28;
-
-  // Deterministic pseudo-random in 0..1 for point [i] (GLSL-style hash).
-  double _hash(int i) {
-    final v = sin(i * 12.9898) * 43758.5453;
-    return v - v.floorToDouble();
-  }
-
-  // Normalized position (0..1 space) of point [i] for an integer [p]hase.
-  Offset _layout(int i, int p) {
-    final fx = i / (n - 1);
-    switch (p) {
-      case 0: // waveform
-        return Offset(fx, 0.5 + sin(fx * 4 * pi + t * 2 * pi) * 0.22);
-      case 1: // MFCC bars (points sit at the top of each bar)
-        final h = 0.16 + _hash(i) * 0.42 + sin(t * 2 * pi + i * 0.4) * 0.05;
-        return Offset(fx, 0.86 - h);
-      case 2: // scattered neural field
-        final nx = 0.1 + fx * 0.8 + (_hash(i) - 0.5) * 0.12 + sin(t * 2 * pi + i) * 0.02;
-        final ny = 0.18 + _hash(i * 7 + 1) * 0.62 + cos(t * 2 * pi + i * 0.7) * 0.02;
-        return Offset(nx, ny);
-      default: // settle toward a tight cluster with a gentle pulse
-        final pulse = sin(t * 2 * pi) * 0.015;
-        return Offset(0.5 + (fx - 0.5) * 0.12, 0.5 + pulse + (_hash(i) - 0.5) * 0.04);
-    }
-  }
-
-  Offset _pos(int i, Size size) {
-    final lo = phase.floor().clamp(0, 3);
-    final hi = phase.ceil().clamp(0, 3);
-    final frac = phase - lo;
-    final a = _layout(i, lo);
-    final b = _layout(i, hi);
-    final p = Offset.lerp(a, b, frac)!;
-    return Offset(p.dx * size.width, p.dy * size.height);
-  }
-
-  double _near(double target) => (1 - (phase - target).abs()).clamp(0.0, 1.0);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final points = [for (int i = 0; i < n; i++) _pos(i, size)];
-    final dotColor = Color.lerp(AppColors.primary, AppColors.accent, (phase / 3).clamp(0.0, 1.0))!;
-
-    // Phase 0: waveform polyline
-    final wOp = _near(0);
-    if (wOp > 0.02) {
-      final path = Path()..moveTo(points.first.dx, points.first.dy);
-      for (int i = 1; i < points.length; i++) {
-        path.lineTo(points[i].dx, points[i].dy);
-      }
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = AppColors.primary.withValues(alpha: wOp * 0.8)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..strokeCap = StrokeCap.round,
-      );
-    }
-
-    // Phase 1: MFCC bars from baseline up to each point
-    final bOp = _near(1);
-    if (bOp > 0.02) {
-      final baseline = size.height * 0.86;
-      final barPaint = Paint()
-        ..color = AppColors.primary.withValues(alpha: bOp * 0.55)
-        ..strokeWidth = 4
-        ..strokeCap = StrokeCap.round;
-      for (final p in points) {
-        canvas.drawLine(Offset(p.dx, baseline), p, barPaint);
-      }
-    }
-
-    // Phase 2: neural links between nearby points
-    final lOp = _near(2);
-    if (lOp > 0.02) {
-      final linkPaint = Paint()
-        ..color = AppColors.accent.withValues(alpha: lOp * 0.35)
-        ..strokeWidth = 1;
-      for (int i = 0; i < points.length; i++) {
-        for (final j in [i + 1, i + 4]) {
-          if (j < points.length && (points[i] - points[j]).distance < size.width * 0.18) {
-            canvas.drawLine(points[i], points[j], linkPaint);
-          }
-        }
-      }
-    }
-
-    // Phase 3: soft glow as points settle
-    final sOp = _near(3);
-    if (sOp > 0.02) {
-      canvas.drawCircle(
-        Offset(size.width / 2, size.height / 2),
-        30 + sin(t * 2 * pi) * 6,
-        Paint()..color = AppColors.primary.withValues(alpha: sOp * 0.12),
-      );
-    }
-
-    // Dots on top for every phase
-    final dotPaint = Paint()..color = dotColor;
-    for (final p in points) {
-      canvas.drawCircle(p, 2.6, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_MfccPainter oldDelegate) => oldDelegate.t != t || oldDelegate.phase != phase;
 }

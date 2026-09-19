@@ -1,320 +1,118 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/hijri_date.dart';
 import '../../../../routes/route_names.dart';
-import '../../../../shared/widgets/animated/staggered_fade_slide.dart';
-import '../../../../theme/app_radii.dart';
+import '../../../../shared/ui/ornaments.dart';
+import '../../../../shared/ui/photo.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
 
-class WelcomeScreen extends StatefulWidget {
+/// The first screen a signed-out reciter sees: an open Mushaf, the name, one
+/// line on what MakharijPro does, and the two ways in.
+class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   @override
-  State<WelcomeScreen> createState() => _WelcomeScreenState();
-}
-
-class _WelcomeScreenState extends State<WelcomeScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _breathController;
-
-  @override
-  void initState() {
-    super.initState();
-    _breathController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    );
-    // A permanently pulsing halo is exactly the kind of motion "reduce
-    // motion" exists to stop; hold it at rest instead of looping.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (MediaQuery.of(context).disableAnimations) {
-        _breathController.value = 0;
-      } else {
-        _breathController.repeat(reverse: true);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _breathController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final size = MediaQuery.sizeOf(context);
+    final top = MediaQuery.paddingOf(context).top;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+
     return Scaffold(
-      body: Stack(
+      backgroundColor: AppColors.background,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Full-bleed welcome photograph, sitting faintly behind everything
-          // so the cream background still reads through it.
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.18,
-              child: Image.asset(
-                'assets/images/welcome.jpeg',
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Column(
+          SizedBox(
+            height: size.height * 0.52,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.sm,
-                    AppSpacing.sm,
-                    AppSpacing.sm,
-                    0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        tooltip: 'How MakharijPro works',
-                        icon: Icon(
-                          Icons.help_outline_rounded,
-                          size: 20,
-                          color: AppColors.textSecondary,
-                        ),
-                        onPressed: () => context.push(RoutePaths.helpFaq),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.screenPadding),
-                    child: Column(
-                      children: [
-                        const Spacer(),
-                        StaggeredFadeSlide(
-                          index: 0,
-                          child: _BreathingMark(controller: _breathController),
-                        ),
-                        const SizedBox(height: AppSpacing.xl),
-                        StaggeredFadeSlide(
-                          index: 1,
-                          child: _GlassCard(
-                            child: Column(
-                              children: [
-                                Text(
-                                  'MakharijPro AI',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.headlineMedium,
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  'Real-time Tajweed error detection for your Quran recitation',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(fontSize: 13, height: 1.4),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        StaggeredFadeSlide(
-                          index: 2,
-                          child: _WelcomeButton(
-                            label: 'Create Account',
-                            filled: true,
-                            onTap: () => context.push(RoutePaths.register),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        StaggeredFadeSlide(
-                          index: 3,
-                          child: _WelcomeButton(
-                            label: 'Sign In',
-                            filled: false,
-                            onTap: () => context.push(RoutePaths.login),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
+                const AppPhoto(AppPhotos.mushafGreen, alignment: Alignment(0, 0.25)),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.55, 1.0],
+                      colors: [
+                        AppColors.photoScrim.withValues(alpha: 0.35),
+                        AppColors.photoScrim.withValues(alpha: 0.0),
+                        AppColors.background,
                       ],
                     ),
                   ),
                 ),
+                Positioned(
+                  top: top + 4,
+                  right: 8,
+                  child: IconButton(
+                    tooltip: 'Help',
+                    onPressed: () => context.push(RoutePaths.helpFaq),
+                    style: IconButton.styleFrom(foregroundColor: AppColors.textOnPhoto),
+                    icon: const Icon(Icons.help_outline_rounded),
+                  ),
+                ),
+                Positioned(
+                  top: top + 16,
+                  left: AppSpacing.screenPadding,
+                  child: Text(HijriDate.currentYearLabel(),
+                      textDirection: TextDirection.rtl,
+                      style: AppTypography.arabicWord(fontSize: 16, color: AppColors.textOnPhotoSecondary)),
+                ),
               ],
             ),
           ),
-          Positioned(
-            bottom: 14,
-            right: 18,
-            child: Text(
-              HijriDate.currentYearLabel(),
-              style: AppTypography.arabicWord(
-                fontSize: 13,
-                color: AppColors.textMuted,
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding + 4, 0, AppSpacing.screenPadding + 4, AppSpacing.lg),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: reduce ? 1 : 0, end: 1),
+                  duration: const Duration(milliseconds: 420),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, t, child) =>
+                      Opacity(opacity: t, child: Transform.translate(offset: Offset(0, (1 - t) * 12), child: child)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const BrandMark(size: 56),
+                      const SizedBox(height: AppSpacing.md),
+                      Semantics(header: true, child: Text('MakharijPro', style: textTheme.displayMedium)),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Recite the Quran and see, word by word, what was heard. Understand each rule, and try again.',
+                        style: textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary, height: 1.6),
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: FilledButton(
+                          onPressed: () => context.push(RoutePaths.register),
+                          child: const Text('Create an account'),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: OutlinedButton(
+                          onPressed: () => context.push(RoutePaths.login),
+                          child: const Text('I already have an account'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// The circular "Mim" mark, gently scaling and glowing on a slow breathing
-/// loop — a calm, meditative entrance cue rather than a static icon.
-class _BreathingMark extends StatelessWidget {
-  final AnimationController controller;
-  const _BreathingMark({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, child) {
-        final t = controller.value;
-        return Transform.scale(
-          scale: 1.0 + t * 0.045,
-          child: Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.primarySurface,
-              border: Border.all(color: AppColors.primary, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.22 + t * 0.3),
-                  blurRadius: 22,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: child,
-          ),
-        );
-      },
-      child: Text(
-        'م',
-        style: AppTypography.arabicVerse(
-          fontSize: 52,
-          color: AppColors.primary,
-        ),
-      ),
-    );
-  }
-}
-
-/// Frosted card separating the title/tagline from the drifting background
-/// texture behind it — reuses the same glass tokens as the bottom nav/app
-/// bar (see AppColors.glassSurface/glassBorder).
-class _GlassCard extends StatelessWidget {
-  final Widget child;
-  const _GlassCard({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadii.lg),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          decoration: BoxDecoration(
-            color: AppColors.glassSurface,
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-            border: Border.all(color: AppColors.glassBorder),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-/// Self-contained button (rather than the shared PrimaryButton/OutlinedAppButton)
-/// so it can own a press-driven "lift" — the gradient's shadow grows/shrinks
-/// with the press state instead of just a flat scale change.
-class _WelcomeButton extends StatefulWidget {
-  final String label;
-  final bool filled;
-  final VoidCallback onTap;
-  const _WelcomeButton({
-    required this.label,
-    required this.filled,
-    required this.onTap,
-  });
-
-  @override
-  State<_WelcomeButton> createState() => _WelcomeButtonState();
-}
-
-class _WelcomeButtonState extends State<_WelcomeButton> {
-  bool _pressed = false;
-
-  void _setPressed(bool value) => setState(() => _pressed = value);
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _setPressed(true),
-      onTapUp: (_) => _setPressed(false),
-      onTapCancel: () => _setPressed(false),
-      onTap: () {
-        HapticFeedback.selectionClick();
-        widget.onTap();
-      },
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOutCubic,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            gradient: widget.filled
-                ? LinearGradient(
-                    colors: AppColors.brandControlGradient,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: widget.filled ? null : AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: widget.filled
-                ? null
-                : Border.all(color: AppColors.border, width: 1.4),
-            boxShadow: widget.filled
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(
-                        alpha: _pressed ? 0.18 : 0.32,
-                      ),
-                      blurRadius: _pressed ? 8 : 18,
-                      offset: Offset(0, _pressed ? 2 : 6),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Text(
-            widget.label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: widget.filled ? AppColors.textOnPrimary : AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-            ),
-          ),
-        ),
       ),
     );
   }

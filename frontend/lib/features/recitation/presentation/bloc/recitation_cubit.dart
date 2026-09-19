@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:record/record.dart';
 
@@ -28,6 +30,17 @@ class RecitationCubit extends Cubit<RecitationState> {
 
   final AudioRecorder _recorder = AudioRecorder();
   final BytesBuilder _pcm = BytesBuilder(copy: false);
+
+  /// How loud the microphone is right now, as a short history (oldest first,
+  /// each 0..1), measured from the same PCM chunks that are recorded and
+  /// streamed. It drives the recording ring and waveform, so what the reciter
+  /// sees is their own voice arriving -- not a decorative animation.
+  ///
+  /// A [ValueNotifier] rather than Bloc state on purpose: it changes many
+  /// times a second, and putting it in [RecitationState] would rebuild every
+  /// listener of the recitation flow on every audio chunk.
+  final ValueNotifier<List<double>> inputLevels = ValueNotifier(const []);
+  static const _levelHistory = 48;
 
   StreamSubscription<Uint8List>? _audioSubscription;
   StreamSubscription<LivePosition>? _positionSubscription;
@@ -92,9 +105,11 @@ class RecitationCubit extends Cubit<RecitationState> {
       sampleRate: _sampleRate,
       numChannels: 1,
     ));
+    inputLevels.value = const [];
     _audioSubscription = stream.listen((chunk) {
       _pcm.add(chunk);
       _live?.sendAudio(chunk);
+      _pushLevel(chunk);
     });
 
     _recordingStartedAt = DateTime.now();
@@ -105,11 +120,30 @@ class RecitationCubit extends Cubit<RecitationState> {
     ));
   }
 
+  /// RMS of one little-endian PCM16 chunk, mapped from -60..0 dBFS to 0..1.
+  void _pushLevel(Uint8List chunk) {
+    if (chunk.length < 2) return;
+    final samples = chunk.buffer.asByteData(chunk.offsetInBytes, chunk.lengthInBytes);
+    var sum = 0.0;
+    final n = chunk.length ~/ 2;
+    for (var i = 0; i < n; i++) {
+      final v = samples.getInt16(i * 2, Endian.little) / 32768.0;
+      sum += v * v;
+    }
+    final rms = math.sqrt(sum / n);
+    final db = rms <= 0 ? -60.0 : 20 * math.log(rms) / math.ln10;
+    final level = ((db + 60) / 60).clamp(0.0, 1.0);
+    final history = [...inputLevels.value, level];
+    inputLevels.value =
+        history.length > _levelHistory ? history.sublist(history.length - _levelHistory) : history;
+  }
+
   Future<void> stopAndProcess() async {
     final surahNumber = state.surahNumber;
     if (surahNumber == null) return;
 
     await _recorder.stop();
+    inputLevels.value = const [];
     await _audioSubscription?.cancel();
     _audioSubscription = null;
     await _closeLive();
@@ -161,6 +195,7 @@ class RecitationCubit extends Cubit<RecitationState> {
     await _closeLive();
     _pcm.clear();
     _recordingStartedAt = null;
+    inputLevels.value = const [];
     emit(state.copyWith(status: RecitationStatus.idle, clearLivePosition: true));
   }
 
@@ -190,6 +225,7 @@ class RecitationCubit extends Cubit<RecitationState> {
     _verdictSubscription?.cancel();
     _live?.close();
     _recorder.dispose();
+    inputLevels.dispose();
     return super.close();
   }
 }

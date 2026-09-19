@@ -1,53 +1,65 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/cubit/hasanah_cubit.dart';
 import '../../../../core/utils/current_user_display.dart';
+import '../../../../core/utils/hijri_date.dart';
+import '../../../../core/utils/number_format.dart';
+import '../../../../core/utils/relative_time.dart';
+import '../../../../dummy/dummy_surahs.dart';
+import '../../../../models/ayah.dart';
+import '../../../../models/practice_plan_item.dart';
+import '../../../../models/progress_summary.dart';
+import '../../../../models/session_result.dart';
+import '../../../../models/surah.dart';
+import '../../../../models/tajweed_error.dart';
+import '../../../../models/user_profile.dart';
 import '../../../../routes/route_names.dart';
-import '../../../../shared/widgets/animated/pressable.dart';
-import '../../../../shared/widgets/feedback/app_snackbar.dart';
+import '../../../../services/preferences_service.dart';
+import '../../../../services/quran_text_repository.dart';
+import '../../../../services/service_locator.dart';
+import '../../../../shared/ui/geometric_pattern.dart';
+import '../../../../shared/ui/ornaments.dart';
+import '../../../../shared/ui/photo.dart';
+import '../../../../shared/ui/tajweed_marks.dart';
+import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
 import '../../../../shared/widgets/navigation/app_drawer.dart';
+import '../../../../shared/widgets/section_header.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_radii.dart';
 import '../../../../theme/app_shadows.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
+import '../../../../theme/tajweed_rule_style.dart';
 
-// ── Quick-access important surahs (8, as in the mockup) ──────────────────────
-const _quickSurahs = [
-  (num: 73, name: 'Al-Muzzammil'),
-  (num: 67, name: 'Al-Mulk'),
-  (num: 36, name: 'Ya-Sin'),
-  (num: 55, name: 'Ar-Rahman'),
-  (num: 56, name: "Al-Waqi'ah"),
-  (num: 32, name: 'As-Sajdah'),
-  (num: 18, name: 'Al-Kahf'),
-  (num: 112, name: 'Al-Ikhlas'),
+/// Surahs people most often return to. Links, not data: each opens the real
+/// surah in the reader.
+const _oftenRecited = [1, 18, 36, 55, 56, 67, 73, 112];
+
+/// Short, well-known ayat to reflect on, by reference. The text always comes
+/// from the bundled Quran; one is picked by the day of the year, so it
+/// genuinely changes daily and is the same for everyone on a given day.
+const _reflectionAyat = [
+  (2, 152), (2, 153), (2, 186), (2, 201), (3, 8), (3, 139), (7, 56), (13, 28),
+  (14, 7), (16, 128), (20, 114), (25, 74), (29, 69), (33, 41), (39, 53), (40, 60),
+  (49, 13), (50, 16), (55, 13), (57, 4), (59, 22), (65, 3), (93, 5), (94, 5), (94, 6),
 ];
 
-// ── Prayer times (static prototype data, Islamabad) ──────────────────────────
-class _Prayer {
-  final String name;
-  final String time;
-  final IconData icon;
-  const _Prayer(this.name, this.time, this.icon);
-}
+Surah? _surah(int number) => dummySurahs.where((s) => s.number == number).firstOrNull;
 
-const _prayers = [
-  _Prayer('Fajr', '3:24', Icons.nightlight_outlined),
-  _Prayer('Dhuhr', '12:09', Icons.wb_sunny_outlined),
-  _Prayer('Asr', '5:04', Icons.wb_twilight_outlined),
-  _Prayer('Maghrib', '7:21', Icons.brightness_4_outlined),
-  _Prayer('Isha', '8:56', Icons.dark_mode_outlined),
-];
-const _nextPrayerIndex = 3; // Maghrib
-
-/// Home dashboard rebuilt to the provided mockup: dark Quran photo header
-/// with greeting, Ayah of the Day, Last Read, Prayer times with countdown,
-/// Today's goal, Quick Access surahs, and Invite friends. The original
-/// drawer menu is preserved as requested.
+/// Home: the reciter's own space. It answers "where was I, and what should I
+/// do next?" in one glance, with nothing on it that isn't theirs:
+///
+///  * the last recitation, with its real ayah range, from `/sessions`;
+///  * the rule they most need to practise, from `/practice-plan`, with one of
+///    their own flagged words as the example;
+///  * where they stopped reading, from this device;
+///  * streak, sessions and hasanah, from `/progress` and Firestore;
+///  * an ayah to reflect on, chosen by date from the bundled text.
+///
+/// It used to open on hardcoded prayer times, a fixed "last read", and an
+/// invented daily goal and streak; all of that is gone.
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
 
@@ -56,78 +68,69 @@ class HomeDashboardScreen extends StatefulWidget {
 }
 
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
+  late Future<List<SessionResult>> _sessions;
+  late Future<List<PracticePlanItem>> _plan;
+  late Future<ProgressSummary> _summary;
+  late Future<UserProfile?> _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    _sessions = Services.session.getSessions();
+    _plan = Services.practicePlan.getPlan();
+    _summary = Services.progress.getSummary();
+    _profile = _fetchProfile();
+  }
+
+  Future<UserProfile?> _fetchProfile() async {
+    try {
+      return await Services.user.getCurrentUser();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _refresh() async {
+    setState(_load);
+    await Future.wait([
+      _sessions.then((_) {}, onError: (_) {}),
+      _summary.then((_) {}, onError: (_) {}),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final firstName = currentUserName();
-    final bottomPad = AppSpacing.bottomNavClearance + MediaQuery.of(context).padding.bottom;
-
+    final lastRead = Services.prefs.lastRead;
     return Scaffold(
       backgroundColor: AppColors.background,
       drawer: const AppDrawer(),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.only(bottom: bottomPad),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Photo header with Ayah of the Day written on it ──────────
-            _HeaderImage(firstName: firstName),
-            const SizedBox(height: AppSpacing.md),
-            // ── Last Read ────────────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
-              child: _LastReadCard(),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        color: AppColors.primary,
+        edgeOffset: MediaQuery.paddingOf(context).top,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: _HeaderWithContinue(profile: _profile, sessions: _sessions),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            // ── Prayer times ─────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Prayer times',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-                  // Was `onTap: () {}` -- a control that looked live and did
-                  // nothing. Until the monthly view exists it says so, rather
-                  // than silently swallowing the tap.
-                  TextButton(
-                    onPressed: () => AppSnackbar.show(
-                        context, 'Monthly prayer view is coming in a later release.'),
-                    child: Text('Monthly view',
-                        style: TextStyle(
-                            color: AppColors.primaryDark,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
-              child: const _NextPrayerCard(),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
-              child: _PrayerChipsRow(),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            // ── Today's goal ─────────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
-              child: _TodaysGoalCard(),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            // ── Quick Access ─────────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
-              child: _QuickAccessCard(),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            // ── Invite friends ───────────────────────────────────────────
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
-              child: _InviteFriendsCard(),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenPadding, AppSpacing.xl, AppSpacing.screenPadding, AppSpacing.bottomNavClearance),
+              sliver: SliverList.list(children: [
+                _PractiseSection(plan: _plan),
+                const SizedBox(height: AppSpacing.xl),
+                _ReadSection(lastRead: lastRead),
+                const SizedBox(height: AppSpacing.xl),
+                const _RattilPanel(),
+                const SizedBox(height: AppSpacing.xl),
+                _ProgressGlance(summary: _summary),
+                const _ReflectAyah(),
+              ]),
             ),
           ],
         ),
@@ -136,197 +139,504 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   }
 }
 
-// ── Header: mockup-style — greeting row on top, glowing mushaf in the
-// middle, Ayah of the Day written directly on the photo, melting into the
-// page background below. ─────────────────────────────────────────────────────
-class _HeaderImage extends StatelessWidget {
-  final String firstName;
-  const _HeaderImage({required this.firstName});
+// ── Header: photograph, greeting, Hijri date, and the continue block ─────────
+
+class _HeaderWithContinue extends StatelessWidget {
+  final Future<UserProfile?> profile;
+  final Future<List<SessionResult>> sessions;
+  const _HeaderWithContinue({required this.profile, required this.sessions});
+
+  static const _overlap = 64.0;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 440,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset('assets/images/quran_dark.jpg',
-              fit: BoxFit.cover, alignment: const Alignment(0, 0.3)),
-          // Readability scrim: gentle at the top, deep beneath the ayah text.
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: const [0.0, 0.22, 0.48, 0.95],
-                colors: [
-                  Colors.black.withValues(alpha: 0.40),
-                  Colors.transparent,
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.62),
-                ],
-              ),
-            ),
-          ),
-          // Final melt into the page background.
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: const [0.86, 1.0],
-                colors: [Colors.transparent, AppColors.background],
-              ),
-            ),
-          ),
-          // ── Ayah of the Day, written on the photo like the mockup ──────
-          Positioned(
-            left: AppSpacing.screenPadding,
-            right: AppSpacing.screenPadding,
-            bottom: 48,
-            child: Column(
-              children: [
-                Text('AYAH OF THE DAY',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: AppColors.primaryLight,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                        letterSpacing: 3.2)),
-                const SizedBox(height: 10),
-                Text('\u064a\u064e\u0627 \u0623\u064e\u064a\u064f\u0651\u0647\u064e\u0627 \u0627\u0644\u064e\u0651\u0630\u0650\u064a\u0646\u064e \u0622\u0645\u064e\u0646\u064f\u0648\u0627 \u0627\u0630\u0652\u0643\u064f\u0631\u064f\u0648\u0627 \u0627\u0644\u0644\u064e\u0651\u0647\u064e \u0630\u0650\u0643\u0652\u0631\u064b\u0627 \u0643\u064e\u062b\u0650\u064a\u0631\u064b\u0627',
-                    textAlign: TextAlign.center,
-                    textDirection: TextDirection.rtl,
-                    style: AppTypography.arabicVerse(
-                        fontSize: 22, color: Colors.white, height: 1.7)),
-                const SizedBox(height: 6),
-                Text(
-                  '"O you who have believed, remember Allah with much remembrance." \u2014 Al-Ahzab 33:41',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.78),
-                      fontSize: 12.5,
-                      height: 1.4),
+    final top = MediaQuery.paddingOf(context).top;
+    final headerHeight = 290.0 + top;
+    final scrim = AppColors.photoScrim;
+    final now = DateTime.now();
+
+    return Stack(
+      children: [
+        SizedBox(
+          height: headerHeight,
+          width: double.infinity,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const AppPhoto(AppPhotos.homeRehal, alignment: Alignment(-0.1, 0.1)),
+              // Dark enough at the top for the controls, deepest behind the
+              // greeting, then a short melt into the page under the block that
+              // overlaps it -- so ivory text never lands on parchment.
+              // A side scrim under the greeting: the window light sits on the
+              // left of this photograph.
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    stops: const [0.0, 0.75],
+                    colors: [scrim.withValues(alpha: 0.5), scrim.withValues(alpha: 0.0)],
+                  ),
                 ),
-              ],
-            ),
-          ),
-          // ── Greeting row pinned to the very top, mockup style ───────────
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenPadding, 6, AppSpacing.screenPadding, 0),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.0, 0.32, 0.72, 0.86, 1.0],
+                    colors: [
+                      scrim.withValues(alpha: 0.55),
+                      scrim.withValues(alpha: 0.18),
+                      scrim.withValues(alpha: 0.62),
+                      scrim.withValues(alpha: 0.72),
+                      AppColors.background,
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: top + 4,
+                left: 8,
+                right: 12,
                 child: Row(
                   children: [
-                    // Navigation menu (original drawer) before the greeting.
                     Builder(
-                      builder: (context) => _GlassCircleButton(
+                      builder: (context) => _GlassButton(
                         icon: Icons.menu_rounded,
                         label: 'Open menu',
                         onTap: () => Scaffold.of(context).openDrawer(),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    // Gold avatar exactly like the mockup.
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [AppColors.primaryLight, AppColors.primary],
-                        ),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        firstName.isNotEmpty ? firstName[0].toUpperCase() : 'M',
-                        style: TextStyle(
-                            color: AppColors.textOnPrimary,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Assalamu Alaikum',
-                              style: TextStyle(
-                                  color: AppColors.primaryLight,
-                                  fontSize: 13,
-                                  letterSpacing: 1.1,
-                                  fontWeight: FontWeight.w600)),
-                          Text(firstName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800)),
-                        ],
-                      ),
-                    ),
-                    _GlassCircleButton(
+                    const Spacer(),
+                    _GlassButton(
                       icon: Icons.notifications_none_rounded,
                       label: 'Notifications',
                       onTap: () => context.push(RoutePaths.notifications),
                     ),
+                    const SizedBox(width: 4),
+                    _AvatarButton(profile: profile),
                   ],
                 ),
               ),
+              Positioned(
+                left: AppSpacing.screenPadding,
+                right: AppSpacing.screenPadding,
+                bottom: _overlap + 18,
+                child: FutureBuilder<UserProfile?>(
+                  future: profile,
+                  builder: (context, snap) {
+                    final name = greetingName(snap.data);
+                    return Semantics(
+                      header: true,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Assalamu alaikum,',
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: AppColors.textOnPhotoSecondary,
+                                  )),
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.displayText(fontSize: 34, color: AppColors.textOnPhoto),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${HijriDate.format(now)} AH',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textOnPhotoSecondary,
+                                ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+              AppSpacing.screenPadding, headerHeight - _overlap, AppSpacing.screenPadding, 0),
+          child: _ContinueBlock(sessions: sessions),
+        ),
+      ],
+    );
+  }
+}
+
+class _GlassButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _GlassButton({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: label,
+      onPressed: onTap,
+      style: IconButton.styleFrom(
+        backgroundColor: AppColors.photoScrim.withValues(alpha: 0.32),
+        foregroundColor: AppColors.textOnPhoto,
+        side: BorderSide(color: AppColors.textOnPhoto.withValues(alpha: 0.18)),
+        fixedSize: const Size(44, 44),
+      ),
+      icon: Icon(icon, size: 22),
+    );
+  }
+}
+
+class _AvatarButton extends StatelessWidget {
+  final Future<UserProfile?> profile;
+  const _AvatarButton({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<UserProfile?>(
+      future: profile,
+      builder: (context, snap) {
+        final name = greetingName(snap.data);
+        return Semantics(
+          button: true,
+          label: 'Your profile',
+          excludeSemantics: true,
+          child: InkResponse(
+            onTap: () => context.go(RoutePaths.profile),
+            radius: 26,
+            child: Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.goldWash,
+                border: Border.all(color: AppColors.gold, width: 1.2),
+              ),
+              child: Text(
+                name.isEmpty ? 'M' : name[0].toUpperCase(),
+                style: AppTypography.displayText(fontSize: 20, color: AppColors.goldInk, height: 1.1),
+              ),
             ),
           ),
-        ],
+        );
+      },
+    );
+  }
+}
+
+// ── Continue your recitation ─────────────────────────────────────────────────
+
+class _ContinueBlock extends StatelessWidget {
+  final Future<List<SessionResult>> sessions;
+  const _ContinueBlock({required this.sessions});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      decoration: BoxDecoration(
+        color: AppColors.raised,
+        borderRadius: AppRadii.lgRadius,
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.lg,
+      ),
+      child: FutureBuilder<List<SessionResult>>(
+        future: sessions,
+        builder: (context, snap) {
+          final Widget child;
+          if (snap.connectionState != ConnectionState.done) {
+            child = const _ContinueSkeleton();
+          } else if (snap.hasError) {
+            child = const _ContinueFresh(
+              note: 'Your recent recitations could not be loaded. You can still start one.',
+            );
+          } else if ((snap.data ?? const []).isEmpty) {
+            child = const _ContinueFresh();
+          } else {
+            child = _ContinueLast(session: snap.data!.first);
+          }
+          return AnimatedSwitcher(
+            duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 220),
+            child: KeyedSubtree(key: ValueKey(snap.connectionState == ConnectionState.done), child: child),
+          );
+        },
       ),
     );
   }
 }
 
-/// Dark translucent circle button used for the menu and the bell, matching
-/// the mockup's header controls.
-class _GlassCircleButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final String label;
-  const _GlassCircleButton({required this.icon, required this.onTap, required this.label});
+class _ContinueSkeleton extends StatelessWidget {
+  const _ContinueSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    // The visible circle stays 42dp to match the mockup, but the *tap target*
-    // is padded out to Android's 48dp floor, and the control now carries a
-    // name and press feedback -- as a bare GestureDetector it had neither.
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ShimmerBox(width: 150, height: 12),
+        SizedBox(height: 12),
+        ShimmerBox(width: 190, height: 24),
+        SizedBox(height: 10),
+        ShimmerBox(width: 230, height: 12),
+        SizedBox(height: 18),
+        ShimmerBox(height: 52, borderRadius: BorderRadius.all(Radius.circular(AppRadii.md))),
+      ],
+    );
+  }
+}
+
+class _ContinueLast extends StatelessWidget {
+  final SessionResult session;
+  const _ContinueLast({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final surah = _surah(session.surahNumber);
+    final from = session.fromAyah;
+    final to = session.toAyah;
+    final range = from == null
+        ? null
+        : (to == null || to == from)
+            ? 'Ayah $from'
+            : 'Ayahs $from–$to';
+    final matched = session.totalWords > 0
+        ? '${(session.wordsRecited - session.errors.length).clamp(0, session.wordsRecited)} of ${session.wordsRecited} words matched'
+        : null;
+    final meta = [?range, ?matched, relativeTime(session.dateTime)].join(' · ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Continue your recitation', style: textTheme.labelMedium?.copyWith(color: AppColors.goldInk)),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                surah?.nameEnglish ?? session.surahName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.headlineMedium,
+              ),
+            ),
+            if (surah != null)
+              Text(surah.nameArabic,
+                  textDirection: TextDirection.rtl,
+                  style: AppTypography.arabicWord(fontSize: 24, color: AppColors.goldInk, weight: FontWeight.w700)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(meta, style: textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: () => context.push(RoutePaths.surahDetailsPath(session.surahNumber, from: from, to: to)),
+                icon: const Icon(Icons.mic_rounded, size: 20),
+                label: const Text('Recite again'),
+              ),
+            ),
+            if (session.errors.isNotEmpty) ...[
+              const SizedBox(width: 10),
+              OutlinedButton(
+                onPressed: () => context.push(RoutePaths.detailedFeedbackPath(session.id)),
+                child: Text('Review ${session.errors.length}'),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ContinueFresh extends StatelessWidget {
+  final String? note;
+  const _ContinueFresh({this.note});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Begin your first recitation', style: textTheme.labelMedium?.copyWith(color: AppColors.goldInk)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(child: Text('Al-Fatihah', style: textTheme.headlineMedium)),
+            Text('الفاتحة',
+                textDirection: TextDirection.rtl,
+                style: AppTypography.arabicWord(fontSize: 24, color: AppColors.goldInk, weight: FontWeight.w700)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          note ?? 'Recite and watch each word fill in as it is heard. When you stop, you see what to review.',
+          style: textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 18),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () => context.push(RoutePaths.surahDetailsPath(1)),
+            icon: const Icon(Icons.mic_rounded, size: 20),
+            label: const Text('Start reciting'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Practise your Tajweed ────────────────────────────────────────────────────
+
+class _PractiseSection extends StatelessWidget {
+  final Future<List<PracticePlanItem>> plan;
+  const _PractiseSection({required this.plan});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<PracticePlanItem>>(
+      future: plan,
+      builder: (context, snap) {
+        // Only rules the reciter's own recitations actually flagged. A new
+        // user's "beginner" plan lists every rule at zero, which says nothing
+        // about them, so it is not shown here.
+        final items = (snap.data ?? const <PracticePlanItem>[])
+            .where((i) => (i.errorCount ?? 0) > 0 && i.rule.isNotEmpty)
+            .toList();
+        if (snap.connectionState != ConnectionState.done || items.isEmpty) return const SizedBox.shrink();
+        final item = items.first;
+        final rule = tajweedErrorTypeFromId(item.rule);
+        final example = item.examples.where((e) => e.surahNumber != null && e.ayahNumber != null).firstOrNull;
+        final color = rule == null ? AppColors.primaryDark : TajweedRuleStyle.color(rule);
+        final textTheme = Theme.of(context).textTheme;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: 'Practise your Tajweed',
+              subtitle: 'From the words you recited',
+              actionLabel: items.length > 1 ? 'Your plan' : null,
+              onActionTap: () => context.push(RoutePaths.practicePlan),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: AppRadii.lgRadius,
+                onTap: example == null
+                    ? () => context.push(RoutePaths.practicePlan)
+                    : () => context.push(RoutePaths.surahDetailsPath(example.surahNumber!,
+                        from: example.ayahNumber, to: example.ayahNumber, ayah: example.ayahNumber)),
+                child: Ink(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: AppRadii.lgRadius,
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                if (rule != null) ...[
+                                  RuleShapeSwatch(rule: rule),
+                                  const SizedBox(width: 10),
+                                ],
+                                Flexible(
+                                  child: Text(rule?.label ?? item.tajweedRule,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: textTheme.titleMedium?.copyWith(color: color)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                                'Flagged on ${item.errorCount} word${item.errorCount == 1 ? '' : 's'} in your recent recitations',
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+                            if (example != null) ...[
+                              const SizedBox(height: 10),
+                              Text('Practise it in ${_surah(example.surahNumber!)?.nameEnglish ?? 'Surah ${example.surahNumber}'} ${example.surahNumber}:${example.ayahNumber}',
+                                  style: textTheme.labelMedium?.copyWith(color: AppColors.primaryDark)),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (example != null) ...[
+                        const SizedBox(width: 14),
+                        Text(
+                          example.word,
+                          textDirection: TextDirection.rtl,
+                          style: AppTypography.quran(fontSize: 30, color: color, height: 1.7).copyWith(
+                            decoration: rule == null ? null : TajweedRuleStyle.decoration(rule),
+                            decorationStyle: rule == null ? null : TajweedRuleStyle.decorationStyle(rule),
+                            decorationColor: color,
+                            decorationThickness: 2,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// A surah link as a pill: the Arabic name on the reading side of the
+/// English one, never clipped.
+class _SurahChip extends StatelessWidget {
+  final Surah surah;
+  const _SurahChip({required this.surah});
+
+  @override
+  Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: label,
+      label: 'Read ${surah.nameEnglish}',
+      excludeSemantics: true,
       child: Material(
-        color: Colors.transparent,
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
+        color: AppColors.surface,
+        shape: StadiumBorder(side: BorderSide(color: AppColors.border)),
         child: InkWell(
-          onTap: onTap,
+          customBorder: const StadiumBorder(),
+          onTap: () => context.push(RoutePaths.surahDetailsPath(surah.number)),
           child: Container(
-            width: 48,
-            height: 48,
-            alignment: Alignment.center,
-            child: Container(
-              width: 42,
-              height: 42,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.35),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-              ),
-              child: Icon(icon, color: Colors.white, size: 20),
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(surah.nameEnglish, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 13.5)),
+                const SizedBox(width: 8),
+                Text(
+                  surah.nameArabic,
+                  textDirection: TextDirection.rtl,
+                  style: AppTypography.arabicWord(fontSize: 17, color: AppColors.goldInk).copyWith(height: 1.3),
+                ),
+              ],
             ),
           ),
         ),
@@ -335,411 +645,272 @@ class _GlassCircleButton extends StatelessWidget {
   }
 }
 
-// ── Last Read card ────────────────────────────────────────────────────────────
-class _LastReadCard extends StatelessWidget {
-  const _LastReadCard();
+// ── Read the Quran ───────────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.lgRadius,
-        boxShadow: AppShadows.md,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: AppRadii.mdRadius),
-            child: Icon(Icons.menu_book_rounded, color: AppColors.primaryDark, size: 24),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('LAST READ',
-                    style: TextStyle(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                        letterSpacing: 1.8)),
-                const SizedBox(height: 2),
-                Text('Al-Fatihah',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-                Text('Ayah 5 of 7 · Juz 1',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
-          Pressable(
-            onTap: () => context.push(RoutePaths.surahDetailsPath(1)),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-              decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadii.pillRadius),
-              child: Text('Continue',
-                  style: TextStyle(
-                      color: AppColors.textOnPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Next-prayer card with live countdown ─────────────────────────────────────
-/// Owns the per-second countdown itself.
-///
-/// The tick used to live on the screen's State, so once a second the whole
-/// dashboard rebuilt -- including the 440px `Image.asset` header. Scoping it
-/// here means the clock repaints one card.
-class _NextPrayerCard extends StatefulWidget {
-  const _NextPrayerCard();
-
-  @override
-  State<_NextPrayerCard> createState() => _NextPrayerCardState();
-}
-
-class _NextPrayerCardState extends State<_NextPrayerCard> {
-  Timer? _ticker;
-  Duration _untilNext = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _computeCountdown();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _computeCountdown());
-  }
-
-  void _computeCountdown() {
-    final now = DateTime.now();
-    var maghrib = DateTime(now.year, now.month, now.day, 19, 21);
-    if (maghrib.isBefore(now)) maghrib = maghrib.add(const Duration(days: 1));
-    if (mounted) setState(() => _untilNext = maghrib.difference(now));
-  }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    super.dispose();
-  }
-
-  String get countdown {
-    final h = _untilNext.inHours;
-    final m = (_untilNext.inMinutes % 60).toString().padLeft(2, '0');
-    final s = (_untilNext.inSeconds % 60).toString().padLeft(2, '0');
-    return '$h:$m:$s';
-  }
+class _ReadSection extends StatelessWidget {
+  final LastRead? lastRead;
+  const _ReadSection({required this.lastRead});
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.lgRadius,
-        boxShadow: AppShadows.md,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('NEXT · MAGHRIB',
-                    style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                        letterSpacing: 1.8)),
-                const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('7:21',
-                        style: textTheme.displayLarge?.copyWith(
-                            color: AppColors.primaryDark, fontWeight: FontWeight.w700, fontSize: 36, height: 1.0)),
-                    const SizedBox(width: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text('PM',
-                          style: textTheme.titleSmall?.copyWith(color: AppColors.primaryDark)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(Icons.location_on_outlined, size: 14, color: AppColors.textMuted),
-                    const SizedBox(width: 4),
-                    Text('Islamabad, Pakistan',
-                        style: textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text('begins in', style: textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-              const SizedBox(height: 2),
-              Text(countdown,
-                  style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.5)),
-              const SizedBox(height: 6),
-              Icon(Icons.nightlight_round, color: AppColors.primaryDark, size: 22),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
+    final last = lastRead;
+    final Surah? lastSurah = last == null ? null : _surah(last.surah);
 
-// ── Five prayer chips with Maghrib highlighted ───────────────────────────────
-class _PrayerChipsRow extends StatelessWidget {
-  const _PrayerChipsRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (int i = 0; i < _prayers.length; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
-          Expanded(child: _PrayerChip(prayer: _prayers[i], highlighted: i == _nextPrayerIndex)),
-        ],
+        SectionHeader(
+          title: 'Read the Quran',
+          actionLabel: 'All surahs',
+          onActionTap: () => context.go(RoutePaths.quran),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (lastSurah != null)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: RosetteBadge(
+              size: 40,
+              fill: AppColors.goldWash,
+              child: Icon(Icons.bookmark_rounded, size: 18, color: AppColors.goldInk),
+            ),
+            title: Text('Continue ${lastSurah.nameEnglish}', style: textTheme.titleMedium),
+            subtitle: Text('Ayah ${last!.ayah} of ${lastSurah.ayahCount}'
+                '${last.at == null ? '' : ' · ${relativeTime(last.at!)}'}'),
+            trailing: Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+            onTap: () => context.push(RoutePaths.surahDetailsPath(lastSurah.number, ayah: last.ayah)),
+          ),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final n in _oftenRecited)
+              if (_surah(n) case final s?) _SurahChip(surah: s),
+          ],
+        ),
       ],
     );
   }
 }
 
-class _PrayerChip extends StatelessWidget {
-  final _Prayer prayer;
-  final bool highlighted;
-  const _PrayerChip({required this.prayer, required this.highlighted});
+// ── Rattil ───────────────────────────────────────────────────────────────────
+
+class _RattilPanel extends StatelessWidget {
+  const _RattilPanel();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: highlighted ? AppColors.primarySurface : AppColors.surface,
-        borderRadius: AppRadii.mdRadius,
-        border: Border.all(color: highlighted ? AppColors.primary : AppColors.border, width: highlighted ? 1.5 : 1),
-        boxShadow: AppShadows.sm,
-      ),
-      child: Column(
-        children: [
-          Icon(prayer.icon, size: 18, color: highlighted ? AppColors.primaryDark : AppColors.textSecondary),
-          const SizedBox(height: 6),
-          Text(prayer.name,
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: highlighted ? FontWeight.w800 : FontWeight.w600,
-                  color: highlighted ? AppColors.primaryDark : AppColors.textPrimary)),
-          const SizedBox(height: 2),
-          Text(prayer.time,
-              style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: highlighted ? AppColors.primaryDark : AppColors.textSecondary)),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Today's goal (green card) ─────────────────────────────────────────────────
-class _TodaysGoalCard extends StatelessWidget {
-  const _TodaysGoalCard();
-
-  @override
-  Widget build(BuildContext context) {
-    const done = 7, total = 10;
-    const pct = done / total;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
-      decoration: BoxDecoration(
-        color: AppColors.successSurface,
+    final textTheme = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      label: 'Listen with Rattil. Hear Sudais, Alafasy and Al-Dosari recite any surah or ayah.',
+      excludeSemantics: true,
+      child: ClipRRect(
         borderRadius: AppRadii.lgRadius,
-        boxShadow: AppShadows.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("Today's goal",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.28),
-                  borderRadius: AppRadii.pillRadius,
+        child: Material(
+          color: AppColors.brandCardGradient.first,
+          child: InkWell(
+            onTap: () => context.go(RoutePaths.askAi),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: GeometricPattern(color: AppColors.textOnBrandCard, opacity: 0.07, cellSize: 40),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 14),
-                    SizedBox(width: 4),
-                    Text('5-day streak',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text('Listen to 10 ayahs of recitation',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 14)),
-          const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: AppRadii.xsRadius,
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 8,
-              backgroundColor: Colors.white.withValues(alpha: 0.22),
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentLight),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('$done / $total ayahs completed',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12.5)),
-              const Text('70%',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Quick Access card ─────────────────────────────────────────────────────────
-class _QuickAccessCard extends StatelessWidget {
-  const _QuickAccessCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.lgRadius,
-        boxShadow: AppShadows.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.bolt_rounded, color: AppColors.accent, size: 20),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text('Quick Access',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-              ),
-              Text('${_quickSurahs.length} Surahs',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final s in _quickSurahs)
-                Pressable(
-                  onTap: () => context.push(RoutePaths.surahDetailsPath(s.num)),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primarySurface,
-                      borderRadius: AppRadii.pillRadius,
-                    ),
-                    child: Text(s.name,
-                        style: TextStyle(
-                            color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13.5)),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 16, 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Listen with Rattil',
+                                style: textTheme.headlineSmall?.copyWith(color: AppColors.textOnBrandCard)),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Hear Sudais, Alafasy and Al-Dosari recite any surah or ayah, slowly or on repeat.',
+                              style: textTheme.bodySmall?.copyWith(
+                                color: AppColors.textOnBrandCard.withValues(alpha: 0.82),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.graphic_eq_rounded, size: 18, color: AppColors.gold),
+                                const SizedBox(width: 6),
+                                Text('Open Rattil',
+                                    style: textTheme.labelLarge?.copyWith(color: AppColors.textOnBrandCard)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'رَتِّل',
+                        textDirection: TextDirection.rtl,
+                        style: AppTypography.quran(fontSize: 58, color: AppColors.gold, height: 1.4),
+                      ),
+                    ],
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ── Invite friends card ───────────────────────────────────────────────────────
-class _InviteFriendsCard extends StatelessWidget {
-  const _InviteFriendsCard();
+// ── Progress glance ──────────────────────────────────────────────────────────
+
+class _ProgressGlance extends StatelessWidget {
+  final Future<ProgressSummary> summary;
+  const _ProgressGlance({required this.summary});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.lgRadius,
-        boxShadow: AppShadows.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return FutureBuilder<ProgressSummary>(
+      future: summary,
+      builder: (context, snap) {
+        final s = snap.data;
+        // Nothing to glance at before the first session; Continue above
+        // already invites it.
+        if (s == null || s.totalSessions == 0) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: AppRadii.mdRadius),
-                child: Icon(Icons.card_giftcard_rounded, color: AppColors.primaryDark, size: 22),
+              SectionHeader(
+                title: 'Your progress',
+                actionLabel: 'See all',
+                onActionTap: () => context.go(RoutePaths.progress),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Invite friends',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                    Text('Share Makharij Pro and help others',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-                  ],
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.symmetric(horizontal: BorderSide(color: AppColors.divider)),
+                ),
+                child: IntrinsicHeight(
+                  child: Row(
+                    children: [
+                      Expanded(child: _Stat(value: '${s.currentStreak}', label: 'day streak')),
+                      VerticalDivider(color: AppColors.divider, width: 1),
+                      Expanded(child: _Stat(value: '${s.totalSessions}', label: s.totalSessions == 1 ? 'session' : 'sessions')),
+                      VerticalDivider(color: AppColors.divider, width: 1),
+                      Expanded(
+                        child: BlocBuilder<HasanahCubit, int>(
+                          builder: (context, h) => _Stat(value: formatWithCommas(h), label: 'hasanah', gold: true),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Pressable(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              AppSnackbar.show(context, 'Sharing will be available in the release build.');
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: AppRadii.pillRadius),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.arrow_upward_rounded, size: 16, color: AppColors.primaryDark),
-                  const SizedBox(width: 6),
-                  Text('Share Now',
-                      style: TextStyle(
-                          color: AppColors.primaryDark, fontWeight: FontWeight.w700, fontSize: 13.5)),
-                ],
-              ),
+        );
+      },
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String value;
+  final String label;
+  final bool gold;
+  const _Stat({required this.value, required this.label, this.gold = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '$value $label',
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Column(
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(value,
+                  style: AppTypography.numeric(fontSize: 24, color: gold ? AppColors.goldInk : AppColors.textPrimary)),
+            ),
+            const SizedBox(height: 2),
+            Text(label, style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── An ayah to reflect on ────────────────────────────────────────────────────
+
+class _ReflectAyah extends StatefulWidget {
+  const _ReflectAyah();
+
+  @override
+  State<_ReflectAyah> createState() => _ReflectAyahState();
+}
+
+class _ReflectAyahState extends State<_ReflectAyah> {
+  late final (int, int) _ref;
+  late final Future<Ayah?> _ayah;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    final dayOfYear = now.difference(DateTime(now.year)).inDays;
+    _ref = _reflectionAyat[dayOfYear % _reflectionAyat.length];
+    _ayah = QuranTextRepository.instance
+        .ayahsForSurah(_ref.$1)
+        .then((ayahs) => ayahs.where((a) => a.number == _ref.$2).firstOrNull);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return FutureBuilder<Ayah?>(
+      future: _ayah,
+      builder: (context, snap) {
+        final ayah = snap.data;
+        if (ayah == null) return const SizedBox.shrink();
+        final surah = _surah(_ref.$1);
+        return InkWell(
+          borderRadius: AppRadii.lgRadius,
+          onTap: () => context.push(RoutePaths.surahDetailsPath(_ref.$1, ayah: _ref.$2)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              children: [
+                const OrnamentDivider(verticalPadding: 8),
+                Text('An ayah to reflect on', style: textTheme.labelMedium?.copyWith(color: AppColors.goldInk)),
+                const SizedBox(height: 10),
+                Text(
+                  ayah.arabicText,
+                  textAlign: TextAlign.center,
+                  textDirection: TextDirection.rtl,
+                  style: AppTypography.quran(fontSize: 25, height: 2.0),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  ayah.translation,
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic, height: 1.6),
+                ),
+                const SizedBox(height: 8),
+                Text('${surah?.nameEnglish ?? 'Surah ${_ref.$1}'} ${_ref.$1}:${_ref.$2}',
+                    style: textTheme.bodySmall),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

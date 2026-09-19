@@ -10,6 +10,7 @@ import '../../../../shared/widgets/cards/rule_card.dart';
 import '../../../../shared/widgets/cards/surah_card.dart';
 import '../../../../shared/widgets/loading/shimmer_placeholder.dart';
 import '../../../../shared/widgets/responsive_center.dart';
+import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/states/empty_state_widget.dart';
 import '../../../../theme/app_spacing.dart';
 
@@ -38,7 +39,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Bookmarks')),
+      appBar: AppBar(title: const Text('Saved')),
       body: ResponsiveCenter(child: AsyncView<(List<Surah>, List<TajweedRule>)>(
         future: _future,
         errorMessage: 'Could not load your bookmarks.',
@@ -49,15 +50,15 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
           if (surahs.isEmpty && rules.isEmpty) {
             return const EmptyStateWidget(
               icon: Icons.bookmark_border_rounded,
-              title: 'No bookmarks yet',
-              message: 'Bookmark surahs and Tajweed rules to find them here quickly.',
+              title: 'Nothing saved yet',
+              message: 'Tap the bookmark on a surah or a Tajweed rule to keep it here.',
             );
           }
           return ListView(
             padding: const EdgeInsets.all(AppSpacing.screenPadding),
             children: [
               if (surahs.isNotEmpty) ...[
-                Text('Surahs', style: Theme.of(context).textTheme.titleMedium),
+                const SectionHeader(title: 'Surahs'),
                 const SizedBox(height: AppSpacing.sm),
                 ...surahs.map(
                   (s) => Padding(
@@ -68,7 +69,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                 const SizedBox(height: AppSpacing.md),
               ],
               if (rules.isNotEmpty) ...[
-                Text('Tajweed Rules', style: Theme.of(context).textTheme.titleMedium),
+                const SectionHeader(title: 'Tajweed rules'),
                 const SizedBox(height: AppSpacing.sm),
                 ...rules.map(
                   (r) => Padding(

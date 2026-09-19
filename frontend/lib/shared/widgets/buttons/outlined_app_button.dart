@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+/// A quiet action beside a primary one. Styling comes from
+/// `outlinedButtonTheme`.
 class OutlinedAppButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -21,8 +23,8 @@ class OutlinedAppButton extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[Icon(icon, size: 18), const SizedBox(width: 8)],
-          Text(label),
+          if (icon != null) ...[Icon(icon, size: 19), const SizedBox(width: 8)],
+          Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
         ],
       ),
     );

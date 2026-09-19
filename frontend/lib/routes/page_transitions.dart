@@ -1,28 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-/// Subtle fade + upward-slide push transition, used for every top-level
-/// route so screen-to-screen navigation feels considered rather than the
-/// platform default abrupt swap.
-CustomTransitionPage<void> fadeSlidePage({required LocalKey key, required Widget child}) {
-  return CustomTransitionPage<void>(
-    key: key,
-    child: child,
-    transitionDuration: const Duration(milliseconds: 260),
-    reverseTransitionDuration: const Duration(milliseconds: 200),
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final fade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
-      final slide = Tween(begin: const Offset(0, 0.03), end: Offset.zero).animate(fade);
-      return FadeTransition(opacity: fade, child: SlideTransition(position: slide, child: child));
-    },
-  );
+/// The page every top-level route is pushed with.
+///
+/// This used to be a [CustomTransitionPage] with its own fade-and-slide, which
+/// quietly removed the iOS edge-swipe back gesture and Android's predictive
+/// back -- a custom transition builder replaces the platform route that
+/// provides both. A [MaterialPage] takes its motion from
+/// `ThemeData.pageTransitionsTheme` (Cupertino on iOS, FadeForwards on
+/// Android), so the gestures come back and the motion matches the platform.
+///
+/// The name is kept so the router's call sites stay unchanged.
+Page<void> fadeSlidePage({required LocalKey key, required Widget child}) {
+  return MaterialPage<void>(key: key, child: child);
 }
 
-/// Custom container for [StatefulShellRoute] branch Navigators that
-/// crossfades between bottom-nav tabs (a Material "fade through" motion —
-/// fade + gentle scale) instead of the default [IndexedStack]'s instant cut.
-/// All branch Navigators stay mounted throughout, exactly like
-/// [IndexedStack], so each tab's navigation state is preserved.
+/// Container for [StatefulShellRoute] branch Navigators that cross-fades
+/// between tabs instead of the default [IndexedStack]'s instant cut. All
+/// branch Navigators stay mounted, exactly like [IndexedStack], so each tab
+/// keeps its scroll position and navigation state.
+///
+/// A plain fade: the 1.04 zoom it used to add read as the page lurching.
 class AnimatedBranchContainer extends StatelessWidget {
   final int currentIndex;
   final List<Widget> children;
@@ -30,21 +27,17 @@ class AnimatedBranchContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final duration = MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 200);
     return Stack(
       children: [
         for (int i = 0; i < children.length; i++)
-          AnimatedScale(
-            scale: i == currentIndex ? 1 : 1.04,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            child: AnimatedOpacity(
-              opacity: i == currentIndex ? 1 : 0,
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOut,
-              child: IgnorePointer(
-                ignoring: i != currentIndex,
-                child: TickerMode(enabled: i == currentIndex, child: children[i]),
-              ),
+          AnimatedOpacity(
+            opacity: i == currentIndex ? 1 : 0,
+            duration: duration,
+            curve: Curves.easeOutCubic,
+            child: IgnorePointer(
+              ignoring: i != currentIndex,
+              child: TickerMode(enabled: i == currentIndex, child: children[i]),
             ),
           ),
       ],

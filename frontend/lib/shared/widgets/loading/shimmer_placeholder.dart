@@ -15,8 +15,8 @@ class ShimmerBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: AppColors.surfaceAlt,
-      highlightColor: AppColors.border,
+      baseColor: AppColors.container.withValues(alpha: 0.7),
+      highlightColor: AppColors.surface,
       child: Container(
         width: width,
         height: height,
@@ -61,9 +61,7 @@ class SurahCardSkeleton extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.cardPadding),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.mdRadius,
-        border: Border.all(color: AppColors.border),
+        border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
       child: Row(
         children: [
@@ -97,7 +95,7 @@ class ShimmerSurahList extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(AppSpacing.screenPadding),
       itemCount: itemCount,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+      separatorBuilder: (_, _) => const SizedBox.shrink(),
       itemBuilder: (_, _) => const SurahCardSkeleton(),
     );
   }

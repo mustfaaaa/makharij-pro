@@ -61,4 +61,81 @@ class PreferencesService {
   Future<void> setNotificationsEnabled(bool enabled) async {
     await _prefs?.setBool(_kNotifications, enabled);
   }
+
+  // ── Onboarding ───────────────────────────────────────────────────────────
+  static const _kOnboardingSeen = 'pref.onboardingSeen';
+
+  /// Onboarding is shown once. It used to reappear on every signed-out
+  /// launch, because nothing remembered it had been seen.
+  bool get onboardingSeen => _prefs?.getBool(_kOnboardingSeen) ?? false;
+
+  Future<void> setOnboardingSeen() async {
+    await _prefs?.setBool(_kOnboardingSeen, true);
+  }
+
+  // ── Reading ──────────────────────────────────────────────────────────────
+  static const _kTranslationMode = 'pref.translationMode';
+  static const _kTransliteration = 'pref.transliteration';
+  static const _kPreferredQari = 'pref.preferredQari';
+
+  /// Whether the reader shows the translation never, when an ayah is tapped
+  /// (the long-standing behaviour, and the default), or under every ayah.
+  TranslationMode get translationMode => TranslationMode.values.firstWhere(
+        (m) => m.name == _prefs?.getString(_kTranslationMode),
+        orElse: () => TranslationMode.onTap,
+      );
+
+  Future<void> setTranslationMode(TranslationMode mode) async {
+    await _prefs?.setString(_kTranslationMode, mode.name);
+  }
+
+  /// Transliteration under each ayah, from the Tajweed reference service.
+  bool get showTransliteration => _prefs?.getBool(_kTransliteration) ?? false;
+
+  Future<void> setShowTransliteration(bool show) async {
+    await _prefs?.setBool(_kTransliteration, show);
+  }
+
+  /// The reciter chosen for listening in the reader; null until one is picked.
+  String? get preferredQariId => _prefs?.getString(_kPreferredQari);
+
+  Future<void> setPreferredQariId(String id) async {
+    await _prefs?.setString(_kPreferredQari, id);
+  }
+
+  // ── Last read ────────────────────────────────────────────────────────────
+  // Where the reader was last settled, on this device only. It is what lets
+  // Home and the Quran tab offer "Continue reading" at a real place instead of
+  // a made-up one. Nothing is sent anywhere.
+  static const _kLastReadSurah = 'pref.lastRead.surah';
+  static const _kLastReadAyah = 'pref.lastRead.ayah';
+  static const _kLastReadAt = 'pref.lastRead.at';
+
+  LastRead? get lastRead {
+    final surah = _prefs?.getInt(_kLastReadSurah);
+    final ayah = _prefs?.getInt(_kLastReadAyah);
+    final at = _prefs?.getInt(_kLastReadAt);
+    if (surah == null || ayah == null) return null;
+    return LastRead(
+      surah: surah,
+      ayah: ayah,
+      at: at == null ? null : DateTime.fromMillisecondsSinceEpoch(at),
+    );
+  }
+
+  Future<void> setLastRead(int surah, int ayah) async {
+    await _prefs?.setInt(_kLastReadSurah, surah);
+    await _prefs?.setInt(_kLastReadAyah, ayah);
+    await _prefs?.setInt(_kLastReadAt, DateTime.now().millisecondsSinceEpoch);
+  }
+}
+
+enum TranslationMode { off, onTap, always }
+
+/// The place the reader was last settled on this device.
+class LastRead {
+  final int surah;
+  final int ayah;
+  final DateTime? at;
+  const LastRead({required this.surah, required this.ayah, this.at});
 }

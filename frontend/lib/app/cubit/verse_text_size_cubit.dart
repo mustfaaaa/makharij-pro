@@ -4,7 +4,8 @@ import '../../services/service_locator.dart';
 
 /// User-adjustable verse text size, applied on recitation screens so the
 /// Arabic text stays legible when the phone is propped up at a distance.
-enum VerseTextSize { small, medium, large }
+/// Stored by name, so the order can grow without breaking saved settings.
+enum VerseTextSize { small, medium, large, extraLarge }
 
 extension VerseTextSizeX on VerseTextSize {
   double get scale {
@@ -15,6 +16,8 @@ extension VerseTextSizeX on VerseTextSize {
         return 1.0;
       case VerseTextSize.large:
         return 1.3;
+      case VerseTextSize.extraLarge:
+        return 1.55;
     }
   }
 
@@ -26,6 +29,8 @@ extension VerseTextSizeX on VerseTextSize {
         return 'Medium';
       case VerseTextSize.large:
         return 'Large';
+      case VerseTextSize.extraLarge:
+        return 'Extra large';
     }
   }
 }

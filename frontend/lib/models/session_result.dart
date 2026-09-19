@@ -43,6 +43,12 @@ class SessionResult {
   /// per the hadith behind the app's hasanah counter).
   final int hasanahEarned;
 
+  /// The ayah range the recitation covered, when known. History has stored
+  /// these all along; they are what lets Home offer to reopen the exact
+  /// passage rather than the whole surah.
+  final int? fromAyah;
+  final int? toAyah;
+
   const SessionResult({
     required this.id,
     required this.surahName,
@@ -56,5 +62,7 @@ class SessionResult {
     this.totalWords = 0,
     this.audioPcm,
     this.hasanahEarned = 0,
+    this.fromAyah,
+    this.toAyah,
   });
 }

@@ -80,7 +80,9 @@ class ApiProgressService implements ProgressService {
     final recommendations = (json['recommendations'] as List).cast<Map<String, dynamic>>();
     final counts = {
       for (final r in recommendations)
-        if (r['error_count'] != null) r['tajweed_rule'] as String: (r['error_count'] as num).toDouble(),
+        // The "no weak areas" plan carries a single entry with no rule.
+        if (r['error_count'] != null && r['tajweed_rule'] != null)
+          r['tajweed_rule'] as String: (r['error_count'] as num).toDouble(),
     };
     // StatisticsCard expects a true 0-100 share of errors, not a raw count.
     final total = counts.values.fold(0.0, (sum, c) => sum + c);

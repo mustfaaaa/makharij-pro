@@ -4,7 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../services/api_client.dart';
-import '../../../../theme/app_colors.dart';
+import '../../../../shared/ui/action_styles.dart';
 
 /// Plays a reference Qari saying the same word the reciter was marked on.
 ///
@@ -88,7 +88,7 @@ class _ReferencePlaybackButtonState extends State<ReferencePlaybackButton> {
     // Once we know there is no reference for this ayah, stop offering it.
     if (_unavailable) return const SizedBox.shrink();
 
-    final label = _loading ? 'Loading…' : (_playing ? 'Playing…' : 'Hear a Qari');
+    final label = _loading ? 'Loading…' : (_playing ? 'Playing…' : 'Hear the Qari');
     return TextButton.icon(
       onPressed: _playing || _loading ? null : _play,
       icon: Icon(
@@ -96,11 +96,7 @@ class _ReferencePlaybackButtonState extends State<ReferencePlaybackButton> {
         size: 18,
       ),
       label: Text(label),
-      style: TextButton.styleFrom(
-        foregroundColor: AppColors.primaryDark,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        visualDensity: VisualDensity.compact,
-      ),
+      style: ActionStyles.listen,
     );
   }
 }

@@ -5,6 +5,7 @@ import '../../../app/cubit/verse_text_size_cubit.dart';
 import '../../../theme/app_radii.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
+import '../../../theme/app_typography.dart';
 import '../feedback/app_bottom_sheet.dart';
 
 class VerseTextSizePicker {
@@ -55,7 +56,9 @@ class _SizeOption extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(child: Text(size.label, style: Theme.of(context).textTheme.bodyLarge)),
-            Text('بِسْمِ اللَّهِ', style: TextStyle(fontSize: 18 * size.scale, color: AppColors.textSecondary)),
+            Text('بِسْمِ اللَّهِ',
+                textDirection: TextDirection.rtl,
+                style: AppTypography.quran(fontSize: 18 * size.scale, color: AppColors.textSecondary, height: 1.6)),
           ],
         ),
       ),

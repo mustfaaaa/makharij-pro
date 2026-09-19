@@ -4,16 +4,20 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/cubit/theme_cubit.dart';
 import '../../../../app/cubit/verse_text_size_cubit.dart';
+import '../../../../models/qari.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/preferences_service.dart';
 import '../../../../services/service_locator.dart';
+import '../../../../shared/ui/list_row.dart';
 import '../../../../shared/widgets/feedback/app_dialogs.dart';
+import '../../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../../../shared/widgets/pickers/verse_text_size_picker.dart';
-import '../../../../shared/widgets/responsive_center.dart';
-import '../../../../shared/widgets/tiles/settings_tile.dart';
-import '../../../../theme/app_colors.dart';
-import '../../../../theme/app_radii.dart';
+import '../../../../shared/widgets/section_header.dart';
 import '../../../../theme/app_spacing.dart';
 
+/// Settings: only what the app actually supports, grouped the way people look
+/// for it. Every row reads and writes a real, persisted preference or opens an
+/// existing screen.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -23,56 +27,59 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late bool _notifications = Services.prefs.notificationsEnabled;
+  late TranslationMode _translation = Services.prefs.translationMode;
+  late bool _transliteration = Services.prefs.showTransliteration;
+  List<Qari> _qaris = const [];
 
-  static String _themeLabel(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return 'Light';
-      case ThemeMode.dark:
-        return 'Dark';
-      case ThemeMode.system:
-        return 'Match device';
-    }
+  @override
+  void initState() {
+    super.initState();
+    Services.rattil.getQaris().then((q) {
+      if (mounted) setState(() => _qaris = q);
+    }).catchError((_) {});
   }
 
-  Future<void> _pickThemeMode(BuildContext context, ThemeMode current) async {
-    final cubit = context.read<ThemeCubit>();
-    await showModalBottomSheet<void>(
+  static String _themeLabel(ThemeMode mode) => switch (mode) {
+        ThemeMode.light => 'Light',
+        ThemeMode.dark => 'Dark',
+        ThemeMode.system => 'Match device',
+      };
+
+  static String _translationLabel(TranslationMode m) => switch (m) {
+        TranslationMode.off => 'Off',
+        TranslationMode.onTap => 'When you tap an ayah',
+        TranslationMode.always => 'Under every ayah',
+      };
+
+  Future<T?> _choose<T>({required String title, required List<(T, String, String?)> options, required T current}) {
+    return showModalBottomSheet<T>(
       context: context,
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.lg)),
-      ),
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screenPadding, AppSpacing.lg, AppSpacing.screenPadding, AppSpacing.sm),
-              child: Text('Appearance', style: Theme.of(sheetContext).textTheme.titleMedium),
-            ),
-            for (final mode in ThemeMode.values)
-              ListTile(
-                leading: Icon(
-                  mode == current ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  color: mode == current ? AppColors.primaryDark : AppColors.textMuted,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 0, AppSpacing.screenPadding, AppSpacing.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(sheetContext).textTheme.headlineSmall),
+              const SizedBox(height: AppSpacing.sm),
+              RadioGroup<T>(
+                groupValue: current,
+                onChanged: (v) => Navigator.of(sheetContext).pop(v),
+                child: Column(
+                  children: [
+                    for (final (value, label, subtitle) in options)
+                      RadioListTile<T>(
+                        contentPadding: EdgeInsets.zero,
+                        value: value,
+                        title: Text(label),
+                        subtitle: subtitle == null ? null : Text(subtitle),
+                      ),
+                  ],
                 ),
-                title: Text(_themeLabel(mode)),
-                subtitle: mode == ThemeMode.system
-                    ? Text(
-                        'Follows the light or dark setting on your phone',
-                        style: Theme.of(sheetContext).textTheme.bodySmall,
-                      )
-                    : null,
-                onTap: () {
-                  cubit.setMode(mode);
-                  Navigator.of(sheetContext).pop();
-                },
               ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -82,62 +89,141 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final themeMode = context.watch<ThemeCubit>().state;
     final verseSize = context.watch<VerseTextSizeCubit>().state;
+    final preferred = _qaris.where((q) => q.qariId == Services.prefs.preferredQariId).firstOrNull;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ResponsiveCenter(child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.screenPadding),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, AppSpacing.sm, AppSpacing.screenPadding, AppSpacing.xl),
         children: [
-          Text('Preferences', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
-          SettingsTile(
-            icon: Icons.notifications_outlined,
+          const SectionHeader(title: 'Appearance'),
+          ListRow(
+            icon: Icons.contrast_rounded,
+            title: 'Theme',
+            subtitle: _themeLabel(themeMode),
+            showDivider: false,
+            onTap: () async {
+              final picked = await _choose<ThemeMode>(
+                title: 'Theme',
+                current: themeMode,
+                options: const [
+                  (ThemeMode.system, 'Match device', 'Follows the light or dark setting on your phone'),
+                  (ThemeMode.light, 'Light', null),
+                  (ThemeMode.dark, 'Dark', null),
+                ],
+              );
+              if (picked != null && context.mounted) context.read<ThemeCubit>().setMode(picked);
+            },
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const SectionHeader(title: 'Reading'),
+          ListRow(
+            icon: Icons.format_size_rounded,
+            title: 'Quran text size',
+            subtitle: verseSize.label,
+            onTap: () => VerseTextSizePicker.show(context),
+          ),
+          ListRow(
+            icon: Icons.translate_rounded,
+            title: 'Translation',
+            subtitle: _translationLabel(_translation),
+            onTap: () async {
+              final picked = await _choose<TranslationMode>(
+                title: 'Translation',
+                current: _translation,
+                options: [
+                  for (final m in TranslationMode.values) (m, _translationLabel(m), null),
+                ],
+              );
+              if (picked == null) return;
+              await Services.prefs.setTranslationMode(picked);
+              setState(() => _translation = picked);
+            },
+          ),
+          ListRow(
+            icon: Icons.abc_rounded,
+            title: 'Transliteration',
+            subtitle: 'Under each ayah. Needs a connection.',
+            showDivider: false,
+            trailing: Switch.adaptive(
+              value: _transliteration,
+              onChanged: (v) async {
+                await Services.prefs.setShowTransliteration(v);
+                setState(() => _transliteration = v);
+              },
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const SectionHeader(title: 'Listening'),
+          ListRow(
+            icon: Icons.graphic_eq_rounded,
+            title: 'Reciter in the reader',
+            subtitle: preferred?.nameEnglish ?? 'The reciter with the most surahs',
+            showDivider: false,
+            onTap: _qaris.isEmpty
+                ? () => AppSnackbar.show(context, 'Reciters could not be loaded. Check your connection.', isError: true)
+                : () async {
+                    final picked = await _choose<String>(
+                      title: 'Reciter in the reader',
+                      current: preferred?.qariId ?? '',
+                      options: [
+                        for (final q in _qaris)
+                          (q.qariId, q.nameEnglish, q.availableSurahs.length >= 114 ? 'Whole Quran' : '${q.availableSurahs.length} surahs'),
+                      ],
+                    );
+                    if (picked == null || picked.isEmpty) return;
+                    await Services.prefs.setPreferredQariId(picked);
+                    setState(() {});
+                  },
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const SectionHeader(title: 'Notifications'),
+          ListRow(
+            icon: Icons.notifications_none_rounded,
             title: 'Notifications',
-            trailing: Switch(
+            subtitle: 'Milestones and updates in the app',
+            showDivider: false,
+            trailing: Switch.adaptive(
               value: _notifications,
               onChanged: (v) async {
                 setState(() => _notifications = v);
                 await Services.prefs.setNotificationsEnabled(v);
               },
-              activeThumbColor: AppColors.primary,
             ),
           ),
-          // Three-way, not a switch: "System" has to be reachable, otherwise
-          // a phone in dark mode still opens this app bright white.
-          SettingsTile(
-            icon: Icons.dark_mode_outlined,
-            title: 'Appearance',
-            subtitle: _themeLabel(themeMode),
-            onTap: () => _pickThemeMode(context, themeMode),
-          ),
-          SettingsTile(
-            icon: Icons.format_size_rounded,
-            title: 'Verse Text Size',
-            subtitle: 'Applies to recitation screens',
-            trailing: Text(verseSize.label, style: TextStyle(color: AppColors.textSecondary)),
-            onTap: () => VerseTextSizePicker.show(context),
+          const SizedBox(height: AppSpacing.lg),
+          const SectionHeader(title: 'Account'),
+          ListRow(icon: Icons.person_outline_rounded, title: 'Edit profile', onTap: () => context.push(RoutePaths.editProfile)),
+          ListRow(
+            icon: Icons.lock_outline_rounded,
+            title: 'Change password',
+            subtitle: 'We email you a secure link',
+            showDivider: false,
+            onTap: () => context.push(RoutePaths.forgotPassword),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text('Account', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
-          SettingsTile(icon: Icons.person_outline, title: 'Edit Profile', onTap: () => context.push(RoutePaths.editProfile)),
-          SettingsTile(icon: Icons.lock_outline, title: 'Change Password', onTap: () => context.push(RoutePaths.forgotPassword)),
+          const SectionHeader(title: 'Support'),
+          ListRow(icon: Icons.help_outline_rounded, title: 'Help and questions', onTap: () => context.push(RoutePaths.helpFaq)),
+          ListRow(icon: Icons.mail_outline_rounded, title: 'Contact us', onTap: () => context.push(RoutePaths.contact)),
+          ListRow(
+            icon: Icons.info_outline_rounded,
+            title: 'About MakharijPro',
+            showDivider: false,
+            onTap: () => context.push(RoutePaths.about),
+          ),
           const SizedBox(height: AppSpacing.lg),
-          Text('Support', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
-          SettingsTile(icon: Icons.info_outline, title: 'About', onTap: () => context.push(RoutePaths.about)),
-          SettingsTile(icon: Icons.help_outline, title: 'Help & FAQ', onTap: () => context.push(RoutePaths.helpFaq)),
-          SettingsTile(icon: Icons.mail_outline, title: 'Contact Us', onTap: () => context.push(RoutePaths.contact)),
-          const SizedBox(height: AppSpacing.lg),
-          SettingsTile(
+          ListRow(
             icon: Icons.logout_rounded,
-            title: 'Logout',
-            iconColor: AppColors.error,
+            title: 'Sign out',
+            destructive: true,
+            showDivider: false,
             onTap: () async {
               final confirmed = await AppDialogs.confirm(
                 context,
-                title: 'Logout',
-                message: 'Are you sure you want to logout?',
-                confirmLabel: 'Logout',
+                title: 'Sign out?',
+                message: 'Your recitations and progress stay saved to your account.',
+                confirmLabel: 'Sign out',
+                cancelLabel: 'Stay signed in',
                 isDestructive: true,
               );
               if (confirmed != true) return;
@@ -146,7 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
         ],
-      )),
+      ),
     );
   }
 }

@@ -22,9 +22,11 @@ class PracticePlanItem {
 
   factory PracticePlanItem.fromJson(Map<String, dynamic> json) {
     return PracticePlanItem(
-      rule: json['rule'] as String,
-      tajweedRule: json['tajweed_rule'] as String,
-      reason: json['reason'] as String,
+      // The backend sends a null rule for "no recurring errors", so none of
+      // these may assume a string.
+      rule: json['rule'] as String? ?? '',
+      tajweedRule: json['tajweed_rule'] as String? ?? '',
+      reason: json['reason'] as String? ?? '',
       errorCount: json['error_count'] as int?,
       examples: ((json['examples'] as List?) ?? const [])
           .cast<Map<String, dynamic>>()
