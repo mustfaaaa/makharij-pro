@@ -10,6 +10,7 @@ import '../models/session_result.dart';
 import '../models/tajweed_error.dart';
 import '../models/word_verdict.dart';
 import 'api_client.dart';
+import 'server_cache.dart';
 import 'quran_text_repository.dart';
 
 /// Default reference Qari, sent for analytics only -- the phoneme model
@@ -232,11 +233,49 @@ class ApiSessionService implements SessionService {
   /// can show its per-word verdicts and play its audio back without a refetch.
   SessionResult? _lastResult;
 
+  /// The history, briefly cached. Opening the app asks for it three times at
+  /// once -- the home screen's "continue your recitation", the progress
+  /// glance, and the recent list -- and each one used to be its own round trip
+  /// to the server. Requests that arrive while one is in flight share it, and
+  /// the answer is reused for a few seconds; writing a session or a re-attempt
+  /// clears it, so nothing shows a stale history after a recitation.
+  static const _historyTtl = Duration(seconds: 20);
+  Future<List<SessionResult>>? _inFlightHistory;
+  List<SessionResult>? _history;
+  DateTime? _historyAt;
+
   @override
-  Future<List<SessionResult>> getSessions() async {
+  Future<List<SessionResult>> getSessions() {
+    final cached = _history;
+    final at = _historyAt;
+    if (cached != null && at != null && DateTime.now().difference(at) < _historyTtl) {
+      return Future.value(cached);
+    }
+    var request = _inFlightHistory;
+    if (request == null) {
+      request = _fetchSessions();
+      _inFlightHistory = request;
+      // See CachedValue: the shared request always keeps a listener.
+      request.then((_) {}, onError: (_) {}).whenComplete(() => _inFlightHistory = null);
+    }
+    return request;
+  }
+
+  Future<List<SessionResult>> _fetchSessions() async {
     final json = await _client.get('/api/v1/sessions');
     final sessions = (json['sessions'] as List).cast<Map<String, dynamic>>();
-    return sessions.map(_sessionFromHistoryJson).toList();
+    final parsed = sessions.map(_sessionFromHistoryJson).toList();
+    _history = parsed;
+    _historyAt = DateTime.now();
+    return parsed;
+  }
+
+  /// Called after anything that changes the stored history: this device just
+  /// wrote a recitation, so every screen's cached numbers are out of date.
+  void _forgetHistory() {
+    _history = null;
+    _historyAt = null;
+    ServerCache.invalidate();
   }
 
   @override
@@ -290,6 +329,7 @@ class ApiSessionService implements SessionService {
       toAyah: json['to_ayah'] as int? ?? toAyah,
     );
     _lastResult = result;
+    _forgetHistory();
     return result;
   }
 
@@ -340,6 +380,7 @@ class ApiSessionService implements SessionService {
         if (wordIndex != null) 'word_index': wordIndex.toString(),
       },
     );
+    _forgetHistory();
     return ReattemptOutcome.fromJson(json);
   }
 

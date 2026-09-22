@@ -1,6 +1,7 @@
 import '../dummy/dummy_practice_plan.dart';
 import '../models/practice_plan_item.dart';
 import 'api_client.dart';
+import 'server_cache.dart';
 
 abstract class PracticePlanService {
   Future<List<PracticePlanItem>> getPlan();
@@ -16,11 +17,14 @@ class DummyPracticePlanService implements PracticePlanService {
 
 class ApiPracticePlanService implements PracticePlanService {
   final ApiClient _client;
-  const ApiPracticePlanService([this._client = const ApiClient()]);
+  ApiPracticePlanService([this._client = const ApiClient()]);
+
+  late final CachedValue<Map<String, dynamic>> _plan =
+      CachedValue(() => _client.get('/api/v1/practice-plan'));
 
   @override
   Future<List<PracticePlanItem>> getPlan() async {
-    final json = await _client.get('/api/v1/practice-plan');
+    final json = await _plan.get();
     final recommendations = (json['recommendations'] as List).cast<Map<String, dynamic>>();
     return recommendations.map(PracticePlanItem.fromJson).toList();
   }

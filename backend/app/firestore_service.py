@@ -21,6 +21,8 @@ Sessions written under the old schema have no `mistakeCounts` and are skipped by
 the rule-based statistics rather than being reinterpreted as something they
 aren't; they still count towards streaks and session totals.
 """
+import threading
+import time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
@@ -37,6 +39,22 @@ RULE_LABELS = {
 RULES = tuple(RULE_LABELS)
 
 MIN_HISTORY_FOR_PERSONALIZED_PLAN = 3  # Algorithm 6.5's MIN_HISTORY
+
+# Every derived statistic reads the session history, which is a full Firestore
+# read of one user's sessions. That history only changes when this server saves
+# a session, records word feedback, or applies a re-attempt, so it is cached per
+# user and dropped on exactly those writes. The TTL is the backstop for a change
+# made outside this process (a second instance, or the Firebase console): stale
+# numbers can last a few seconds, never longer.
+_HISTORY_TTL_SECONDS = 30
+_history_cache: dict[str, tuple[float, list[dict]]] = {}
+_history_lock = threading.Lock()
+
+# How far back the statistics that only describe recent practice will read.
+# Progress deliberately has no limit: it reports the total number of sessions
+# and the day streak, and both are wrong if older sessions are left out.
+RULE_MASTERY_HISTORY = 100
+PRACTICE_PLAN_HISTORY = 200
 
 # How many per-word verdicts a session keeps for the label store (below).
 # A Firestore document is capped at ~1 MiB; at roughly 150 bytes a verdict this
@@ -149,6 +167,7 @@ def save_session(uid: str, model_id: str, surah_number: int, from_ayah: int,
         "toAyah": to_ayah,
         **summary,
     })
+    invalidate_history(uid)
     return session_ref.id
 
 
@@ -187,16 +206,50 @@ def record_word_feedback(uid: str, session_id: str, ayah_number: int,
         "at": datetime.now(timezone.utc),
     })
     session_ref.update({"wordFeedback": feedback})
+    invalidate_history(uid)
     return {"session_id": session_id, "word_feedback_count": len(feedback)}
 
 
-def _fetch_all_sessions(uid: str) -> list[dict]:
+def fetch_sessions(uid: str, limit: int | None = None) -> list[dict]:
+    """The session history, newest first, read once and cached briefly.
+
+    Every statistic below is derived from this same list: pass it in rather than
+    letting each one re-read Firestore. Opening the progress screen used to cost
+    three reads of the whole history, and the notifications feed five.
+
+    `limit` is for the statistics that only describe recent practice; a limited
+    read is never cached, since it is not the whole history."""
+    if limit is not None:
+        return _fetch_all_sessions(uid, limit=limit)
+
+    now = time.monotonic()
+    with _history_lock:
+        cached = _history_cache.get(uid)
+        if cached is not None and now - cached[0] < _HISTORY_TTL_SECONDS:
+            return list(cached[1])
+
+    sessions = _fetch_all_sessions(uid)
+    with _history_lock:
+        _history_cache[uid] = (now, sessions)
+    return list(sessions)
+
+
+def invalidate_history(uid: str) -> None:
+    """Called after every write that changes what the statistics would say, so
+    the next screen shows the new recitation rather than the cached history."""
+    with _history_lock:
+        _history_cache.pop(uid, None)
+
+
+def _fetch_all_sessions(uid: str, limit: int | None = None) -> list[dict]:
     db = get_firestore_client()
-    docs = (
+    query = (
         db.collection("users").document(uid).collection("sessions")
-        .order_by("createdAt", direction="DESCENDING").stream()
+        .order_by("createdAt", direction="DESCENDING")
     )
-    return [doc.to_dict() for doc in docs]
+    if limit is not None:
+        query = query.limit(limit)
+    return [doc.to_dict() for doc in query.stream()]
 
 
 def _word_level_sessions(sessions: list[dict]) -> list[dict]:
@@ -206,9 +259,9 @@ def _word_level_sessions(sessions: list[dict]) -> list[dict]:
     return [s for s in sessions if "mistakeCounts" in s]
 
 
-def compute_progress_stats(uid: str) -> dict:
+def compute_progress_stats(uid: str, sessions: list[dict] | None = None) -> dict:
     """FR-13: day streak, average score, and chart-ready history for the progress dashboard."""
-    sessions = _fetch_all_sessions(uid)
+    sessions = fetch_sessions(uid) if sessions is None else sessions
     if not sessions:
         return {"total_sessions": 0, "avg_score": 0.0, "day_streak": 0, "daily_scores": []}
 
@@ -241,13 +294,13 @@ def compute_progress_stats(uid: str) -> dict:
     }
 
 
-def compute_activity_heatmap(uid: str, weeks: int = 10) -> list[list[int]]:
+def compute_activity_heatmap(uid: str, weeks: int = 10, sessions: list[dict] | None = None) -> list[list[int]]:
     """Session-count-per-day for the last `weeks` weeks, shaped [week][day] (oldest week
     first, day 0 = the start of that 7-day chunk) to match the dashboard's existing grid.
     Not calendar-aligned to Mon-Sun -- the UI never showed weekday labels, so a simple
     "last N days chunked into 7s" grid is honest without inventing an alignment nobody asked for.
     Counts are capped at 4 to match the existing 5-level color scale."""
-    sessions = _fetch_all_sessions(uid)
+    sessions = fetch_sessions(uid) if sessions is None else sessions
     counts_by_date: dict = {}
     for s in sessions:
         d = s["createdAt"].date()
@@ -260,7 +313,7 @@ def compute_activity_heatmap(uid: str, weeks: int = 10) -> list[list[int]]:
     return [levels[w * 7:(w + 1) * 7] for w in range(weeks)]
 
 
-def compute_rule_mastery(uid: str, window: int = 20) -> dict:
+def compute_rule_mastery(uid: str, window: int = 20, sessions: list[dict] | None = None) -> dict:
     """Share of recited words free of each rule's mistakes, over the last
     `window` sessions, as a 0-100 percentage.
 
@@ -271,7 +324,9 @@ def compute_rule_mastery(uid: str, window: int = 20) -> dict:
     rule", and are comparable between rules and over time, but are not a claim
     about per-rule opportunity.
     """
-    sessions = _word_level_sessions(_fetch_all_sessions(uid))[:window]
+    sessions = _word_level_sessions(
+        fetch_sessions(uid, limit=RULE_MASTERY_HISTORY) if sessions is None else sessions
+    )[:window]
     words = sum(s.get("wordsRecited", 0) for s in sessions)
     if words == 0:
         return {}
@@ -287,14 +342,14 @@ def compute_rule_mastery(uid: str, window: int = 20) -> dict:
     }
 
 
-def compute_achievements(uid: str) -> list[dict]:
+def compute_achievements(uid: str, sessions: list[dict] | None = None) -> list[dict]:
     """Every badge here is derived from real session history -- no fabricated
     unlock state. 'Tajweed Scholar' (read all rule explanations) has no
     backing data source yet (the Tajweed Rules library has no read-tracking),
     so it's always reported locked at 0 progress rather than a guess."""
-    sessions = _fetch_all_sessions(uid)
+    sessions = fetch_sessions(uid) if sessions is None else sessions
     total = len(sessions)
-    day_streak = compute_progress_stats(uid)["day_streak"]
+    day_streak = compute_progress_stats(uid, sessions)["day_streak"]
     best_score = max((s.get("accuracyScore", 0.0) for s in sessions), default=0.0)
     distinct_surahs = len({s["surahNumber"] for s in sessions if s.get("surahNumber") is not None})
 
@@ -318,7 +373,7 @@ def compute_achievements(uid: str) -> list[dict]:
     ]
 
 
-def compute_notifications(uid: str) -> list[dict]:
+def compute_notifications(uid: str, sessions: list[dict] | None = None) -> list[dict]:
     """A real, derived status feed -- not a stored/triggered notification system (no push
     infrastructure exists). Composed from the same achievement/progress/practice-plan data
     already computed elsewhere, generated fresh on each call rather than logged historically,
@@ -326,7 +381,8 @@ def compute_notifications(uid: str) -> list[dict]:
     now = datetime.now(timezone.utc).isoformat()
     notifications = []
 
-    stats = compute_progress_stats(uid)
+    sessions = fetch_sessions(uid) if sessions is None else sessions
+    stats = compute_progress_stats(uid, sessions)
     if stats["day_streak"] >= 1:
         notifications.append({
             "id": "streak_active", "type": "tip", "dateTime": now,
@@ -340,14 +396,14 @@ def compute_notifications(uid: str) -> list[dict]:
             "message": "Recite today to start a new streak.",
         })
 
-    for badge in compute_achievements(uid):
+    for badge in compute_achievements(uid, sessions):
         if badge["is_unlocked"]:
             notifications.append({
                 "id": f"achievement_{badge['id']}", "type": "achievement", "dateTime": now,
                 "title": "Achievement unlocked", "message": badge["title"],
             })
 
-    plan = generate_practice_plan(uid)
+    plan = generate_practice_plan(uid, sessions)
     if plan["plan_type"] == "personalized" and plan["recommendations"]:
         top = plan["recommendations"][0]
         notifications.append({
@@ -358,7 +414,7 @@ def compute_notifications(uid: str) -> list[dict]:
     return notifications
 
 
-def generate_practice_plan(uid: str) -> dict:
+def generate_practice_plan(uid: str, sessions: list[dict] | None = None) -> dict:
     """FR-14 / Algorithm 6.5: rank Tajweed rules by how often the user's own
     recitations actually broke them, and point at the words they broke them on.
 
@@ -366,7 +422,9 @@ def generate_practice_plan(uid: str) -> dict:
     name real evidence -- the specific words that were flagged, from the user's
     own sessions.
     """
-    sessions = _word_level_sessions(_fetch_all_sessions(uid))
+    sessions = _word_level_sessions(
+        fetch_sessions(uid, limit=PRACTICE_PLAN_HISTORY) if sessions is None else sessions
+    )
     if len(sessions) < MIN_HISTORY_FOR_PERSONALIZED_PLAN:
         return {
             "plan_type": "beginner",
@@ -530,6 +588,7 @@ def apply_reattempt(uid: str, session_id: str, results,
         "reattempts": reattempts,
     }
     session_ref.update(update)
+    invalidate_history(uid)
 
     return {
         "session_id": session_id,

@@ -1,6 +1,8 @@
 import logging
+import threading
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from starlette.concurrency import run_in_threadpool
 
 from .. import firestore_service
 from ..auth import get_current_uid
@@ -16,6 +18,17 @@ UNRECITED_TAIL_WORDS = 120
 
 # Recorded on every session so history can say which analysis produced it.
 PHONEME_MODEL_ID = "quran-lab-zipformer-p-arabic-v3.1"
+
+# The recognizer is one shared object, so one recitation is analysed at a time.
+# This lock keeps that true while the work runs in a worker thread instead of on
+# the event loop: analysing a long recitation no longer holds up the progress
+# screen, the practice plan or Rattil.
+_analysis_lock = threading.Lock()
+
+
+def _analyze(service, audio_bytes, surah_number, from_ayah, to_ayah):
+    with _analysis_lock:
+        return service.analyze_range(audio_bytes, surah_number, from_ayah, to_ayah)
 
 
 @router.post("/sessions/analyze_word_level")
@@ -63,7 +76,7 @@ async def analyze_word_level(
         from_ayah = to_ayah = ayah_number
 
     try:
-        results = service.analyze_range(audio_bytes, surah_number, from_ayah, to_ayah)
+        results = await run_in_threadpool(_analyze, service, audio_bytes, surah_number, from_ayah, to_ayah)
     except ValueError as exc:
         # No phoneme reference for this surah/range -- helpful, not a bare 404.
         raise HTTPException(status_code=404, detail=str(exc))
@@ -72,7 +85,8 @@ async def analyze_word_level(
         raise HTTPException(status_code=422, detail=f"Could not analyze audio: {exc}")
 
     summary = firestore_service.summarize_word_results(results)
-    session_id = firestore_service.save_session(
+    session_id = await run_in_threadpool(
+        firestore_service.save_session,
         uid=uid,
         model_id=PHONEME_MODEL_ID,
         surah_number=surah_number,
@@ -204,7 +218,7 @@ async def reattempt(
         )
 
     try:
-        results = service.analyze_range(audio_bytes, surah_number, from_ayah, to_ayah)
+        results = await run_in_threadpool(_analyze, service, audio_bytes, surah_number, from_ayah, to_ayah)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
@@ -212,45 +226,50 @@ async def reattempt(
         raise HTTPException(status_code=422, detail=f"Could not analyze audio: {exc}")
 
     try:
-        return firestore_service.apply_reattempt(uid, session_id, results, scope)
+        return await run_in_threadpool(firestore_service.apply_reattempt, uid, session_id, results, scope)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+# These read Firestore through its synchronous client. Declared `async`, that
+# read blocked the event loop, so the four calls the home screen makes at once
+# were served one after another. Declared `def`, FastAPI runs them in its worker
+# threads and they overlap.
 @router.get("/progress")
-async def get_progress(uid: str = Depends(get_current_uid)):
+def get_progress(uid: str = Depends(get_current_uid)):
     """FR-13: day streak, average score, chart-ready daily history, activity heatmap, and
     per-rule mastery for the progress dashboard."""
-    stats = firestore_service.compute_progress_stats(uid)
-    stats["activity_heatmap"] = firestore_service.compute_activity_heatmap(uid)
-    stats["rule_mastery"] = firestore_service.compute_rule_mastery(uid)
+    sessions = firestore_service.fetch_sessions(uid)
+    stats = firestore_service.compute_progress_stats(uid, sessions)
+    stats["activity_heatmap"] = firestore_service.compute_activity_heatmap(uid, sessions=sessions)
+    stats["rule_mastery"] = firestore_service.compute_rule_mastery(uid, sessions=sessions)
     return stats
 
 
 @router.get("/achievements")
-async def get_achievements(uid: str = Depends(get_current_uid)):
+def get_achievements(uid: str = Depends(get_current_uid)):
     """Real, session-history-derived badge unlock state -- see firestore_service.py
     for exactly what each badge is computed from."""
     return {"achievements": firestore_service.compute_achievements(uid)}
 
 
 @router.get("/notifications")
-async def get_notifications(uid: str = Depends(get_current_uid)):
+def get_notifications(uid: str = Depends(get_current_uid)):
     """A real, derived status feed (streak, achievements, top practice-plan focus) --
     not a stored/triggered notification system. See firestore_service.py's docstring."""
     return {"notifications": firestore_service.compute_notifications(uid)}
 
 
 @router.get("/practice-plan")
-async def get_practice_plan(uid: str = Depends(get_current_uid)):
+def get_practice_plan(uid: str = Depends(get_current_uid)):
     """FR-14/Algorithm 6.5: recommends which rules to practice based on recurring weak areas."""
     return firestore_service.generate_practice_plan(uid)
 
 
 @router.get("/sessions")
-async def list_sessions(uid: str = Depends(get_current_uid)):
+def list_sessions(uid: str = Depends(get_current_uid)):
     """Session history for the progress dashboard (FR-13/UC-5)."""
     db = get_firestore_client()
     docs = (

@@ -2,6 +2,7 @@ import '../dummy/dummy_progress.dart';
 import '../models/progress_point.dart';
 import '../models/progress_summary.dart';
 import 'api_client.dart';
+import 'server_cache.dart';
 
 abstract class ProgressService {
   Future<List<ProgressPoint>> getProgressPoints();
@@ -46,11 +47,19 @@ class DummyProgressService implements ProgressService {
 /// just viewed through a different endpoint rather than duplicated.
 class ApiProgressService implements ProgressService {
   final ApiClient _client;
-  const ApiProgressService([this._client = const ApiClient()]);
+  ApiProgressService([this._client = const ApiClient()]);
+
+  // The home screen's progress strip, the progress tab and the statistics page
+  // all want these two answers at once, and both of the first two come from the
+  // same endpoint. Ask for each at most once every few seconds; see ServerCache.
+  late final CachedValue<Map<String, dynamic>> _progress =
+      CachedValue(() => _client.get('/api/v1/progress'));
+  late final CachedValue<Map<String, dynamic>> _plan =
+      CachedValue(() => _client.get('/api/v1/practice-plan'));
 
   @override
   Future<ProgressSummary> getSummary() async {
-    final json = await _client.get('/api/v1/progress');
+    final json = await _progress.get();
     final heatmapJson = (json['activity_heatmap'] as List?) ?? const [];
     final masteryJson = (json['rule_mastery'] as Map<String, dynamic>?) ?? const {};
     return ProgressSummary(
@@ -64,7 +73,7 @@ class ApiProgressService implements ProgressService {
 
   @override
   Future<List<ProgressPoint>> getProgressPoints() async {
-    final json = await _client.get('/api/v1/progress');
+    final json = await _progress.get();
     final dailyScores = (json['daily_scores'] as List).cast<Map<String, dynamic>>();
     return dailyScores
         .map((d) => ProgressPoint(
@@ -76,7 +85,7 @@ class ApiProgressService implements ProgressService {
 
   @override
   Future<Map<String, double>> getErrorTypeBreakdown() async {
-    final json = await _client.get('/api/v1/practice-plan');
+    final json = await _plan.get();
     final recommendations = (json['recommendations'] as List).cast<Map<String, dynamic>>();
     final counts = {
       for (final r in recommendations)
