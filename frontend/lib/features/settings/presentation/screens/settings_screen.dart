@@ -6,6 +6,7 @@ import '../../../../app/cubit/theme_cubit.dart';
 import '../../../../app/cubit/verse_text_size_cubit.dart';
 import '../../../../models/qari.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/api_config.dart';
 import '../../../../services/preferences_service.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/ui/list_row.dart';
@@ -82,6 +83,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Where this device looks for the MakharijPro server. The app already tries
+  /// the address it was built with, the last one that worked, and localhost --
+  /// this is for the case where none of those are right: type the machine's
+  /// address, or have the app look for it on this network. Debug builds only.
+  Future<void> _editBackendAddress() async {
+    const findSentinel = '\u0000find';
+    final controller = TextEditingController(text: Services.prefs.backendBaseUrl ?? '');
+    final answer = await showDialog<String?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Backend address'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'The machine running the MakharijPro server, for example '
+              '192.168.1.23:8000. Leave it empty to let the app choose.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(hintText: '192.168.1.23:8000'),
+              onSubmitted: (v) => Navigator.of(context).pop(v),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(findSentinel),
+            child: const Text('Find it for me'),
+          ),
+          FilledButton(onPressed: () => Navigator.of(context).pop(controller.text), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (answer == null || !mounted) return;
+
+    if (answer == findSentinel) {
+      await _findBackend();
+      return;
+    }
+
+    await ApiConfig.setBaseUrl(answer);
+    final reachable = await ApiConfig.canReach(ApiConfig.baseUrl);
+    if (!mounted) return;
+    setState(() {});
+    AppSnackbar.show(
+      context,
+      reachable
+          ? 'The server answered at ${ApiConfig.baseUrl}'
+          : 'Saved, but nothing answered at ${ApiConfig.baseUrl} yet',
+    );
+  }
+
+  /// Asks every address on this Wi-Fi whether it is the MakharijPro server.
+  Future<void> _findBackend() async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(width: 16),
+            Expanded(child: Text('Looking for the server on this network')),
+          ],
+        ),
+      ),
+    );
+    final found = await ApiConfig.findOnLocalNetwork();
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    setState(() {});
+    AppSnackbar.show(
+      context,
+      found != null
+          ? 'Found the server at $found'
+          : 'No server answered on this network. Check that it is running, and that both are on the same Wi-Fi.',
     );
   }
 
@@ -211,6 +298,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             showDivider: false,
             onTap: () => context.push(RoutePaths.about),
           ),
+          if (ApiConfig.isConfigurable) ...[
+            const SizedBox(height: AppSpacing.lg),
+            const SectionHeader(
+              title: 'Developer',
+              subtitle: 'Debug builds only. Where this device looks for the MakharijPro server.',
+            ),
+            ListRow(
+              icon: Icons.dns_outlined,
+              title: 'Backend address',
+              subtitle: '${ApiConfig.baseUrl} · ${ApiConfig.source}',
+              showDivider: false,
+              onTap: _editBackendAddress,
+            ),
+          ],
           const SizedBox(height: AppSpacing.lg),
           ListRow(
             icon: Icons.logout_rounded,

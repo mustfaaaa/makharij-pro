@@ -82,13 +82,19 @@ class LiveRecitationChannel {
   /// Never throws — a failed connection just means no live highlighting.
   Future<bool> connect({required int surahNumber, int fromAyah = 1}) async {
     try {
-      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      // Live highlighting is a bonus on top of the recording, so every step
+      // here is bounded: a slow socket must never delay the microphone.
+      final token = await FirebaseAuth.instance.currentUser
+          ?.getIdToken()
+          .timeout(const Duration(seconds: 5));
       if (token == null) return false;
 
-      final uri = Uri.parse('$kApiBaseUrl/api/v1/sessions/stream')
-          .replace(scheme: kApiBaseUrl.startsWith('https') ? 'wss' : 'ws');
+      await ApiConfig.ready;
+      final base = ApiConfig.baseUrl;
+      final uri = Uri.parse('$base/api/v1/sessions/stream')
+          .replace(scheme: base.startsWith('https') ? 'wss' : 'ws');
       final channel = WebSocketChannel.connect(uri);
-      await channel.ready;
+      await channel.ready.timeout(const Duration(seconds: 5));
       _channel = channel;
 
       channel.sink.add(jsonEncode({

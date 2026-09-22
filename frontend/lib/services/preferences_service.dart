@@ -128,6 +128,41 @@ class PreferencesService {
     await _prefs?.setInt(_kLastReadAyah, ayah);
     await _prefs?.setInt(_kLastReadAt, DateTime.now().millisecondsSinceEpoch);
   }
+  // Which backend this device talks to, when it is not the default. Debug
+  // convenience only: it is how a phone reaches a laptop on the same Wi-Fi
+  // without adb. See ApiConfig.
+  static const _kBackendBaseUrl = 'pref.dev.backendBaseUrl';
+
+  String? get backendBaseUrl => _prefs?.getString(_kBackendBaseUrl);
+
+  // The last address that actually answered, remembered so a build carrying no
+  // address of its own (Android Studio, plain `flutter run`) finds the same
+  // server again.
+  static const _kBackendLastGoodUrl = 'pref.dev.backendLastGoodUrl';
+
+  String? get backendLastGoodUrl => _prefs?.getString(_kBackendLastGoodUrl);
+
+  Future<void> setBackendLastGoodUrl(String value) async {
+    await _prefs?.setString(_kBackendLastGoodUrl, value);
+  }
+
+  Future<void> setBackendBaseUrl(String? value) async {
+    if (value == null || value.isEmpty) {
+      await _prefs?.remove(_kBackendBaseUrl);
+    } else {
+      await _prefs?.setString(_kBackendBaseUrl, value);
+    }
+  }
+
+  // The day the full launch animation last played (yyyy-mm-dd). It plays once
+  // a day; the other launches get the short version.
+  static const _kLastFullLaunchDay = 'pref.launch.lastFullDay';
+
+  String? get lastFullLaunchDay => _prefs?.getString(_kLastFullLaunchDay);
+
+  Future<void> setLastFullLaunchDay(String day) async {
+    await _prefs?.setString(_kLastFullLaunchDay, day);
+  }
 }
 
 enum TranslationMode { off, onTap, always }

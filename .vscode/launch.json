@@ -46,11 +46,37 @@
       }
     },
     {
+      // Desktop, web, emulator, or a phone with `adb reverse` up: the app's
+      // own default (localhost:8000) is right for all of those.
       "name": "App (Flutter)",
       "type": "dart",
       "request": "launch",
       "program": "lib/main.dart",
-      "cwd": "${workspaceFolder}/frontend"
+      "cwd": "${workspaceFolder}/frontend",
+      // Opens the adb tunnel (USB or wireless) and waits for the backend, so
+      // the app starts against a server that is already answering on
+      // localhost:8000. No address to keep up to date.
+      "preLaunchTask": "Prepare phone and wait for backend"
+    },
+    {
+      // A real phone with no adb tunnel: the app is built pointing at this
+      // machine's Wi-Fi address, so it keeps working when the phone drops off
+      // wireless debugging. The prompt is pre-filled; run the task
+      // "Show this PC's Wi-Fi address" if the router has handed out a new one.
+      "name": "App on phone (Wi-Fi backend)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/frontend",
+      "toolArgs": ["--dart-define=API_BASE_URL=http://${input:backendHost}"]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "backendHost",
+      "type": "promptString",
+      "description": "Address of the machine running the backend (host:port)",
+      "default": "192.168.18.178:8000"
     }
   ],
   "compounds": [
@@ -58,8 +84,18 @@
       // Starts the backend and the app together. The app talks to the backend
       // over localhost:8000, so on a physical phone this still needs
       // `adb reverse tcp:8000 tcp:8000` -- see .vscode/tasks.json.
+      // The everyday one: F5 here starts the server, opens the phone's tunnel,
+      // waits for /health, then runs the app on the device.
       "name": "Backend + App",
       "configurations": ["Backend (FastAPI)", "App (Flutter)"],
+      "stopAll": true
+    },
+    {
+      // The one to pick for a phone: the backend listens on 0.0.0.0, and the
+      // app is built with this machine's Wi-Fi address, so no adb is involved.
+      // Both devices must be on the same Wi-Fi.
+      "name": "Backend + App on phone (Wi-Fi)",
+      "configurations": ["Backend (FastAPI)", "App on phone (Wi-Fi backend)"],
       "stopAll": true
     }
   ]

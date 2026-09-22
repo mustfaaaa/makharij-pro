@@ -32,6 +32,28 @@
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
+      // Run before every phone launch (see .vscode/launch.json): opens the
+      // adb tunnel so the phone's localhost:8000 is this machine's, then waits
+      // for the backend's /health. Never fails a launch.
+      "label": "Prepare phone and wait for backend",
+      "type": "shell",
+      "command": "powershell",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/dev-phone.ps1"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared", "clear": true }
+    },
+    {
+      // The address to give the phone when it is not going through adb. It
+      // changes whenever the router hands out a new lease.
+      "label": "Show this PC's Wi-Fi address",
+      "type": "shell",
+      "command": "powershell",
+      "args": ["-NoProfile", "-Command",
+               "Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '127.*' -and $_.PrefixOrigin -ne 'WellKnown' } | ForEach-Object { \"$($_.InterfaceAlias): http://$($_.IPAddress):8000\" }"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
       "label": "Backend health check",
       "type": "shell",
       "command": "curl",
