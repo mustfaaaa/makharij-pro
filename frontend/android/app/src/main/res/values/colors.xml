@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#1F6E4E</color>
-    <color name="launch_background">#F1E7D3</color>
+    <color name="ic_launcher_background">#1E4D3B</color>
+    <!-- The deep green the launch animation opens on: the system splash and
+         Flutter's first frame share it, so there is no visible hand-off. -->
+    <color name="launch_background">#0E271F</color>
 </resources>

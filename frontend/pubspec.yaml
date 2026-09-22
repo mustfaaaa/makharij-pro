@@ -91,8 +91,13 @@ flutter:
       fonts:
         - asset: assets/fonts/AmiriQuran-Regular.ttf
 
+# The mark: the Mushaf's eight-point star with a voice inside it. Regenerate
+# the Android icons with `dart run flutter_launcher_icons` after changing the
+# source images (drawn from one geometry by the design script, 1024 px).
 flutter_launcher_icons:
   android: true
   image_path: "assets/icons/app_icon.png"
-  adaptive_icon_background: "#1F6E4E"
+  adaptive_icon_background: "#1E4D3B"
   adaptive_icon_foreground: "assets/icons/app_icon_foreground.png"
+  # Android 13+ themed icons: one colour, tinted by the system.
+  adaptive_icon_monochrome: "assets/icons/app_icon_monochrome.png"

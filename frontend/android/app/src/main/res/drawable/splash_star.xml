@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher's star, inset so it sits well inside the circle the Android 12+
+     splash keeps. Same drawable as the icon, so the two can never drift apart. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_foreground"
+    android:inset="26%" />
