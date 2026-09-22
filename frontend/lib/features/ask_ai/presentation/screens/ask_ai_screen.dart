@@ -14,8 +14,10 @@ import '../../../../models/surah.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/quran_text_repository.dart';
 import '../../../../services/rattil_request_parser.dart';
+import '../../../../services/api_config.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/audio/qari_player_controller.dart';
+import '../../../../shared/widgets/feedback/app_bottom_sheet.dart';
 import '../../../../shared/ui/ornaments.dart';
 import '../../../../shared/ui/photo.dart';
 import '../../../../theme/app_colors.dart';
@@ -80,6 +82,10 @@ class _ChatMessage {
 class _PlayerController {
   _AudioExampleCardState? _card;
 
+  /// Whether this player is sounding right now. The header reads it: the bars
+  /// and the filling line are only ever shown while audio is really playing.
+  final ValueNotifier<bool> playing = ValueNotifier(false);
+
   bool get attached => _card != null;
 
   /// Carries out [commands] and says what was done, in a sentence for the chat.
@@ -112,6 +118,11 @@ class _AskAiScreenState extends State<AskAiScreen> {
 
   bool get _ready => _status != _LibraryStatus.loading;
 
+  /// The header folds while the conversation is scrolled, and wakes while a
+  /// Qari is reciting. Both are plain flags; nothing here invents motion.
+  bool _collapsed = false;
+  bool _reciting = false;
+
   /// The reciter picked on screen (FR-16): who plays when a message names no
   /// one. Starts on whoever has the most of the Quran.
   Qari? _selectedQari;
@@ -139,34 +150,42 @@ class _AskAiScreenState extends State<AskAiScreen> {
   /// Loads the reciters and surah list. It used to mark the screen "ready"
   /// even when this failed, so a green status sat beside an error; the status
   /// now says what actually happened, and a failure can be retried.
+  /// The Retry beside "Offline": look for the server again, then reload. A
+  /// button that only repeated the same failing call would be a lie.
+  Future<void> _retryLibrary() async {
+    setState(() => _status = _LibraryStatus.loading);
+    await ApiConfig.ensureReachable(force: true);
+    if (!mounted) return;
+    _loadLibrary();
+  }
+
   void _loadLibrary() {
     setState(() => _status = _LibraryStatus.loading);
-    Future.wait([
-      Services.rattil.getQaris(),
-      Services.surah.getSurahs(),
-    ]).then((results) {
-      if (!mounted) return;
-      setState(() {
-        _qaris = results[0] as List<Qari>;
-        _surahs = results[1] as List<Surah>;
-        // The rules library is bundled with the app, so questions about a
-        // rule are answered offline and from the same text the library shows.
-        _parser = RattilRequestParser(surahs: _surahs, qaris: _qaris, rules: tajweedRules);
-        _selectedQari = _qaris.isEmpty
-            ? null
-            : _qaris.reduce((a, b) => b.availableSurahs.length > a.availableSurahs.length ? b : a);
-        _status = _LibraryStatus.ready;
-        _messages.removeWhere((m) => !m.fromUser && m.recitation == null && m.text == _unreachable);
-        // Summarised by reciter rather than listing 114 surah names.
-        if (_messages.isEmpty) _messages.add(_ChatMessage(fromUser: false, text: _parser.describeLibrary()));
-      });
-    }).catchError((_) {
-      if (!mounted) return;
-      setState(() {
-        _status = _LibraryStatus.failed;
-        if (_messages.isEmpty) _messages.add(const _ChatMessage(fromUser: false, text: _unreachable));
-      });
-    });
+    Future.wait([Services.rattil.getQaris(), Services.surah.getSurahs()])
+        .then((results) {
+          if (!mounted) return;
+          setState(() {
+            _qaris = results[0] as List<Qari>;
+            _surahs = results[1] as List<Surah>;
+            // The rules library is bundled with the app, so questions about a
+            // rule are answered offline and from the same text the library shows.
+            _parser = RattilRequestParser(surahs: _surahs, qaris: _qaris, rules: tajweedRules);
+            _selectedQari = _qaris.isEmpty
+                ? null
+                : _qaris.reduce((a, b) => b.availableSurahs.length > a.availableSurahs.length ? b : a);
+            _status = _LibraryStatus.ready;
+            _messages.removeWhere((m) => !m.fromUser && m.recitation == null && m.text == _unreachable);
+            // No welcome paragraph: the resting screen already asks the
+            // question, and who has which surahs is on the reciter sheet.
+          });
+        })
+        .catchError((_) {
+          if (!mounted) return;
+          setState(() {
+            _status = _LibraryStatus.failed;
+            if (_messages.isEmpty) _messages.add(const _ChatMessage(fromUser: false, text: _unreachable));
+          });
+        });
   }
 
   static const _unreachable = 'The reciters could not be reached. Check your connection, then tap Retry above.';
@@ -321,14 +340,18 @@ class _AskAiScreenState extends State<AskAiScreen> {
       );
       final said = '${reply.label}, recited by ${result.qariName}.';
       final player = _PlayerController();
-      _activePlayer = player;
-      setState(() => _messages.add(_ChatMessage(
+      _watchPlayer(player);
+      setState(
+        () => _messages.add(
+          _ChatMessage(
             fromUser: false,
             text: reply.note == null ? said : '${reply.note}\n$said',
             recitation: result,
             startWith: reply.commands,
             player: player,
-          )));
+          ),
+        ),
+      );
     } on AppException catch (e) {
       setState(() => _messages.add(_ChatMessage(fromUser: false, text: e.message)));
     }
@@ -351,38 +374,38 @@ class _AskAiScreenState extends State<AskAiScreen> {
   Widget build(BuildContext context) {
     final top = MediaQuery.paddingOf(context).top;
     final conversationStarted = _messages.any((m) => m.fromUser);
+    final restingWithPrompts = _ready && !conversationStarted && _status == _LibraryStatus.ready;
+    // Plain Column, not a CustomScrollView with a pinned SliverAppBar: that
+    // arrangement rendered nothing at all on a real phone (the Scaffold
+    // painted, the scrolling area stayed empty) while behaving on the web.
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
+          _RattilHeader(
+            topPadding: top,
+            status: _status,
+            onRetry: _retryLibrary,
+            collapsed: _collapsed,
+            reciting: _reciting,
+          ),
           Expanded(
-            child: CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                _RattilHeader(topPadding: top, status: _status, onRetry: _loadLibrary),
-                if (_ready && _qaris.isNotEmpty)
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _PinnedPicker(
-                      child: QariPicker(
-                        qaris: _qaris,
-                        selected: _selectedQari,
-                        totalSurahs: _surahs.length,
-                        onPick: _pickQari,
-                      ),
-                    ),
-                  ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, AppSpacing.md, AppSpacing.screenPadding, AppSpacing.md),
-                  sliver: SliverList.builder(
-                    itemCount: _messages.length,
-                    itemBuilder: (context, i) => _Message(message: _messages[i]),
-                  ),
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onScroll,
+              child: ListView(
+                controller: _scrollController,
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenPadding,
+                  AppSpacing.lg,
+                  AppSpacing.screenPadding,
+                  AppSpacing.md,
                 ),
-                if (_thinking)
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 0, AppSpacing.screenPadding, AppSpacing.md),
-                    sliver: SliverToBoxAdapter(
+                children: [
+                  if (restingWithPrompts) _RestingLead(onPick: _send),
+                  for (final message in _messages) _Message(message: message),
+                  if (_thinking)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
                       child: Semantics(
                         liveRegion: true,
                         child: Row(
@@ -394,20 +417,53 @@ class _AskAiScreenState extends State<AskAiScreen> {
                         ),
                       ),
                     ),
-                  ),
-                if (_ready && !conversationStarted && _status == _LibraryStatus.ready)
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 0, AppSpacing.screenPadding, AppSpacing.lg),
-                    sliver: SliverToBoxAdapter(child: _PromptGroups(onPick: _send)),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
           if (conversationStarted && _status == _LibraryStatus.ready) _PromptStrip(onPick: _send),
+          if (_ready && _qaris.isNotEmpty)
+            _ReciterRow(
+              qari: _selectedQari,
+              totalSurahs: _surahs.length,
+              onTap: _openReciterSheet,
+            ),
           _Composer(controller: _controller, onSend: _send, enabled: _ready),
         ],
       ),
     );
+  }
+
+  /// Follows the player now on screen, so the header only wakes while that
+  /// player is really sounding.
+  void _watchPlayer(_PlayerController player) {
+    _activePlayer?.playing.removeListener(_onPlayingChanged);
+    _activePlayer = player;
+    player.playing.addListener(_onPlayingChanged);
+  }
+
+  void _onPlayingChanged() {
+    final value = _activePlayer?.playing.value ?? false;
+    if (value != _reciting && mounted) setState(() => _reciting = value);
+  }
+
+  /// Folds the header once the reader has scrolled past the first lines.
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    final past = notification.metrics.pixels > 28;
+    if (past != _collapsed) setState(() => _collapsed = past);
+    return false;
+  }
+
+  /// The three reciters, on demand. FR-16 unchanged: picking one makes them
+  /// the default and replays the last request in their voice.
+  Future<void> _openReciterSheet() async {
+    final picked = await AppBottomSheet.show<Qari>(
+      context,
+      title: 'Choose a reciter',
+      child: _ReciterSheet(qaris: _qaris, selected: _selectedQari, totalSurahs: _surahs.length),
+    );
+    if (picked != null) await _pickQari(picked);
   }
 }
 
@@ -417,61 +473,245 @@ class _RattilHeader extends StatelessWidget {
   final double topPadding;
   final _LibraryStatus status;
   final VoidCallback onRetry;
-  const _RattilHeader({required this.topPadding, required this.status, required this.onRetry});
+
+  /// Folded while the conversation is scrolled.
+  final bool collapsed;
+
+  /// True only while a Qari is actually sounding.
+  final bool reciting;
+
+  const _RattilHeader({
+    required this.topPadding,
+    required this.status,
+    required this.onRetry,
+    required this.collapsed,
+    required this.reciting,
+  });
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    return SliverAppBar(
-      pinned: true,
-      expandedHeight: 196,
-      backgroundColor: AppColors.photoScrim,
-      foregroundColor: AppColors.textOnPhoto,
-      automaticallyImplyLeading: false,
-      flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsetsDirectional.only(start: AppSpacing.screenPadding, bottom: 14),
-        expandedTitleScale: 1.6,
-        title: Text('Rattil', style: AppTypography.displayText(fontSize: 22, color: AppColors.textOnPhoto, height: 1.1)),
-        background: Stack(
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    final duration = reduce ? Duration.zero : const Duration(milliseconds: 300);
+    // The Mushaf is laid into the deep green at low opacity: it gives the
+    // header its material without becoming the thing you look at first.
+    return AnimatedContainer(
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      height: topPadding + (collapsed ? 62 : 134),
+      decoration: BoxDecoration(color: AppColors.brandDeep),
+      child: ClipRect(
+        child: Stack(
           fit: StackFit.expand,
           children: [
-            const AppPhoto(AppPhotos.rehalCarved, alignment: Alignment(0.3, 0)),
+            Opacity(
+              opacity: 0.30,
+              child: AppPhoto(AppPhotos.quranGreenCloth, alignment: const Alignment(0, 0.25)),
+            ),
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.photoScrim.withValues(alpha: 0.55),
-                    AppColors.photoScrim.withValues(alpha: 0.30),
-                    AppColors.photoScrim.withValues(alpha: 0.85),
+                    AppColors.brandDeep.withValues(alpha: 0.72),
+                    AppColors.brandDeep.withValues(alpha: 0.94),
                   ],
                 ),
               ),
             ),
             Positioned(
-              left: AppSpacing.screenPadding,
-              right: AppSpacing.screenPadding,
-              top: topPadding + 16,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Listen to a Qari. Ask about Tajweed.',
-                      style: textTheme.bodyMedium?.copyWith(color: AppColors.textOnPhotoSecondary),
-                    ),
-                  ),
-                  _StatusChip(status: status, onRetry: onRetry),
-                ],
+              right: -14,
+              bottom: -20,
+              child: ExcludeSemantics(
+                child: Text(
+                  'رَتِّل',
+                  textDirection: TextDirection.rtl,
+                  style: AppTypography.quran(fontSize: 78, color: AppColors.gold, height: 1.0)
+                      .copyWith(color: AppColors.gold.withValues(alpha: 0.17)),
+                ),
               ),
             ),
             Positioned(
               right: AppSpacing.screenPadding,
-              bottom: 8,
-              child: Text('رَتِّل',
-                  textDirection: TextDirection.rtl,
-                  style: AppTypography.quran(fontSize: 44, color: AppColors.gold, height: 1.5)),
+              top: topPadding + 10,
+              child: _StatusChip(status: status, onRetry: onRetry, reciting: reciting),
             ),
+            Positioned(
+              left: AppSpacing.screenPadding + 2,
+              right: AppSpacing.screenPadding,
+              bottom: 14,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Semantics(
+                        header: true,
+                        child: AnimatedDefaultTextStyle(
+                          duration: duration,
+                          curve: Curves.easeOutCubic,
+                          style: AppTypography.displayText(
+                            fontSize: collapsed ? 20 : 27,
+                            color: AppColors.textOnPhoto,
+                            height: 1.15,
+                          ),
+                          child: const Text('Rattil'),
+                        ),
+                      ),
+                      if (reciting) ...[
+                        const SizedBox(width: 12),
+                        const _RecitingBars(),
+                      ],
+                    ],
+                  ),
+                  AnimatedSize(
+                    duration: duration,
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topLeft,
+                    child: collapsed
+                        ? const SizedBox(width: double.infinity)
+                        : Padding(
+                            padding: const EdgeInsets.only(top: 5),
+                            child: Text(
+                              'Listen to a Qari, or ask about Tajweed.',
+                              style: textTheme.bodySmall?.copyWith(color: AppColors.textOnPhotoSecondary),
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(left: 0, right: 0, bottom: 0, child: _HeaderRule(reciting: reciting)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The gold hairline under the header. It breathes slowly while nothing is
+/// playing; it never pretends to be a progress bar.
+class _HeaderRule extends StatefulWidget {
+  final bool reciting;
+  const _HeaderRule({required this.reciting});
+
+  @override
+  State<_HeaderRule> createState() => _HeaderRuleState();
+}
+
+class _HeaderRuleState extends State<_HeaderRule> with SingleTickerProviderStateMixin {
+  late final AnimationController _breath = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 7),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.reciting) _breath.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(_HeaderRule old) {
+    super.didUpdateWidget(old);
+    if (widget.reciting) {
+      _breath.stop();
+    } else if (!_breath.isAnimating) {
+      _breath.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _breath.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    if (widget.reciting) {
+      return Container(
+        height: 2,
+        decoration: BoxDecoration(color: AppColors.gold.withValues(alpha: 0.22)),
+      );
+    }
+    final line = DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.gold.withValues(alpha: 0),
+            AppColors.gold,
+            AppColors.gold.withValues(alpha: 0),
+          ],
+        ),
+      ),
+      child: const SizedBox(height: 1, width: double.infinity),
+    );
+    if (reduce) return Opacity(opacity: 0.5, child: line);
+    return AnimatedBuilder(
+      animation: _breath,
+      builder: (context, child) => Opacity(
+        opacity: 0.30 + 0.45 * Curves.easeInOut.transform(_breath.value),
+        child: child,
+      ),
+      child: line,
+    );
+  }
+}
+
+/// Four gold bars beside the wordmark while a Qari is reciting.
+class _RecitingBars extends StatefulWidget {
+  const _RecitingBars();
+
+  @override
+  State<_RecitingBars> createState() => _RecitingBarsState();
+}
+
+class _RecitingBarsState extends State<_RecitingBars> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1050),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    return Semantics(
+      label: 'Reciting',
+      excludeSemantics: true,
+      child: SizedBox(
+        height: 16,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (var i = 0; i < 4; i++) ...[
+              if (i > 0) const SizedBox(width: 3),
+              AnimatedBuilder(
+                animation: _c,
+                builder: (context, child) {
+                  final phase = (_c.value + i * 0.18) % 1.0;
+                  final scale = reduce ? 0.7 : 0.28 + 0.72 * Curves.easeInOut.transform(phase);
+                  return SizedBox(height: 16 * scale, child: child);
+                },
+                child: Container(
+                  width: 3,
+                  decoration: BoxDecoration(
+                    color: AppColors.gold,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -482,14 +722,15 @@ class _RattilHeader extends StatelessWidget {
 class _StatusChip extends StatelessWidget {
   final _LibraryStatus status;
   final VoidCallback onRetry;
-  const _StatusChip({required this.status, required this.onRetry});
+  final bool reciting;
+  const _StatusChip({required this.status, required this.onRetry, this.reciting = false});
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final (Color dot, String label) = switch (status) {
       _LibraryStatus.loading => (AppColors.textOnPhotoSecondary, 'Loading reciters'),
-      _LibraryStatus.ready => (const Color(0xFF7FD6A6), 'Reciters ready'),
+      _LibraryStatus.ready => (const Color(0xFF7FD6A6), reciting ? 'Reciting' : 'Ready'),
       _LibraryStatus.failed => (const Color(0xFFF2B8A0), 'Offline'),
     };
     final chip = Container(
@@ -502,12 +743,23 @@ class _StatusChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 7, height: 7, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+          ),
           const SizedBox(width: 6),
           Text(label, style: textTheme.labelSmall?.copyWith(color: AppColors.textOnPhoto)),
           if (status == _LibraryStatus.failed) ...[
             const SizedBox(width: 8),
-            Text('Retry', style: textTheme.labelMedium?.copyWith(color: AppColors.textOnPhoto, decoration: TextDecoration.underline, decorationColor: AppColors.textOnPhoto)),
+            Text(
+              'Retry',
+              style: textTheme.labelMedium?.copyWith(
+                color: AppColors.textOnPhoto,
+                decoration: TextDecoration.underline,
+                decorationColor: AppColors.textOnPhoto,
+              ),
+            ),
           ],
         ],
       ),
@@ -523,32 +775,6 @@ class _StatusChip extends StatelessWidget {
     );
   }
 }
-
-class _PinnedPicker extends SliverPersistentHeaderDelegate {
-  final Widget child;
-  _PinnedPicker({required this.child});
-
-  @override
-  double get minExtent => 108;
-  @override
-  double get maxExtent => 108;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border(bottom: BorderSide(color: overlapsContent || shrinkOffset > 0 ? AppColors.divider : Colors.transparent)),
-      ),
-      child: Padding(padding: const EdgeInsets.only(top: 6), child: child),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_PinnedPicker old) => old.child != child;
-}
-
-// ── Messages ─────────────────────────────────────────────────────────────────
 
 class _Message extends StatelessWidget {
   final _ChatMessage message;
@@ -591,7 +817,10 @@ class _Message extends StatelessWidget {
               children: [
                 RosetteBadge(size: 18, fill: AppColors.goldWash),
                 const SizedBox(width: 8),
-                Text('Rattil', style: textTheme.labelMedium?.copyWith(color: AppColors.goldInk, fontWeight: FontWeight.w700)),
+                Text(
+                  'Rattil',
+                  style: textTheme.labelMedium?.copyWith(color: AppColors.goldInk, fontWeight: FontWeight.w700),
+                ),
               ],
             ),
             const SizedBox(height: 6),
@@ -628,8 +857,10 @@ class _Message extends StatelessWidget {
       tween: Tween(begin: reduce ? 1 : 0, end: 1),
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
-      builder: (context, t, child) =>
-          Opacity(opacity: t, child: Transform.translate(offset: Offset(0, (1 - t) * 8), child: child)),
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(offset: Offset(0, (1 - t) * 8), child: child),
+      ),
       child: body,
     );
   }
@@ -655,6 +886,12 @@ class _AudioExampleCard extends StatefulWidget {
 class _AudioExampleCardState extends State<_AudioExampleCard> {
   final _player = AudioPlayer();
   bool _playing = false;
+
+  /// One place to change the flag, so the header hears about it too.
+  void _reportPlaying(bool value) {
+    if (mounted) setState(() => _playing = value);
+    widget.controller?.playing.value = value;
+  }
   QariSpeed _speed = QariSpeed.normal;
   int _clipIndex = 0;
   AfterClip _afterClip = AfterClip.stop;
@@ -704,7 +941,7 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
 
     if (commands.contains(RattilCommand.pause)) {
       await _player.pause();
-      if (mounted) setState(() => _playing = false);
+      _reportPlaying(false);
       return 'Paused.';
     }
 
@@ -775,10 +1012,10 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
           setState(() => _clipIndex += 1);
           await _play();
         } else {
-          if (mounted) setState(() => _playing = false);
+          _reportPlaying(false);
         }
       case AfterClip.stop:
-        if (mounted) setState(() => _playing = false);
+        _reportPlaying(false);
     }
   }
 
@@ -796,13 +1033,13 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
     _stoppingOurselves = false;
     await _player.setPlaybackRate(_speed.rate);
     await _player.play(UrlSource(clip.url));
-    if (mounted) setState(() => _playing = true);
+    _reportPlaying(true);
   }
 
   Future<void> _toggle() async {
     if (_playing) {
       await _player.pause();
-      setState(() => _playing = false);
+      _reportPlaying(false);
       return;
     }
     await _play();
@@ -871,8 +1108,10 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(qariName, maxLines: 1, overflow: TextOverflow.ellipsis, style: textTheme.titleSmall),
-                    Text('${widget.recitation.surahNameEnglish} · ${_ayahLabel(clip.ayah, hasMultiple)}',
-                        style: textTheme.bodySmall),
+                    Text(
+                      '${widget.recitation.surahNameEnglish} · ${_ayahLabel(clip.ayah, hasMultiple)}',
+                      style: textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
@@ -901,11 +1140,7 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              IconButton(
-                tooltip: 'Play again',
-                icon: const Icon(Icons.replay_rounded),
-                onPressed: _play,
-              ),
+              IconButton(tooltip: 'Play again', icon: const Icon(Icons.replay_rounded), onPressed: _play),
               IconButton(
                 tooltip: 'Previous ayah',
                 icon: const Icon(Icons.skip_previous_rounded),
@@ -942,11 +1177,7 @@ class _AudioExampleCardState extends State<_AudioExampleCard> {
                 (AfterClip.continueOn, 'Continue'),
                 (AfterClip.repeatOne, 'Repeat ayah'),
               ])
-                _Toggle(
-                  label: label,
-                  selected: _afterClip == mode,
-                  onTap: () => setState(() => _afterClip = mode),
-                ),
+                _Toggle(label: label, selected: _afterClip == mode, onTap: () => setState(() => _afterClip = mode)),
               const SizedBox(width: 4),
               for (final s in QariSpeed.values)
                 _Toggle(label: s.label, selected: _speed == s, onTap: () => _setSpeed(s)),
@@ -985,9 +1216,9 @@ class _Toggle extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: selected ? AppColors.onPrimarySurface : AppColors.textSecondary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: selected ? AppColors.onPrimarySurface : AppColors.textSecondary),
           ),
         ),
       ),
@@ -997,9 +1228,24 @@ class _Toggle extends StatelessWidget {
 
 // ── Prompts and composer ─────────────────────────────────────────────────────
 
-class _PromptGroups extends StatelessWidget {
+/// What the screen says before anything has been asked: one question, two
+/// large ways to answer it, and the rest of the prompts kept quiet underneath.
+/// Fewer choices at the top, bigger targets at the bottom.
+class _RestingLead extends StatelessWidget {
   final ValueChanged<String> onPick;
-  const _PromptGroups({required this.onPick});
+  const _RestingLead({required this.onPick});
+
+  static const _cards = [
+    ('Al-Fatihah', 'الفاتحة', '7 ayahs, from the start', 'Al-Fatihah'),
+    ('Ayat al-Kursi', 'آية الكرسي', '2:255, on repeat', 'Ayat al-Kursi on loop'),
+  ];
+
+  static const _quiet = [
+    'Al-Mulk slowly',
+    'Al-Ikhlas by Alafasy',
+    'What is Ghunnah?',
+    'What should I practise next?',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -1007,16 +1253,241 @@ class _PromptGroups extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const OrnamentDivider(verticalPadding: 8),
-        for (final (title, prompts) in _promptGroups) ...[
-          const SizedBox(height: 10),
-          Text(title, style: textTheme.titleSmall),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [for (final p in prompts) _PromptChip(label: p, onTap: () => onPick(p))],
+        Row(
+          children: [
+            RosetteBadge(size: 18, stroke: AppColors.gold),
+            const SizedBox(width: 8),
+            Text('Rattil', style: textTheme.labelSmall?.copyWith(color: AppColors.goldInk, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Semantics(
+          header: true,
+          child: Text('What would you like to hear?', style: textTheme.headlineMedium),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Name a surah or an ayah, and a reciter if you have one in mind.',
+          style: textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary, height: 1.55),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        for (final (title, arabic, subtitle, prompt) in _cards)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _SuggestionCard(
+              title: title,
+              arabic: arabic,
+              subtitle: subtitle,
+              onTap: () => onPick(prompt),
+            ),
           ),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [for (final p in _quiet) _PromptChip(label: p, onTap: () => onPick(p))],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+      ],
+    );
+  }
+}
+
+/// One large way in: a surah, its name in Arabic, and what will happen.
+class _SuggestionCard extends StatelessWidget {
+  final String title;
+  final String arabic;
+  final String subtitle;
+  final VoidCallback onTap;
+  const _SuggestionCard({required this.title, required this.arabic, required this.subtitle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      label: 'Play $title, $subtitle',
+      excludeSemantics: true,
+      child: Material(
+        color: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.lgRadius, side: BorderSide(color: AppColors.border)),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadii.lgRadius,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(color: AppColors.primarySurface, shape: BoxShape.circle),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.play_arrow_rounded, size: 22, color: AppColors.primary),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: textTheme.titleMedium),
+                      const SizedBox(height: 2),
+                      Text(subtitle, style: textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(arabic, textDirection: TextDirection.rtl, style: AppTypography.arabicWord(fontSize: 19, color: AppColors.goldInk)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Who will recite, said plainly, one row above the place you type. Always
+/// readable, never loud; the three reciters open in a sheet when tapped.
+class _ReciterRow extends StatelessWidget {
+  final Qari? qari;
+  final int totalSurahs;
+  final VoidCallback onTap;
+  const _ReciterRow({required this.qari, required this.totalSurahs, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final q = qari;
+    final name = q == null ? 'a reciter' : RattilRequestParser.shortName(q);
+    final coverage = q == null
+        ? ''
+        : (q.availableSurahs.length >= totalSurahs ? 'Whole Quran' : '${q.availableSurahs.length} surahs');
+    return Semantics(
+      button: true,
+      label: 'Reciter: $name, $coverage. Choose another.',
+      excludeSemantics: true,
+      child: Material(
+        color: AppColors.background,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.divider))),
+            child: Row(
+              children: [
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(color: AppColors.goldWash, shape: BoxShape.circle),
+                  alignment: Alignment.center,
+                  child: Text(
+                    q == null ? '؟' : q.nameArabic.characters.first,
+                    textDirection: TextDirection.rtl,
+                    style: AppTypography.arabicWord(fontSize: 13, color: AppColors.goldInk),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      style: textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                      children: [
+                        const TextSpan(text: 'Reciting with '),
+                        TextSpan(
+                          text: name,
+                          style: textTheme.bodySmall?.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                        ),
+                        if (coverage.isNotEmpty) TextSpan(text: ' · $coverage'),
+                      ],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textMuted),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The three reciters, each with their name as it is written and how much of
+/// the Quran they have here.
+class _ReciterSheet extends StatelessWidget {
+  final List<Qari> qaris;
+  final Qari? selected;
+  final int totalSurahs;
+  const _ReciterSheet({required this.qaris, required this.selected, required this.totalSurahs});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Used for everything you ask next.', style: textTheme.bodySmall),
+        const SizedBox(height: AppSpacing.md),
+        for (final q in qaris) ...[
+          Builder(
+            builder: (context) {
+              final isSelected = q.qariId == selected?.qariId;
+              final coverage =
+                  q.availableSurahs.length >= totalSurahs ? 'Whole Quran' : '${q.availableSurahs.length} surahs';
+              return Semantics(
+                button: true,
+                selected: isSelected,
+                label: 'Reciter ${q.nameEnglish}, $coverage',
+                excludeSemantics: true,
+                child: Material(
+                  color: isSelected ? AppColors.primarySurface : AppColors.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: AppRadii.lgRadius,
+                    side: BorderSide(color: isSelected ? AppColors.primary : AppColors.border),
+                  ),
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).pop(q),
+                    borderRadius: AppRadii.lgRadius,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 104,
+                            child: Text(
+                              q.nameArabic,
+                              textDirection: TextDirection.rtl,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.arabicWord(fontSize: 19, color: AppColors.goldInk),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(RattilRequestParser.shortName(q), style: textTheme.titleSmall),
+                                const SizedBox(height: 2),
+                                Text(coverage, style: textTheme.bodySmall),
+                              ],
+                            ),
+                          ),
+                          if (isSelected) Icon(Icons.check_rounded, size: 20, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
         ],
       ],
     );

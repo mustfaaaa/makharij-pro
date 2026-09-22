@@ -183,6 +183,11 @@ abstract class AppColors {
 
   /// The scrim colour laid over photography so text on it reads: a deep
   /// green-black, not a flat grey, so photos sit inside the palette.
+  /// The deep green a photograph is laid into when it should read as material
+  /// rather than as a picture -- the Rattil header, where the Mushaf sits at
+  /// low opacity under this wash.
+  static Color get brandDeep => _d ? const Color(0xFF0B1F1A) : const Color(0xFF0F2A23);
+
   static Color get photoScrim => const Color(0xFF0B1410);
 
   /// Ivory ink for text set directly on a scrimmed photograph.
