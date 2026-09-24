@@ -25,7 +25,7 @@ When you stop, every word you actually recited gets a verdict:
 - ✅ **Correct**, or
 - ⚠️ **A named mistake** — `madd` · `ghunnah` · `shaddah` · `makhraj` · `skipped` — with an explanation and **playback of the exact slice of your own recording** it was judged on.
 
-Words you never reached stay grey. They are never counted against you.
+Words you never recited stay grey. They are never counted against you.
 
 ### Beyond the verdict
 
