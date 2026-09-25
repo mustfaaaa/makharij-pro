@@ -5,58 +5,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="38887159-2e31-4e1c-bb97-f8441e011c6e" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.claude/launch.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/launch.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/makharij-pro.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/makharij-pro.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/android/app/src/debug/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/android/app/src/debug/AndroidManifest.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/ask_ai/presentation/screens/ask_ai_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/ask_ai/presentation/screens/ask_ai_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/authentication/presentation/screens/forgot_password_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/authentication/presentation/screens/forgot_password_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/authentication/presentation/screens/register_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/authentication/presentation/screens/register_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/authentication/presentation/screens/welcome_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/authentication/presentation/screens/welcome_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/authentication/presentation/widgets/arch_auth_shell.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/authentication/presentation/widgets/arch_auth_shell.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/authentication/presentation/widgets/auth_shell.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/authentication/presentation/widgets/auth_shell.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/feedback/presentation/screens/detailed_feedback_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/feedback/presentation/screens/detailed_feedback_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/home/presentation/screens/home_dashboard_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/home/presentation/screens/home_dashboard_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/misc/presentation/screens/notifications_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/misc/presentation/screens/notifications_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/onboarding/presentation/screens/onboarding_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/onboarding/presentation/screens/onboarding_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/practice_plan/presentation/screens/practice_plan_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/practice_plan/presentation/screens/practice_plan_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/profile/presentation/screens/edit_profile_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/profile/presentation/screens/edit_profile_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/profile/presentation/screens/profile_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/profile/presentation/screens/profile_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/progress/presentation/screens/progress_dashboard_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/progress/presentation/screens/progress_dashboard_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/progress/presentation/screens/statistics_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/progress/presentation/screens/statistics_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DESIGN.md" beforeDir="false" afterPath="$PROJECT_DIR$/DESIGN.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/phoneme_analysis_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/phoneme_analysis_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/routers/live.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routers/live.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/routers/sessions.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routers/sessions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/models_cache/reference_word_timings.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/models_cache/reference_word_timings.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/lib/app/app.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/app/app.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/lib/features/quran/presentation/screens/surah_details_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/quran/presentation/screens/surah_details_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/quran/presentation/screens/surah_selection_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/quran/presentation/screens/surah_selection_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/lib/features/quran/presentation/widgets/mushaf_ayah.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/quran/presentation/widgets/mushaf_ayah.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/lib/features/recitation/presentation/screens/result_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/recitation/presentation/screens/result_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/recitation/presentation/widgets/mistake_breakdown.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/recitation/presentation/widgets/mistake_breakdown.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/recitation/presentation/widgets/mistake_legend.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/recitation/presentation/widgets/mistake_legend.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/settings/presentation/screens/about_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/settings/presentation/screens/about_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/settings/presentation/screens/contact_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/settings/presentation/screens/contact_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/splash/presentation/screens/splash_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/splash/presentation/screens/splash_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/features/tajweed_rules/presentation/screens/rule_details_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/tajweed_rules/presentation/screens/rule_details_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/services/api_config.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/services/api_config.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/buttons/primary_button.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/buttons/primary_button.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/achievement_card.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/achievement_card.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/progress_card.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/progress_card.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/rule_card.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/rule_card.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/section_card.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/section_card.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/statistics_card.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/statistics_card.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/surah_card.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/cards/surah_card.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/coach_mark/tajweed_scoring_coach_mark.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/coach_mark/tajweed_scoring_coach_mark.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/feedback/app_bottom_sheet.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/feedback/app_bottom_sheet.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/feedback/app_dialogs.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/feedback/app_dialogs.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/hasanah/hasanah_card.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/hasanah/hasanah_card.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/hasanah/hasanah_earned_banner.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/hasanah/hasanah_earned_banner.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/navigation/app_bottom_nav.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/navigation/app_bottom_nav.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/navigation/app_drawer.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/navigation/app_drawer.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/pickers/verse_text_size_picker.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/pickers/verse_text_size_picker.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/section_header.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/section_header.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/tajweed_color_guide.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/tajweed_color_guide.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/tiles/profile_tile.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/tiles/profile_tile.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/shared/widgets/tiles/settings_tile.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/shared/widgets/tiles/settings_tile.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/theme/app_colors.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/theme/app_colors.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/theme/app_radii.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/theme/app_radii.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/lib/theme/app_theme.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/theme/app_theme.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/lib/features/tajweed_rules/presentation/widgets/word_tajweed_sheet.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/features/tajweed_rules/presentation/widgets/word_tajweed_sheet.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/lib/services/preferences_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/services/preferences_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/lib/theme/app_typography.dart" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/lib/theme/app_typography.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/pubspec.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/test/mushaf_ayah_fade_test.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/test/mushaf_ayah_test.dart" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -77,29 +43,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Flutter.run.executor": "Run",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "feat/word-level-tajweed-detection",
-    "io.flutter.reload.alreadyRun": "true",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/dev/makharij-pro",
-    "project.structure.last.edited": "SDKs",
-    "project.structure.proportion": "0.0",
-    "project.structure.side.proportion": "0.2",
-    "settings.editor.selected.configurable": "templates.modelproviders.configurable",
-    "show.migrate.to.gradle.popup": "false"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Flutter.run.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;io.flutter.reload.alreadyRun&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/dev/makharij-pro&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;SDKs&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;templates.modelproviders.configurable&quot;,
+    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="run" type="FlutterRunConfigurationType" factoryName="Flutter">
       <option name="filePath" value="$PROJECT_DIR$/frontend/lib/main.dart" />
