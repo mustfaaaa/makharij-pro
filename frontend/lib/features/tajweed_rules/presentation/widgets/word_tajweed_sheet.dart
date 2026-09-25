@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../models/quran_script.dart';
 import '../../../../models/tajweed_error.dart';
 import '../../../../models/tajweed_word_info.dart';
 import '../../../../services/service_locator.dart';
@@ -31,12 +32,17 @@ class WordTajweedSheet extends StatefulWidget {
   /// while the lookup is in flight.
   final String displayWord;
 
+  /// The script [displayWord] is written in, when it came from the reader's
+  /// chosen script rather than the bundled Uthmani text.
+  final QuranScript? script;
+
   const WordTajweedSheet({
     super.key,
     required this.surah,
     required this.ayah,
     required this.displayWordIndex,
     required this.displayWord,
+    this.script,
   });
 
   static Future<void> show(
@@ -45,6 +51,7 @@ class WordTajweedSheet extends StatefulWidget {
     required int ayah,
     required int displayWordIndex,
     required String displayWord,
+    QuranScript? script,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -58,6 +65,7 @@ class WordTajweedSheet extends StatefulWidget {
         ayah: ayah,
         displayWordIndex: displayWordIndex,
         displayWord: displayWord,
+        script: script,
       ),
     );
   }
@@ -87,7 +95,9 @@ class _WordTajweedSheetState extends State<WordTajweedSheet> {
               child: Text(
                 widget.displayWord,
                 textDirection: TextDirection.rtl,
-                style: AppTypography.quran(fontSize: 40, height: 1.9),
+                style: widget.script == null
+                    ? AppTypography.quran(fontSize: 40, height: 1.9)
+                    : AppTypography.quranScript(widget.script!, fontSize: 40, height: 1.9),
               ),
             ),
             const SizedBox(height: AppSpacing.md),

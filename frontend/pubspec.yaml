@@ -90,6 +90,16 @@ flutter:
     - family: AmiriQuran
       fonts:
         - asset: assets/fonts/AmiriQuran-Regular.ttf
+    # The two scripts the reader offers, each drawn with the King Fahd
+    # Complex's own font for it (free to distribute unmodified, not for sale:
+    # assets/fonts/LICENSE-KFGQPC.txt). Each is paired with the text encoded
+    # for it in assets/quran/quran_scripts.json -- see QuranScriptRepository.
+    - family: QuranUthmani
+      fonts:
+        - asset: assets/fonts/UthmanicHafs1Ver18.ttf
+    - family: QuranIndoPak
+      fonts:
+        - asset: assets/fonts/KFGQPCNastaleeq-Regular.ttf
 
 # The mark: the Mushaf's eight-point star with a voice inside it. Regenerate
 # the Android icons with `dart run flutter_launcher_icons` after changing the

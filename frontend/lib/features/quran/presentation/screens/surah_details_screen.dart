@@ -2,20 +2,24 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/cubit/quran_script_cubit.dart';
 import '../../../../app/cubit/theme_cubit.dart';
 import '../../../../app/cubit/verse_text_size_cubit.dart';
 import '../../../../models/after_clip.dart';
 import '../../../../models/ayah.dart';
 import '../../../../models/qari.dart';
+import '../../../../models/quran_script.dart';
 import '../../../../models/surah.dart';
 import '../../../../models/tajweed_error.dart';
 import '../../../../models/tajweed_word_info.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/preferences_service.dart';
+import '../../../../services/quran_script_repository.dart';
 import '../../../../services/rattil_request_parser.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/audio/qari_player_controller.dart';
@@ -30,6 +34,7 @@ import '../../../recitation/presentation/bloc/recitation_cubit.dart';
 import '../../../recitation/presentation/bloc/recitation_state.dart';
 import '../../../tajweed_rules/presentation/widgets/word_tajweed_sheet.dart';
 import '../widgets/mushaf_ayah.dart';
+import '../widgets/mushaf_paragraph.dart';
 
 /// Reference rules the reading page can highlight, as the Tajweed reference
 /// names them, with the colour each is tinted in.
@@ -92,13 +97,21 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
   List<int> _wordOffsets = const [];
   List<Ayah>? _offsetsFor;
 
-  /// Ayahs whose translation the reader has opened (in "on tap" mode).
-  final Set<int> _openTranslations = {};
+  /// The ayah whose translation is open in a sheet ("on tap" mode), tinted
+  /// on the page while it is.
+  int? _tappedAyah;
 
-  /// Keys for the ayahs currently built, so the page can follow the reciter
-  /// and know where the reader stopped.
-  final Map<int, GlobalKey> _ayahKeys = {};
+  /// The page is written continuously, one paragraph per ruku. Each built
+  /// paragraph has a key (by its first ayah), so the page can follow the
+  /// reciter to an exact line and know where the reader stopped.
+  final Map<int, GlobalKey<MushafParagraphState>> _paragraphKeys = {};
+
+  /// Ayah number -> the first ayah of the paragraph it is written in.
+  Map<int, int> _paragraphOf = const {};
   int? _scrolledToAyah;
+
+  /// The Uthmani and IndoPak texts load once, from a bundled asset.
+  bool _scriptsReady = QuranScriptRepository.instance.isLoaded;
 
   bool _appliedInitialRange = false;
   bool _didInitialScroll = false;
@@ -125,6 +138,11 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
     // too), so take it from there rather than loading a second copy.
     context.read<RecitationCubit>().beginSession(widget.surahNumber);
     _player.addListener(_onPlayer);
+    if (!_scriptsReady) {
+      QuranScriptRepository.instance.ensureLoaded().then((_) {
+        if (mounted) setState(() => _scriptsReady = true);
+      });
+    }
   }
 
   @override
@@ -158,13 +176,28 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
     return offsets;
   }
 
-  /// How many leading words of an ayah are the Basmala the bundled text
-  /// prepends: ayah 1 of every surah but Al-Fatihah (where it *is* ayah 1) and
-  /// At-Tawbah (which has none). Mirrors the backend's basmala_prefix_len.
-  int _basmalaWords(Ayah ayah) =>
-      (ayah.number == 1 && widget.surahNumber != 1 && widget.surahNumber != 9 && ayah.arabicText.split(' ').length > 4)
-          ? 4
-          : 0;
+  /// The ayahs grouped the way the mushaf paragraphs them: a paragraph ends
+  /// where a ruku ends (or where the chosen range does).
+  ///
+  /// Continuous text has nowhere to put a line of English beside each ayah: it
+  /// would land at the end of the ruku, several ayahs away. So when every
+  /// ayah's translation or transliteration is shown, the page reads ayah by
+  /// ayah instead, each one followed by its own -- still in the chosen script,
+  /// with all its marks.
+  List<List<Ayah>> _paragraphs(List<Ayah> ayahs) {
+    final paragraphs = _ayahByAyah
+        ? [for (final ayah in ayahs) [ayah]]
+        : paragraphsByRuku(widget.surahNumber, ayahs);
+    _paragraphOf = {for (final p in paragraphs) for (final a in p) a.number: p.first.number};
+    return paragraphs;
+  }
+
+  bool get _ayahByAyah => _translationMode == TranslationMode.always || _transliteration;
+
+  MushafParagraphState? _paragraphState(int ayahNumber) {
+    final first = _paragraphOf[ayahNumber];
+    return first == null ? null : _paragraphKeys[first]?.currentState;
+  }
 
   // ── Bookmark ──────────────────────────────────────────────────────────────
   Future<void> _toggleBookmark() async {
@@ -312,20 +345,34 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
   }
 
   void _bringIntoView(int ayahNumber) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ctx = _ayahKeys[ayahNumber]?.currentContext;
-      if (ctx == null) return;
-      Scrollable.ensureVisible(
-        ctx,
-        duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 450),
-        curve: Curves.easeOutCubic,
-        alignment: 0.3,
-      );
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reveal(ayahNumber));
+  }
+
+  /// Scrolls so the line where [ayahNumber] begins sits [alignment] of the way
+  /// down the page. The text is continuous, so this is a line inside a
+  /// paragraph, not a widget of its own. False when that paragraph is not
+  /// built (the list builds lazily).
+  bool _reveal(int ayahNumber, {bool animate = true, double alignment = 0.3}) {
+    final spot = _paragraphState(ayahNumber)?.locate(ayahNumber);
+    if (spot == null || !_scroll.hasClients) return false;
+    final viewport = RenderAbstractViewport.maybeOf(spot.box);
+    if (viewport == null) return false;
+    final position = _scroll.position;
+    final target = viewport
+        .getOffsetToReveal(spot.box, alignment, rect: spot.rect)
+        .offset
+        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    if (animate && !MediaQuery.disableAnimationsOf(context)) {
+      _scroll.animateTo(target, duration: const Duration(milliseconds: 450), curve: Curves.easeOutCubic);
+    } else {
+      _scroll.jumpTo(target);
+    }
+    return true;
   }
 
   /// Opening at an ayah far down a long surah: the list builds lazily, so jump
-  /// close to it by estimate, then let ensureVisible settle on the real item.
+  /// close to it by estimate, then settle on the real line once its paragraph
+  /// is built.
   void _initialScroll(List<Ayah> ayahs) {
     final target = widget.scrollToAyah;
     if (_didInitialScroll || target == null) return;
@@ -334,41 +381,43 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
     if (index <= 0) return;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!_scroll.hasClients) return;
-      final estimate = min(_scroll.position.maxScrollExtent, 220.0 + index * 150.0);
-      _scroll.jumpTo(estimate);
-      for (var attempt = 0; attempt < 4; attempt++) {
+      _scroll.jumpTo(min(_scroll.position.maxScrollExtent, 220.0 + index * 110.0));
+      for (var attempt = 0; attempt < 6; attempt++) {
         await Future<void>.delayed(const Duration(milliseconds: 60));
-        if (!mounted) return;
-        final ctx = _ayahKeys[target]?.currentContext;
-        if (ctx != null && ctx.mounted) {
-          Scrollable.ensureVisible(ctx, alignment: 0.15);
-          return;
-        }
-        if (!_scroll.hasClients) return;
-        _scroll.jumpTo(min(_scroll.position.maxScrollExtent, _scroll.offset + 600));
+        if (!mounted || !_scroll.hasClients) return;
+        if (_reveal(target, animate: false, alignment: 0.15)) return;
+        // Not built yet: move towards it. A built paragraph that starts after
+        // the target means the estimate overshot.
+        final built = _paragraphKeys.entries.where((e) => e.value.currentContext != null).map((e) => e.key);
+        final overshot = built.isNotEmpty && built.reduce(min) > target;
+        _scroll.jumpTo((_scroll.offset + (overshot ? -600 : 600))
+            .clamp(_scroll.position.minScrollExtent, _scroll.position.maxScrollExtent));
       }
     });
   }
 
-  /// When scrolling settles, remember the first ayah in view as "last read".
+  /// When scrolling settles, remember the ayah at the top of the page as
+  /// "last read".
   bool _onScrollEnd(ScrollEndNotification n) {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null) return false;
-    final top = box.localToGlobal(Offset.zero).dy + kToolbarHeight + MediaQuery.paddingOf(context).top;
-    int? best;
-    double bestDy = double.infinity;
-    for (final entry in _ayahKeys.entries) {
-      final rb = entry.value.currentContext?.findRenderObject() as RenderBox?;
-      if (rb == null || !rb.attached) continue;
+    final top = box.localToGlobal(Offset.zero).dy + kToolbarHeight + MediaQuery.paddingOf(context).top + 24;
+    MushafParagraphState? best;
+    RenderBox? bestBox;
+    for (final key in _paragraphKeys.values) {
+      final rb = key.currentContext?.findRenderObject() as RenderBox?;
+      if (rb == null || !rb.attached || key.currentState == null) continue;
       final dy = rb.localToGlobal(Offset.zero).dy;
-      final bottom = dy + rb.size.height;
-      if (bottom < top + 24) continue; // scrolled past
-      if (dy < bestDy) {
-        bestDy = dy;
-        best = entry.key;
+      if (dy + rb.size.height < top) continue; // scrolled past
+      if (bestBox == null || dy < bestBox.localToGlobal(Offset.zero).dy) {
+        best = key.currentState;
+        bestBox = rb;
       }
     }
-    if (best != null) Services.prefs.setLastRead(widget.surahNumber, best);
+    if (best == null || bestBox == null) return false;
+    final x = bestBox.localToGlobal(bestBox.size.center(Offset.zero)).dx;
+    final ayah = best.ayahAt(Offset(x, top));
+    if (ayah != null) Services.prefs.setLastRead(widget.surahNumber, ayah);
     return false;
   }
 
@@ -389,6 +438,24 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
     if (ref == null || ref.isEmpty) return null;
     final keys = ref.keys.toList()..sort();
     return keys.map((k) => ref[k]!.wordTransliteration).where((t) => t.isNotEmpty).join(' ');
+  }
+
+  /// What goes under an ayah when the page reads ayah by ayah: its
+  /// translation (in "always" mode) and transliteration.
+  List<AyahNote> _notesFor(List<Ayah> group) {
+    if (!_ayahByAyah) return const [];
+    final notes = <AyahNote>[];
+    for (final ayah in group) {
+      final translation = _translationMode == TranslationMode.always;
+      final transliteration = _transliterationFor(ayah);
+      if (!translation && (transliteration == null || transliteration.isEmpty)) continue;
+      notes.add(AyahNote(
+        ayah: ayah.number,
+        translation: translation ? ayah.translation : null,
+        transliteration: transliteration,
+      ));
+    }
+    return notes;
   }
 
   Set<int> _highlightFor(Ayah ayah) {
@@ -478,6 +545,38 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
     }
   }
 
+  /// "On tap": the tapped ayah's translation, in a sheet that opens where the
+  /// reader is -- the continuous text has no room for it beside the ayah. The
+  /// ayah stays tinted on the page while the sheet is open.
+  Future<void> _showTranslation(Surah surah, Ayah ayah) async {
+    HapticFeedback.selectionClick();
+    setState(() => _tappedAyah = ayah.number);
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) {
+        final textTheme = Theme.of(sheetContext).textTheme;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 0, AppSpacing.screenPadding, AppSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${surah.nameEnglish} ${surah.number}:${ayah.number}',
+                    style: textTheme.labelMedium?.copyWith(color: AppColors.goldInk)),
+                const SizedBox(height: AppSpacing.sm),
+                Text(ayah.translation, style: textTheme.bodyLarge?.copyWith(height: 1.6)),
+                const SizedBox(height: AppSpacing.md),
+                Text('Translation: Saheeh International', style: textTheme.bodySmall),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (mounted) setState(() => _tappedAyah = null);
+  }
+
   // ── Reading settings ──────────────────────────────────────────────────────
   Future<void> _showReadingSettings() async {
     await showModalBottomSheet<void>(
@@ -488,6 +587,7 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
           final textTheme = Theme.of(sheetContext).textTheme;
           final sizeCubit = context.read<VerseTextSizeCubit>();
           final themeCubit = context.read<ThemeCubit>();
+          final scriptCubit = context.read<QuranScriptCubit>();
           void update(VoidCallback fn) {
             setSheet(fn);
             setState(() {});
@@ -500,6 +600,25 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Reading', style: textTheme.headlineSmall),
+                  const SizedBox(height: AppSpacing.md),
+                  _SettingLabel('Script'),
+                  BlocBuilder<QuranScriptCubit, QuranScript>(
+                    bloc: scriptCubit,
+                    builder: (context, script) => Row(
+                      children: [
+                        for (final s in QuranScript.values) ...[
+                          if (s != QuranScript.values.first) const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: _ScriptChoice(
+                              script: s,
+                              selected: s == script,
+                              onTap: () => scriptCubit.setScript(s),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.md),
                   _SettingLabel('Text size'),
                   BlocBuilder<VerseTextSizeCubit, VerseTextSize>(
@@ -517,11 +636,14 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
                           onSelectionChanged: (v) => sizeCubit.setSize(v.first),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ',
-                          textAlign: TextAlign.center,
-                          textDirection: TextDirection.rtl,
-                          style: AppTypography.quran(fontSize: 28 * size.scale, height: 1.9),
+                        BlocBuilder<QuranScriptCubit, QuranScript>(
+                          bloc: scriptCubit,
+                          builder: (context, script) => Text(
+                            _basmalaIn(script),
+                            textAlign: TextAlign.center,
+                            textDirection: TextDirection.rtl,
+                            style: AppTypography.quranScript(script, fontSize: 28 * size.scale, height: 1.9),
+                          ),
                         ),
                       ],
                     ),
@@ -600,6 +722,10 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
     );
   }
 
+  /// Al-Fatihah 1:1 written in [script], from that script's own text.
+  static String _basmalaIn(QuranScript script) =>
+      QuranScriptRepository.instance.ayah(1, 1, script)?.words.join(' ') ?? '';
+
   static String _sizeShort(VerseTextSize s) => switch (s) {
         VerseTextSize.small => 'S',
         VerseTextSize.medium => 'M',
@@ -649,6 +775,7 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
   Widget build(BuildContext context) {
     final surah = _surah;
     final verseScale = context.watch<VerseTextSizeCubit>().state.scale;
+    final script = context.watch<QuranScriptCubit>().state;
 
     return BlocConsumer<RecitationCubit, RecitationState>(
       listenWhen: (prev, curr) =>
@@ -672,12 +799,14 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
       },
       builder: (context, state) {
         final ayahs = state.selectedAyahs;
-        if (surah == null || ayahs.isEmpty) {
+        if (surah == null || ayahs.isEmpty || !_scriptsReady) {
           return const Scaffold(body: AppLoadingIndicator());
         }
         final recording = state.status == RecitationStatus.listening;
         final reading = !recording && state.status != RecitationStatus.result;
         final offsets = _offsets(ayahs);
+        final wordsBefore = {for (var i = 0; i < ayahs.length; i++) ayahs[i].number: offsets[i]};
+        final paragraphs = _paragraphs(ayahs);
         final bottomInset = MediaQuery.paddingOf(context).bottom;
 
         return PopScope(
@@ -740,7 +869,7 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
                       child: ListView.builder(
                         controller: _scroll,
                         padding: EdgeInsets.fromLTRB(22, 18, 22, 170 + bottomInset),
-                        itemCount: ayahs.length + 1,
+                        itemCount: paragraphs.length + 1,
                         itemBuilder: (context, index) {
                           if (index == 0) {
                             return _ReaderHeader(
@@ -750,41 +879,55 @@ class _SurahDetailsScreenState extends State<SurahDetailsScreen> {
                               translationMode: _translationMode,
                             );
                           }
-                          final ayah = ayahs[index - 1];
-                          _ensureReference(ayah.number);
-                          final key = _ayahKeys.putIfAbsent(ayah.number, GlobalKey.new);
-                          final showTranslation = _translationMode == TranslationMode.always ||
-                              (_translationMode == TranslationMode.onTap && _openTranslations.contains(ayah.number));
+                          final group = paragraphs[index - 1];
+                          for (final ayah in group) {
+                            _ensureReference(ayah.number);
+                          }
+                          final key = _paragraphKeys.putIfAbsent(group.first.number, GlobalKey<MushafParagraphState>.new);
+                          final repo = QuranScriptRepository.instance;
                           return ListenableBuilder(
-                            key: key,
                             listenable: _player,
-                            builder: (context, _) => MushafAyah(
-                              ayah: ayah,
+                            builder: (context, _) => MushafParagraph(
+                              key: key,
+                              script: script,
                               fontSize: 28 * verseScale,
                               readingMode: reading,
-                              leadingCenteredWords: _basmalaWords(ayah),
-                              marks: _marksFor(ayah, state, offsets[index - 1]),
-                              showTranslation: showTranslation,
-                              transliteration: _transliterationFor(ayah),
-                              referenceWords: reading ? _highlightFor(ayah) : const {},
                               referenceColor: _highlightRule == null ? null : _referenceColor(_highlightRule!),
-                              playing: _player.playing && _player.currentAyah == ayah.number,
-                              onTap: _translationMode == TranslationMode.onTap
-                                  ? () => setState(() {
-                                        if (!_openTranslations.remove(ayah.number)) _openTranslations.add(ayah.number);
-                                      })
+                              playingAyah: _player.playing ? _player.currentAyah : null,
+                              selectedAyahs: {?_tappedAyah},
+                              notes: _notesFor(group),
+                              ayahs: [
+                                for (final ayah in group)
+                                  ParagraphAyah(
+                                    ayah: ayah,
+                                    text: repo.ayah(widget.surahNumber, ayah.number, script)!,
+                                    placement: repo.placement(widget.surahNumber, ayah.number),
+                                    leadingCenteredWords: basmalaWordsIn(widget.surahNumber, ayah),
+                                    marks: _marksFor(ayah, state, wordsBefore[ayah.number]!),
+                                    referenceWords: reading ? _highlightFor(ayah) : const {},
+                                  ),
+                              ],
+                              onAyahTap: _translationMode == TranslationMode.onTap
+                                  ? (number) => _showTranslation(surah, group.firstWhere((a) => a.number == number))
                                   : null,
                               // Reference data about the text, so it does not
                               // need a recitation to have happened first.
                               onWordLongPress: recording
                                   ? null
-                                  : (wordIndex) => WordTajweedSheet.show(
+                                  : (number, wordIndex) {
+                                      final ayah = group.firstWhere((a) => a.number == number);
+                                      final written = repo.word(widget.surahNumber, number, wordIndex, script);
+                                      WordTajweedSheet.show(
                                         context,
                                         surah: widget.surahNumber,
-                                        ayah: ayah.number,
+                                        ayah: number,
                                         displayWordIndex: wordIndex,
-                                        displayWord: ayah.arabicText.split(' ')[wordIndex],
-                                      ),
+                                        displayWord: (written == null || written.isEmpty)
+                                            ? ayah.arabicText.split(' ')[wordIndex]
+                                            : written,
+                                        script: (written == null || written.isEmpty) ? null : script,
+                                      );
+                                    },
                             ),
                           );
                         },
@@ -1536,6 +1679,69 @@ class _QariMonogram extends StatelessWidget {
           initial.isEmpty ? RattilRequestParser.shortName(qari).characters.first : initial,
           style: AppTypography.arabicWord(fontSize: size * 0.46, color: AppColors.goldInk, weight: FontWeight.w700)
               .copyWith(height: 1.1),
+        ),
+      ),
+    );
+  }
+}
+
+/// One script to choose, shown as itself: the Basmala written in it, so the
+/// choice is made by looking rather than by knowing the names.
+class _ScriptChoice extends StatelessWidget {
+  final QuranScript script;
+  final bool selected;
+  final VoidCallback onTap;
+  const _ScriptChoice({required this.script, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '${script.label} script, ${script.description}',
+      child: Material(
+        color: selected ? AppColors.primarySurface : AppColors.surfaceAlt,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadii.mdRadius,
+          side: BorderSide(
+            color: selected ? AppColors.primary : AppColors.border,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: RoundedRectangleBorder(borderRadius: AppRadii.mdRadius),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+            child: ExcludeSemantics(
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 52,
+                    child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _SurahDetailsScreenState._basmalaIn(script),
+                          textDirection: TextDirection.rtl,
+                          maxLines: 1,
+                          style: AppTypography.quranScript(script, fontSize: 20, height: 1.6),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Text(script.label, style: textTheme.titleSmall),
+                  const SizedBox(height: 2),
+                  Text(
+                    script.description,
+                    textAlign: TextAlign.center,
+                    style: textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -58,11 +58,20 @@ All text tokens ≥ 4.5:1 on background and surface in both themes (asserted by
 `test/theme_contrast_test.dart`). Dark mode is its own palette: green-black ground, ivory ink,
 lighter surfaces for elevation, no shadows.
 
-## Type (bundled in `assets/fonts`, OFL)
+## Type (bundled in `assets/fonts`)
 
-- **Figtree** 400/500/600/700: interface text. Tabular figures for timers and counts.
-- **Amiri** 400/700: display in both scripts (screen titles, surah names, headlines).
-- **Amiri Quran**: Quran text only. Default 28, line-height 2.15, justified RTL. Five sizes 24–44.
+- **Figtree** 400/500/600/700 (OFL): interface text. Tabular figures for timers and counts.
+- **Amiri** 400/700 (OFL): display in both scripts (screen titles, surah names, headlines).
+- **The Quran** is written in the King Fahd Complex's own faces, each with the text encoded for it
+  (`assets/quran/quran_scripts.json`), never a font on another text. The reader offers two scripts
+  under "Aa": **Uthmani**, KFGQPC HAFS Uthmanic Script (Madinah mushaf), and **IndoPak**, KFGQPC
+  Nastaleeq (the mushaf of Pakistan and India). Quran text elsewhere is Uthmani. Licence:
+  `assets/fonts/LICENSE-KFGQPC.txt` (free to distribute unmodified, not for sale). Amiri Quran stays
+  only as a glyph fallback. Default 28 (IndoPak ×1.08 to read the same size), justified RTL. Four sizes.
+- The reader writes the Quran **continuously**, a paragraph per ruku, each ayah closed by its own
+  numbered circle in gold. Waqf, sajda and (IndoPak) ruku signs are the script's own; the Uthmani
+  text adds a small gold ع where a ruku ends. With translation "Always" or transliteration on, it
+  reads ayah by ayah instead, each followed by its line of English.
 - No letter-spaced all-caps eyebrows. Hierarchy comes from size and weight. Headings ≥ 1.1 line-height.
 
 ## Shape, space, depth, motion
@@ -129,3 +138,13 @@ lighter surfaces for elevation, no shadows.
   Rattil is named after; 2 · the Basmala igniting word by word over a wave of light;
   3 · a frosted verdict card flagged, tried and cleared. Quran text comes from the bundled
   asset; the two demonstrations are labelled "An example". Static when animations are off.
+- 2026-09-25 Quran scripts: Uthmani and IndoPak, chosen under "Aa" beside a Basmala written in
+  each. The owner did not like Amiri Quran. Each script is the King Fahd Complex font with the text
+  encoded for it (quran.com API), lined up word for word with quran_full.json so live highlighting
+  and verdicts keep their indices; quran_full.json itself is unchanged because the analysis indexes
+  it. Built and checked by ml/tools/build_quran_scripts.py (every word of all 6,236 ayat, 558 rukus,
+  14 sajdas). A first IndoPak font (QuranWBW) was dropped: its licence forbids redistribution.
+- 2026-09-25 The reader writes ayahs continuously, one paragraph per ruku, as a mushaf does. A tap on
+  an ayah opens its translation in a sheet (the ayah tinted meanwhile), since continuous text has no
+  room beside the ayah; "Always" and transliteration switch to ayah by ayah. The Basmala line never
+  takes ayah 1's tint: it opens the surah, and the Qari's ayah-1 recording does not say it.

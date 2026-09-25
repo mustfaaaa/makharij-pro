@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app/cubit/verse_text_size_cubit.dart';
+import '../models/quran_script.dart';
 
 /// The one place on-device user preferences are read and written.
 ///
@@ -77,6 +78,16 @@ class PreferencesService {
   static const _kTranslationMode = 'pref.translationMode';
   static const _kTransliteration = 'pref.transliteration';
   static const _kPreferredQari = 'pref.preferredQari';
+  static const _kQuranScript = 'pref.quranScript';
+
+  QuranScript get quranScript => QuranScript.values.firstWhere(
+        (s) => s.name == _prefs?.getString(_kQuranScript),
+        orElse: () => QuranScript.uthmani,
+      );
+
+  Future<void> setQuranScript(QuranScript script) async {
+    await _prefs?.setString(_kQuranScript, script.name);
+  }
 
   /// Whether the reader shows the translation never, when an ayah is tapped
   /// (the long-standing behaviour, and the default), or under every ayah.

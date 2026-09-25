@@ -8,6 +8,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'cubit/auth_cubit.dart';
 import 'cubit/hasanah_cubit.dart';
+import 'cubit/quran_script_cubit.dart';
 import 'cubit/theme_cubit.dart';
 import 'cubit/verse_text_size_cubit.dart';
 
@@ -20,6 +21,7 @@ class MakharijProApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => ThemeCubit()),
         BlocProvider(create: (_) => VerseTextSizeCubit()),
+        BlocProvider(create: (_) => QuranScriptCubit()),
         BlocProvider(create: (_) => HasanahCubit()),
         BlocProvider(create: (_) => AuthCubit()),
         // App-level singleton: the recitation flow spans four pushed routes

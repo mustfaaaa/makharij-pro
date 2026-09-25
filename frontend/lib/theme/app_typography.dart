@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/quran_script.dart';
 import 'app_colors.dart';
 
 /// Three bundled families, two roles each (see DESIGN.md):
@@ -9,21 +10,23 @@ import 'app_colors.dart';
 ///  * **Amiri** -- display, in both scripts: screen titles, surah names,
 ///    headlines. Its Latin is a classical book face, so a heading in English
 ///    and a surah name in Arabic read as one voice.
-///  * **Amiri Quran** -- the Quran text and nothing else: Amiri's Quran cut,
-///    built for the stacked Uthmani marks. It covers every codepoint in the
-///    bundled text.
+///  * **The Quran** -- in the King Fahd Complex's own faces, and nothing else
+///    in them. The reader writes it in the script the user chose (see
+///    [quranScript]); everywhere else Quran text is shown in KFGQPC HAFS
+///    Uthmanic Script ([quran]), which covers every codepoint of the bundled
+///    Uthmani text.
 ///
-/// All three are declared in pubspec.yaml and bundled, never fetched: the
-/// Quran has to render in its own face on a first launch with no connection.
+/// All are declared in pubspec.yaml and bundled, never fetched: the Quran has
+/// to render in its own face on a first launch with no connection.
 abstract class AppTypography {
   static const String ui = 'Figtree';
   static const String display = 'Amiri';
-  static const String quranFamily = 'AmiriQuran';
+  static const String quranFamily = 'QuranUthmani';
 
   /// Fallbacks for glyphs a family lacks (Arabic inside a Figtree string, a
-  /// Latin digit inside Amiri Quran).
+  /// Latin digit inside a Quran face).
   static const List<String> _uiFallback = ['Amiri', 'Roboto', 'sans-serif'];
-  static const List<String> _arabicFallback = ['Amiri', 'Figtree'];
+  static const List<String> _arabicFallback = ['AmiriQuran', 'Amiri', 'Figtree'];
 
   static TextStyle _ui(double size, FontWeight weight, double height, Color color, {double spacing = 0}) =>
       TextStyle(
@@ -77,6 +80,17 @@ abstract class AppTypography {
         color: color ?? AppColors.textPrimary,
       );
 
+  /// Quran text written in [script] -- only for text that came from that
+  /// script's own encoding (QuranScriptRepository). The size is scaled so both
+  /// scripts read at the same size for the same setting.
+  static TextStyle quranScript(QuranScript script, {double fontSize = 28, Color? color, double? height}) => TextStyle(
+        fontFamily: script.fontFamily,
+        fontFamilyFallback: _arabicFallback,
+        fontSize: fontSize * script.sizeScale,
+        height: height ?? script.lineHeight,
+        color: color ?? AppColors.textPrimary,
+      );
+
   /// Kept for existing call sites: every one of them is Quran text.
   static TextStyle arabicVerse({double fontSize = 28, Color? color, double height = 2.15}) =>
       quran(fontSize: fontSize, color: color, height: height);
@@ -84,7 +98,7 @@ abstract class AppTypography {
   /// Arabic interface text -- surah names, examples in a list -- in Amiri.
   static TextStyle arabicWord({double fontSize = 22, Color? color, FontWeight weight = FontWeight.w400}) => TextStyle(
         fontFamily: display,
-        fontFamilyFallback: const ['AmiriQuran', 'Figtree'],
+        fontFamilyFallback: const ['QuranUthmani', 'AmiriQuran', 'Figtree'],
         fontSize: fontSize,
         fontWeight: weight,
         height: 1.5,

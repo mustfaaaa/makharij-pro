@@ -5,15 +5,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/cubit/hasanah_cubit.dart';
+import '../../../../app/cubit/quran_script_cubit.dart';
 import '../../../../app/cubit/verse_text_size_cubit.dart';
 import '../../../../dummy/dummy_surahs.dart';
 import '../../../../features/quran/presentation/widgets/mushaf_ayah.dart';
+import '../../../../features/quran/presentation/widgets/mushaf_paragraph.dart';
 import '../../../../models/ayah.dart';
+import '../../../../models/quran_script.dart';
 import '../../../../models/session_result.dart';
 import '../../../../models/tajweed_error.dart';
 import '../../../../models/tajweed_word_info.dart';
 import '../../../../models/word_verdict.dart';
 import '../../../../routes/route_names.dart';
+import '../../../../services/quran_script_repository.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/ui/ornaments.dart';
 import '../../../../shared/ui/tajweed_marks.dart';
@@ -213,6 +217,13 @@ class _VerdictResults extends StatelessWidget {
     const mainRules = [TajweedErrorType.madd, TajweedErrorType.ghunnah, TajweedErrorType.shaddah, TajweedErrorType.makhraj];
     final clean = recited.isEmpty ? const <TajweedErrorType>[] : mainRules.where((r) => (counts[r] ?? 0) == 0).toList();
     final verseScale = context.watch<VerseTextSizeCubit>().state.scale;
+    final script = context.watch<QuranScriptCubit>().state;
+    final repo = QuranScriptRepository.instance;
+    // Written as the reading page writes it: continuous, a paragraph per ruku,
+    // in the script the reader chose. The page loads that text before any
+    // recitation can start, so it is here; a result reached some other way
+    // falls back to one ayah per paragraph in Uthmani.
+    final paragraphs = paragraphsByRuku(surahNumber, ayahs);
 
     void review(WordVerdict v) => WordReviewSheet.show(
           context,
@@ -310,9 +321,9 @@ class _VerdictResults extends StatelessWidget {
             sliver: SliverPadding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
               sliver: SliverList.builder(
-                itemCount: ayahs.length + 1,
+                itemCount: paragraphs.length + 1,
                 itemBuilder: (context, i) {
-                  if (i == ayahs.length) {
+                  if (i == paragraphs.length) {
                     final rulesPresent = counts.keys.toSet();
                     if (rulesPresent.isEmpty && !stoppedEarly) return const SizedBox.shrink();
                     return Padding(
@@ -320,18 +331,24 @@ class _VerdictResults extends StatelessWidget {
                       child: MistakeLegend(rules: rulesPresent, showNotRecited: stoppedEarly),
                     );
                   }
-                  final ayah = ayahs[i];
-                  final atAyah = verdictAt[ayah.number] ?? const {};
-                  return MushafAyah(
-                    ayah: ayah,
+                  final group = paragraphs[i];
+                  final shown = repo.isLoaded ? script : QuranScript.uthmani;
+                  return MushafParagraph(
+                    script: shown,
                     fontSize: 25 * verseScale,
-                    marks: markFor[ayah.number] ?? const {},
-                    leadingCenteredWords:
-                        (ayah.number == 1 && surahNumber != 1 && surahNumber != 9 && ayah.arabicText.split(' ').length > 4)
-                            ? 4
-                            : 0,
-                    onWordLongPress: (index) {
-                      final v = atAyah[index];
+                    ayahs: [
+                      for (final ayah in group)
+                        ParagraphAyah(
+                          ayah: ayah,
+                          text: repo.ayah(surahNumber, ayah.number, shown) ??
+                              ScriptedAyah(words: ayah.arabicText.split(' '), end: arabicNumber(ayah.number)),
+                          placement: repo.placement(surahNumber, ayah.number),
+                          leadingCenteredWords: basmalaWordsIn(surahNumber, ayah),
+                          marks: markFor[ayah.number] ?? const {},
+                        ),
+                    ],
+                    onWordLongPress: (number, index) {
+                      final v = verdictAt[number]?[index];
                       if (v != null && v.recited && v.flagged) review(v);
                     },
                   );
