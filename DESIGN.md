@@ -138,6 +138,14 @@ lighter surfaces for elevation, no shadows.
   Rattil is named after; 2 · the Basmala igniting word by word over a wave of light;
   3 · a frosted verdict card flagged, tried and cleared. Quran text comes from the bundled
   asset; the two demonstrations are labelled "An example". Static when animations are off.
+- 2026-09-24 The live highlight now keeps up with the voice. The check that
+  looks for mistakes in the words just behind the cursor used to be waited for
+  before any more audio was read, so on Al-Mulk 1-6 streamed at real-time pace
+  the highlight fell a measured 15 words behind and 15 of 72 words never lit at
+  all. It runs beside the cursor now (one at a time, at most every 2s of audio),
+  and the cursor stays with the voice while flags arrive a median 3.1s after the
+  word instead of 7.4s. The opening no longer waits 5s for a Basmala the reciter
+  may not say: with nothing tracked yet the cursor starts wherever they began.
 - 2026-09-25 Quran scripts: Uthmani and IndoPak, chosen under "Aa" beside a Basmala written in
   each. The owner did not like Amiri Quran. Each script is the King Fahd Complex font with the text
   encoded for it (quran.com API), lined up word for word with quran_full.json so live highlighting

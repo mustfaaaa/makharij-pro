@@ -62,6 +62,16 @@ SAMPLE_RATE = 16000
 # one-at-a-time guard.
 MIN_SECONDS_BETWEEN_UPDATES = 0.15
 
+# Least audio between one per-word check and the next.
+#
+# The check no longer blocks the cursor (it runs as its own task), so this is
+# not about keeping up -- it is about not keeping a core busy for the whole
+# recitation to say the same thing sooner than the reciter can read it.
+# Measured on Al-Mulk 1-6 streamed at real-time pace, how long after a word was
+# spoken its verdict reached the client: 4.2s at two seconds apart, 3.7s with
+# no gap at all, against 7.4s when the check still blocked the cursor.
+MIN_SECONDS_BETWEEN_CHECKS = 2.0
+
 # A ceiling on how deep into a long surah live feedback keeps running. Each pass
 # is a bounded cost now (see LIVE_CONTEXT_AYAHS), so this is no longer about the
 # work growing -- it is a floor under the streaming recogniser's share of the
@@ -219,6 +229,37 @@ async def _settled_word_verdicts(service, buffered: list[np.ndarray], surah: int
             for ayah, words in sorted(by_ayah.items())]
 
 
+async def _send_verdicts(websocket, payloads: list[dict], sent_words: set) -> None:
+    """Send only the words not reported before.
+
+    The lookback deliberately overlaps what was already reported, so a word
+    held back last time for being too near the live edge is picked up as soon
+    as it is ready -- without re-sending the ones already on screen.
+    """
+    for payload in payloads:
+        fresh = [w for w in payload["words"]
+                 if (payload["ayah"], w["word_index"]) not in sent_words]
+        if not fresh:
+            continue
+        for w in fresh:
+            sent_words.add((payload["ayah"], w["word_index"]))
+        await websocket.send_text(json.dumps(
+            {**payload, "words": fresh}, ensure_ascii=False))
+
+
+async def _finished_check(task) -> list[dict]:
+    """The verdicts a background check produced, or none if it failed."""
+    try:
+        return await task
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        # Live feedback is a bonus; the results screen still judges the whole
+        # recording at the end.
+        logger.exception("Live word check failed")
+        return []
+
+
 async def _flush_remaining(websocket, service, buffered, surah: int, from_ayah: int,
                            last_ayah: int, sent_words: set, ayah_first_sample: dict):
     """Judge everything still unreported, once the reciter has stopped.
@@ -327,11 +368,12 @@ async def stream_recitation(websocket: WebSocket):
     # cursor's own lag, which is fine: it only ever picks a window start a
     # couple of ayahs earlier, never a boundary that has to be exact.
     ayah_first_sample: dict[int, int] = {}
-    # One analysis at a time. Without this a pass that runs long simply queues
-    # the next one behind it, and the backlog never drains while the reciter
-    # keeps going -- better to skip an update and report those words with the
-    # following batch than to fall permanently behind.
-    analysing = False
+    # The per-word check, running beside this loop. One at a time: a second one
+    # started while the first is still going would only queue behind it on the
+    # same recognizer, and the backlog would never drain while the reciter
+    # keeps going.
+    checking: asyncio.Task | None = None
+    next_check_at = 0            # in samples of audio received
 
     try:
         while True:
@@ -351,6 +393,14 @@ async def stream_recitation(websocket: WebSocket):
                 # verdicts at all while recording, only on the results screen.
                 # Once "stop" arrives the recording IS complete, so the margin
                 # has nothing left to protect and everything can be judged.
+                #
+                # A check still running is waited for first: its words are a
+                # subset of what the flush would say, and letting the two
+                # overlap would put two analyses on the shared recognizer at
+                # once.
+                if checking is not None:
+                    await _send_verdicts(websocket, await _finished_check(checking), sent_words)
+                    checking = None
                 await _flush_remaining(websocket, service, buffered, surah,
                                        from_ayah, last_ayah, sent_words,
                                        ayah_first_sample)
@@ -368,6 +418,14 @@ async def stream_recitation(websocket: WebSocket):
             stream.accept_waveform(SAMPLE_RATE, samples)
             while service.recognizer.is_ready(stream):
                 service.recognizer.decode_stream(stream)
+
+            # A finished check's verdicts go out as soon as they are ready,
+            # rather than waiting for the cursor to move again -- a reciter
+            # pausing for breath should still see the words behind them settle.
+            if checking is not None and checking.done():
+                payloads = await _finished_check(checking)
+                checking = None
+                await _send_verdicts(websocket, payloads, sent_words)
 
             elapsed = samples_seen / SAMPLE_RATE
             if elapsed < next_update_at:
@@ -400,37 +458,32 @@ async def stream_recitation(websocket: WebSocket):
             ayah_first_sample.setdefault(ayah, samples_seen)
             last_ayah = max(last_ayah, ayah)
 
-            # Judge the words just behind the cursor. Which of them are ready is
-            # decided by how much audio has followed each one, not by counting
-            # words back -- see SETTLE_MARGIN_SEC.
-            if not analysing and (ayah - from_ayah) <= MAX_LIVE_ANALYSIS_AYAHS:
-                analysing = True
-                try:
-                    verdicts = await _settled_word_verdicts(
-                        service, buffered, surah, from_ayah, ayah,
-                        max(0, global_index - SETTLE_LOOKBACK_WORDS), global_index,
-                        ayah_first_sample)
-                finally:
-                    analysing = False
-
-                # Only words not sent before. The lookback deliberately overlaps
-                # what was already reported, so a word held back last time for
-                # being too near the live edge is picked up as soon as it is
-                # ready, without re-sending the ones already shown.
-                for payload in verdicts:
-                    fresh = [w for w in payload["words"]
-                             if (payload["ayah"], w["word_index"]) not in sent_words]
-                    if not fresh:
-                        continue
-                    for w in fresh:
-                        sent_words.add((payload["ayah"], w["word_index"]))
-                    await websocket.send_text(json.dumps(
-                        {**payload, "words": fresh}, ensure_ascii=False))
+            # Judge the words just behind the cursor, off to one side: this loop
+            # goes straight back to reading audio while the check runs. Waiting
+            # for it here is what left the cursor a measured 15 words behind the
+            # voice on Al-Mulk, with 15 of its 72 words never lit at all -- the
+            # audio kept arriving, but nothing was reading it.
+            #
+            # Which words are ready is decided by how much audio has followed
+            # each one, not by counting words back -- see SETTLE_MARGIN_SEC.
+            if (checking is None and samples_seen >= next_check_at
+                    and (ayah - from_ayah) <= MAX_LIVE_ANALYSIS_AYAHS):
+                next_check_at = samples_seen + int(MIN_SECONDS_BETWEEN_CHECKS * SAMPLE_RATE)
+                # Snapshots: the check reads these while the loop keeps adding
+                # to the live ones.
+                checking = asyncio.create_task(_settled_word_verdicts(
+                    service, list(buffered), surah, from_ayah, ayah,
+                    max(0, global_index - SETTLE_LOOKBACK_WORDS), global_index,
+                    dict(ayah_first_sample)))
 
     except WebSocketDisconnect:
         return
     except Exception:
         logger.exception("Live recitation stream failed")
+    finally:
+        # Nothing is listening for it any more.
+        if checking is not None and not checking.done():
+            checking.cancel()
 
     try:
         await websocket.close()

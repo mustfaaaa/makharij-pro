@@ -1,5 +1,4 @@
 import logging
-import threading
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
@@ -19,16 +18,13 @@ UNRECITED_TAIL_WORDS = 120
 # Recorded on every session so history can say which analysis produced it.
 PHONEME_MODEL_ID = "quran-lab-zipformer-p-arabic-v3.1"
 
-# The recognizer is one shared object, so one recitation is analysed at a time.
-# This lock keeps that true while the work runs in a worker thread instead of on
-# the event loop: analysing a long recitation no longer holds up the progress
-# screen, the practice plan or Rattil.
-_analysis_lock = threading.Lock()
-
 
 def _analyze(service, audio_bytes, surah_number, from_ayah, to_ayah):
-    with _analysis_lock:
-        return service.analyze_range(audio_bytes, surah_number, from_ayah, to_ayah)
+    """Run in a worker thread, so analysing a long recitation does not hold up
+    the progress screen, the practice plan or Rattil. One recitation is
+    analysed at a time; the recognizer itself enforces that now, because the
+    live socket calls it from its own thread too."""
+    return service.analyze_range(audio_bytes, surah_number, from_ayah, to_ayah)
 
 
 @router.post("/sessions/analyze_word_level")

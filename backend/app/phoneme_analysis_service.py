@@ -22,6 +22,7 @@ point are reported as "not recited" rather than as errors.
 import io
 import json
 import logging
+import threading
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -111,6 +112,14 @@ LIVE_LOOKAHEAD_WORDS = 12
 # roughly two words' worth, so a single mispronounced word doesn't freeze the
 # highlight for the rest of the recitation.
 LIVE_RESYNC_TAIL_CHARS = 20
+# The same wait, but at the very opening, where the cursor has not confirmed a
+# single word yet. The expected text starts at the Basmala; a reciter may begin
+# at the ayah itself, or say the ta'awwudh first. With the general wait the
+# highlight sat still for a measured 5 seconds at the top of Al-Mulk -- the
+# whole of its first ayah. Nothing is being tracked yet, so there is no cursor
+# to lose: about one word of phonemes is evidence enough for where they began,
+# and the frontier bar below still has to be cleared before anything lights up.
+LIVE_START_RESYNC_TAIL_CHARS = 10
 # How much wider than the recognized tail the expected-text window may be.
 # Just enough slack for the word currently being spoken, no more -- see
 # live_advance for what a wide window does to a short tail.
@@ -192,6 +201,15 @@ class PhonemeAnalysisService:
             decoding_method="greedy_search",
             provider="cpu",
         )
+        # One recitation analysed at a time. The recognizer is a single shared
+        # object, and [analyze_range] is now called from two places that do not
+        # wait for each other: a POST from the results screen, and the live
+        # socket's per-word check, which runs beside its cursor rather than
+        # holding it up. Serialising here keeps that invariant in one place
+        # instead of in each caller. The live *cursor* decodes its own stream
+        # and is deliberately outside this -- it must never wait on an analysis.
+        self._analysis_lock = threading.Lock()
+
         with open(model_dir / "ordered_quran_phonemes.json", encoding="utf-8") as f:
             self._phoneme_table = json.load(f)
 
@@ -309,8 +327,19 @@ class PhonemeAnalysisService:
             # or swallowed by noise). Wait a little in case it is still being
             # decoded, then resynchronize onto the next word we *did* hear
             # rather than freezing the highlight for the rest of the recitation.
-            if len(pred_tail) < LIVE_RESYNC_TAIL_CHARS:
+            opening = from_word == 0
+            if len(pred_tail) < (LIVE_START_RESYNC_TAIL_CHARS if opening
+                                 else LIVE_RESYNC_TAIL_CHARS):
                 return None
+            if opening:
+                # Look over the whole opening lookahead rather than the window
+                # the tail's length paid for: the reciter may have started
+                # several words in (see LIVE_START_RESYNC_TAIL_CHARS), and a
+                # short tail buys a window too narrow to contain the word they
+                # actually began with.
+                window = words[from_word:from_word + LIVE_LOOKAHEAD_WORDS]
+                pred_by_word, matched_counts, _errors = self._attribute(pred_tail, window)
+                heard = self._heard_flags(matched_counts, window)
             resync = next((i for i, h in enumerate(heard) if h), None)
             if resync is None:
                 return None
@@ -475,7 +504,15 @@ class PhonemeAnalysisService:
         Words the user never reached come back with `recited=False` and no
         error -- they are not mistakes, they are simply where the recording
         stopped.
+
+        Callers may be on different threads; see [_analysis_lock].
         """
+        with self._analysis_lock:
+            return self._analyze_range(audio_bytes, surah, from_ayah, to_ayah)
+
+    def _analyze_range(
+        self, audio_bytes: bytes, surah: int, from_ayah: int, to_ayah: int | None
+    ) -> list[WordPhonemeResult]:
         if to_ayah is None:
             to_ayah = self.ayah_count(surah)
         if to_ayah < from_ayah or self.ayah_count(surah) == 0:
