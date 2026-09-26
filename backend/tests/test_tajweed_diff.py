@@ -78,6 +78,19 @@ def test_ikhfa_said_as_a_plain_meem_is_flagged_as_ghunnah():
     assert _types(findings) == [tajweed_diff.GHUNNAH]
 
 
+def test_iqlab_said_as_a_plain_noon_is_flagged_as_ghunnah():
+    # The noon of نۢب was never turned into a hidden meem at all.
+    findings = classify("لَيُنۢبَذَنَّ", "لَيُ۾۾۾بَذَننننَ", "لَيُنبَذَننننَ")
+    assert _types(findings) == [tajweed_diff.GHUNNAH]
+
+
+def test_a_hidden_noon_heard_as_a_meem_stays_makhraj():
+    # Measured on professional recitation: كُلٌّۭ فِي read back garbled as
+    # كُللُهُم, which aligns the hidden noon onto the م of هُم. That is not an
+    # ikhfa said plainly, and must not be explained as one.
+    assert _types(classify("كُلٌّۭ", "كُللُںںں", "كُللُهُم")) == [tajweed_diff.MAKHRAJ]
+
+
 def test_ikhfa_made_as_expected_is_not_flagged():
     assert classify("مِن", "مِںںں", "مِںںں") == []
 

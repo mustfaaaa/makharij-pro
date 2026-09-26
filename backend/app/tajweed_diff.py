@@ -33,6 +33,13 @@ ELONGATION_CHARS = frozenset("اۥۦ")
 NASAL_CHARS = frozenset("من")
 # Dedicated ikhfa markers (noon / meem hidden into the following letter).
 IKHFA_CHARS = frozenset("ں۾")
+# The plain letter an ikhfa becomes when it is not made: a hidden noon said as
+# a clear noon; a hidden meem (ikhfa shafawi, or iqlab -- a noon turned into a
+# hidden meem before ب) said as a clear meem or, for iqlab, a clear noon. A
+# hidden noon heard as a meem is a different letter, not an unmade ikhfa --
+# measured, that is what a garbled كُلٌّۭ فِي (كُللُهُم) aligns to -- so it
+# stays a makhraj finding.
+IKHFA_PLAIN_FORMS = {"ں": frozenset("ن"), "۾": frozenset("من")}
 # Marks that ride on a letter rather than being letters themselves. A diff in
 # these alone is below the recognizer's reliable resolution, so it never flags
 # a word on its own.
@@ -228,7 +235,7 @@ def classify(display_word: str, expected: str, predicted: str) -> list[Finding]:
             # a word on that alone.
             if e_ch in MARK_CHARS or p_ch in MARK_CHARS:
                 continue
-            if e_ch in IKHFA_CHARS and p_ch in NASAL_CHARS:
+            if p_ch in IKHFA_PLAIN_FORMS.get(e_ch, ()):
                 # An ikhfa pronounced as a plain, clear noon or meem. That is
                 # the ikhfa itself not being made -- the same rule as the ikhfa
                 # heard nowhere above -- not a letter from the wrong makhraj.
