@@ -32,8 +32,14 @@ locally (gitignored).
 | Name | Code | Change |
 |---|---|---|
 | baseline | b404126 | — |
-| c1 | see meta.json | recording ends on quiet noise, not digital silence (`finish_stream`) |
-| c1_c2 | see meta.json | + an ikhfa said as a plain noon/meem is reported under ghunnah |
+| c1 | 18a2ba9 | recording ends on quiet noise, not digital silence (`finish_stream`) |
+| c1_c2 | 222115b (C2 as first committed, 3065dd2) | + an ikhfa said as a plain noon/meem is reported under ghunnah |
+| c1_c2_final | 09223b1 | C2 narrowed: only a hidden noon said as ن, or a hidden meem said as م/ن |
+
+Reports: `results/REPORT_baseline.md`, `REPORT_baseline_vs_c1.md`,
+`REPORT_baseline_vs_c1_vs_c1_c2.md`, `REPORT_baseline_vs_c1_vs_c1_c2_final.md`
+(the final comparison, with every changed verdict), `SANITY_baseline_c1_c1_c2_final.md`
+(hand-read cases), `LATENCY.md`.
 
 ## What this cannot measure
 
