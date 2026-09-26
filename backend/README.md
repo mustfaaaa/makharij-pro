@@ -51,6 +51,23 @@ Until you do this, the public endpoints (Rattil, the Tajweed reference) keep wor
   in the backticked `METHOD /path` notation the live ones use, so that test can tell them apart.
 - `GET /api/v1/sessions` — the signed-in user's session history, most recent first (FR-13/UC-5,
   feeds the progress dashboard).
+- `POST /api/v1/sessions/analyze_word_level` — word-by-word verdicts for an uploaded recitation,
+  stored as a session. The range is `from_ayah` of `surah_number` to `to_ayah` of `end_surah`
+  (both optional: `end_surah` defaults to `surah_number`, `to_ayah` to the end of `end_surah`), so
+  a recitation can begin at any ayah and run on into later surahs; each surah is analysed from its
+  own ayah 1, with its Basmala optional, and every word carries its `surah_number`. A recording
+  too long for one alignment (about five minutes and over) is aligned in windows, so there is no
+  length ceiling — before, 18 minutes of 2:57–2:110 came back as 166 of 1,196 words. The response
+  adds `end_surah` and `reached_surah`; the session stores `endSurah`, `reachedSurah`, and
+  `surahNumber` on each stored word and mistake. Sessions stored before these fields existed read
+  as being wholly in their `surahNumber`. Pinned by `tests/test_span_analysis.py`.
+- The `/api/v1/sessions/stream` WebSocket — the live cursor while reciting (progress and settled
+  verdicts, each naming its surah), and, when the client ends with `{"type": "finish"}`, the
+  authoritative analysis of the whole recitation run on the socket's own decoded stream: the same
+  response and the same stored session as the upload above, without uploading or decoding the
+  recording again, with `analysis_progress` messages as it goes. `{"type": "stop"}` discards the
+  recitation. The socket keeps only its last 35 seconds of audio. The protocol is at the top of
+  `app/routers/live.py`; pinned by `tests/test_live_finish.py`.
 - `POST /api/v1/sessions/{session_id}/reattempt` — FR-8/BR-5 self-correction, **at word
   granularity**. The reciter re-records either the whole passage or, with `ayah_number` (optionally
   plus `word_index`), the single place they want another go at. Only words the session already

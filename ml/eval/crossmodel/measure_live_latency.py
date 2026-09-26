@@ -38,7 +38,7 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "backend"))
 
-from app.phoneme_analysis_service import PhonemeAnalysisService  # noqa: E402
+from app.phoneme_analysis_service import PhonemeAnalysisService, SpanWords  # noqa: E402
 from app.routers import live as L  # noqa: E402
 
 RECITATIONS = REPO / "backend" / "app" / "static" / "recitations"
@@ -114,7 +114,7 @@ async def run_surah(service, qari: str, surah: int, ayah_count: int):
         ayah, word_index, global_index, consumed = step_out
         chars_consumed += consumed
         word_cursor = global_index + 1
-        firsts.setdefault(ayah, seen)
+        firsts.setdefault((surah, ayah), seen)
 
         # How far behind is the cursor? Compare where the reported word really
         # ended against how much audio the reciter has produced by now.
@@ -128,9 +128,11 @@ async def run_surah(service, qari: str, surah: int, ayah_count: int):
             busy = True
             # Only words still inside the analysis window. Asking for older
             # ones measures the window's edge, not the verdict's readiness.
+            # The socket keeps its recent audio with the absolute index of its
+            # first sample; this harness keeps all of it, from sample 0.
             verdicts = await L._settled_word_verdicts(
-                service, buffered, surah, 1, ayah,
-                max(0, global_index - 12), global_index, firsts)
+                service, (np.concatenate(buffered), 0), SpanWords(service, surah, 1, surah, None),
+                (surah, 1), (surah, ayah), max(0, global_index - 12), global_index, firsts)
             busy = False
             for msg in verdicts:
                 for w in msg["words"]:

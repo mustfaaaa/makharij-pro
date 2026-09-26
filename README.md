@@ -121,8 +121,8 @@ ml/         training (Track A), evaluation harnesses, and the Tajweed table extr
 ### API surface
 
 ```
-POST  /api/v1/sessions/analyze_word_level     word-by-word verdicts for a recording
-WS    /api/v1/sessions/stream                 live cursor while reciting
+POST  /api/v1/sessions/analyze_word_level     word-by-word verdicts for a recording, from any ayah, across surahs, any length
+WS    /api/v1/sessions/stream                 live cursor while reciting; "finish" judges the recitation on the socket
 POST  /api/v1/sessions/{id}/word-feedback     "I said it right"
 GET   /api/v1/tajweed/word/{s}/{a}/{i}        makhraj + rules for one word
 GET   /api/v1/tajweed/ayah/{s}/{a}            the whole ayah

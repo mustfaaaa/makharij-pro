@@ -172,6 +172,39 @@ EXPECTED_LENGTH_SLACK = 1.8
 EXPECTED_LENGTH_FLOOR = 30
 MAX_DP_CELLS = 12_000_000
 
+# ── Long recitations, and recitations that run on into the next surah ────────
+#
+# One alignment over the whole recording stops working past a few minutes.
+# MAX_DP_CELLS caps the expected side at 12M / (recognised characters), and a
+# reciter produces 7-8 phoneme characters a second (measured on the bundled
+# Qari clips), so past ~2,600 characters the expected text the aligner may see
+# is shorter than what was recited. Measured: 18 minutes of Sudais from 2:57 to
+# 2:110 came back as 166 of 1,196 words recited, "reached" 2:62, with the rest
+# of the audio piled onto the last word it did see.
+#
+# So a recording longer than SINGLE_PASS_MAX_CHARS is aligned a window at a
+# time, each window the same steps as before on a bounded stretch of audio.
+# Only words whose audio ends SETTLE_MARGIN_CHARS before the window does are
+# settled in it; the rest are aligned again, with what follows them, in the
+# next window. Recordings up to SINGLE_PASS_MAX_CHARS (about five minutes)
+# take exactly the one pass they always did, so everything measured on them
+# still holds.
+SINGLE_PASS_MAX_CHARS = 2400
+WINDOW_CHARS = 1600
+SETTLE_MARGIN_CHARS = 160
+
+# At a surah boundary the next surah is analysed as a segment of its own, from
+# its ayah 1, so the optional Basmala check above decides whether the reciter
+# said it -- the same check a recitation beginning at that surah gets. While
+# the first surah is aligned, the text that follows it is aligned too (at
+# least this many words, and as far as the budget reaches), and never scored:
+# without somewhere to go, the next surah's audio would pile onto the last
+# word of this one (the failure the final cut in _score exists for).
+GUARD_WORDS = 12
+# Fewer recognised characters than this after a surah's last word is the tail
+# of that word or noise, not the start of the next surah.
+CONTINUE_MIN_CHARS = 8
+
 
 @dataclass
 class WordPhonemeResult:
@@ -188,6 +221,82 @@ class WordPhonemeResult:
     confidence: float
     error_type: str | None
     explanation: str | None
+    # Last, and defaulted, so results built positionally elsewhere still work.
+    # A recitation can run from one surah into the next, so an ayah number
+    # alone no longer says where a word is.
+    surah_number: int = 0
+
+
+@dataclass
+class _Scored:
+    """What one alignment pass over part of a recitation concluded."""
+    results: list[WordPhonemeResult]
+    # How many of the words handed in are decided -- all of them, unless the
+    # pass was asked to settle only what lies well before its window's end.
+    settled: int
+    # How many of the window's recognised characters those words account for.
+    consumed: int
+
+
+class SpanWords:
+    """The words a recitation is expected to follow, from where it begins,
+    across surah boundaries, read a surah at a time as the cursor needs them.
+
+    Index i is the i-th word of the recitation -- what the live cursor's
+    global index counts. Building the rest of the Quran up front for a
+    recitation that may stop after three ayahs would be waste, so each surah's
+    words are only fetched when the cursor comes within reach of them.
+    """
+
+    def __init__(self, service: "PhonemeAnalysisService", start_surah: int, start_ayah: int,
+                 end_surah: int, end_ayah: int | None):
+        self._service = service
+        self._end = (end_surah, end_ayah)
+        self._next: tuple[int, int] | None = (start_surah, start_ayah)
+        # (index of the segment's first word, surah, the segment's words)
+        self._segments: list[tuple[int, int, list]] = []
+        self._count = 0
+
+    def _extend(self) -> bool:
+        if self._next is None:
+            return False
+        surah, ayah = self._next
+        end_surah, end_ayah = self._end
+        last = end_ayah if surah == end_surah and end_ayah is not None else self._service.ayah_count(surah)
+        words = self._service._range_words(surah, ayah, last)
+        self._segments.append((self._count, surah, words))
+        self._count += len(words)
+        self._next = (surah + 1, 1) if surah < end_surah and surah < 114 else None
+        return True
+
+    def _reach(self, index: int) -> bool:
+        while index >= self._count:
+            if not self._extend():
+                return False
+        return True
+
+    def window(self, start: int, size: int) -> list[tuple[int, tuple]]:
+        """Up to [size] words from index [start], each as (surah, word)."""
+        out: list[tuple[int, tuple]] = []
+        index = start
+        while len(out) < size and self._reach(index):
+            for first, surah, words in self._segments:
+                if first <= index < first + len(words):
+                    take = words[index - first:index - first + size - len(out)]
+                    out.extend((surah, w) for w in take)
+                    index += len(take)
+                    break
+        return out
+
+    def starts_segment(self, index: int) -> bool:
+        """Whether word [index] opens a surah -- the recitation's first word, or
+        the first of a surah it has run on into."""
+        self._reach(index)
+        return any(first == index for first, _surah, _words in self._segments)
+
+    def first_segment_length(self) -> int:
+        self._reach(0)
+        return len(self._segments[0][2]) if self._segments else 0
 
 
 class PhonemeAnalysisService:
@@ -238,6 +347,12 @@ class PhonemeAnalysisService:
         y, _ = librosa.load(io.BytesIO(audio_bytes), sr=SAMPLE_RATE, mono=True)
         stream = self.recognizer.create_stream()
         stream.accept_waveform(SAMPLE_RATE, y.astype(np.float32))
+        return self.finish_stream(stream)
+
+    def finish_stream(self, stream) -> tuple[list[str], list[float]]:
+        """Finish a stream that has been given all of a recording -- in one go
+        above, or chunk by chunk by the live socket -- and return its tokens
+        and their timestamps. The same either way (see analyze_decoded_span)."""
         # Tail padding: the streaming recognizer needs silence after the last
         # real audio before it will emit the final tokens. 0.5s was not enough
         # -- it clipped the closing letters of whatever word the user stopped
@@ -286,10 +401,23 @@ class PhonemeAnalysisService:
         moved. Returns (ayah, word_index_in_ayah, global_word_index,
         chars_consumed) or None if nothing new was confidently matched.
         """
+        step = self.live_advance_span(pred_tail, SpanWords(self, surah, from_ayah, surah, None), from_word)
+        return None if step is None else step[1:]
+
+    def live_advance_span(self, pred_tail: list[str], span: SpanWords, from_word: int):
+        """[live_advance] over a recitation that may run on into later surahs.
+
+        Returns (surah, ayah, word_index_in_ayah, global_word_index,
+        chars_consumed), or None. The cursor treats the first word of every
+        surah it reaches the way it treats the first word of the recitation:
+        that surah opens with a Basmala the reciter may or may not say, and
+        waiting out the usual stall on it would freeze the highlight at every
+        surah boundary.
+        """
         if not pred_tail:
             return None
-        words = self._range_words(surah, from_ayah, self.ayah_count(surah))
-        if from_word >= len(words):
+        ahead = span.window(from_word, LIVE_LOOKAHEAD_WORDS)
+        if not ahead:
             return None
 
         # Size the window by how much audio the tail actually represents, not
@@ -301,11 +429,12 @@ class PhonemeAnalysisService:
         # Al-Fatihah's repeated لِلَّهِ / ٱلرَّحِيمِ further on. Keeping the
         # expected side just wider than the tail removes the room to do that.
         budget = max(int(len(pred_tail) * LIVE_WINDOW_SLACK), 1)
-        window, used = [], 0
-        for w in words[from_word:from_word + LIVE_LOOKAHEAD_WORDS]:
+        window, surahs, used = [], [], 0
+        for surah, w in ahead:
             if window and used >= budget:
                 break
             window.append(w)
+            surahs.append(surah)
             used += len(w[3])
         if not window:
             return None
@@ -327,7 +456,7 @@ class PhonemeAnalysisService:
             # or swallowed by noise). Wait a little in case it is still being
             # decoded, then resynchronize onto the next word we *did* hear
             # rather than freezing the highlight for the rest of the recitation.
-            opening = from_word == 0
+            opening = span.starts_segment(from_word)
             if len(pred_tail) < (LIVE_START_RESYNC_TAIL_CHARS if opening
                                  else LIVE_RESYNC_TAIL_CHARS):
                 return None
@@ -337,7 +466,8 @@ class PhonemeAnalysisService:
                 # several words in (see LIVE_START_RESYNC_TAIL_CHARS), and a
                 # short tail buys a window too narrow to contain the word they
                 # actually began with.
-                window = words[from_word:from_word + LIVE_LOOKAHEAD_WORDS]
+                window = [w for _surah, w in ahead]
+                surahs = [surah for surah, _w in ahead]
                 pred_by_word, matched_counts, _errors = self._attribute(pred_tail, window)
                 heard = self._heard_flags(matched_counts, window)
             resync = next((i for i, h in enumerate(heard) if h), None)
@@ -375,7 +505,7 @@ class PhonemeAnalysisService:
         assigned = [i for w in pred_by_word[:advanced] for i in w]
         consumed = max(assigned) + 1 if assigned else 0
         ayah, word_index, _display, _expected = window[last]
-        return ayah, word_index, from_word + last, consumed
+        return surahs[last], ayah, word_index, from_word + last, consumed
 
     @staticmethod
     def _heard_flags(word_matched, considered) -> list[bool]:
@@ -524,6 +654,13 @@ class PhonemeAnalysisService:
             raise ValueError(f"No phoneme reference for surah {surah} ayahs {from_ayah}-{to_ayah}")
 
         pred_tokens, pred_times = self._decode(audio_bytes)
+        pred_chars, pred_char_token_idx = self._flatten(pred_tokens)
+        prefix_len = self._mapper.basmala_prefix_len(surah, from_ayah) if from_ayah == 1 else 0
+        return self._score(pred_chars, pred_char_token_idx, pred_times, surah, words,
+                           prefix_len=prefix_len).results
+
+    @staticmethod
+    def _flatten(pred_tokens) -> tuple[list[str], list[int]]:
         pred_chars: list[str] = []
         pred_char_token_idx: list[int] = []
         for tok_i, tok in enumerate(pred_tokens):
@@ -532,11 +669,41 @@ class PhonemeAnalysisService:
             for ch in tok:
                 pred_chars.append(ch)
                 pred_char_token_idx.append(tok_i)
+        return pred_chars, pred_char_token_idx
+
+    def _score(
+        self,
+        pred_chars: list[str],
+        pred_char_token_idx: list[int],
+        pred_times,
+        surah: int,
+        words: list[tuple[int, int, str, str]],
+        *,
+        prefix_len: int = 0,
+        guard: tuple = (),
+        settle_before: int | None = None,
+    ) -> _Scored:
+        """Align recognised characters against [words] of [surah] and judge each
+        word -- the one alignment everything here is built on.
+
+        With only [prefix_len] given this is exactly what analyze_range has
+        always done: the recording is taken to start at words[0] and to stop
+        somewhere in [words], and every word comes back judged.
+
+        [prefix_len]: how many leading words are the optional Basmala.
+        [guard]: words that follow [words] in the recitation (the next surah).
+        They are aligned against, so audio past the last of [words] has
+        somewhere to go, and are never scored.
+        [settle_before]: the recording continues past this window. Only words
+        whose audio ends before this character index are settled and returned;
+        the rest are left for the next window, which will see what follows
+        them.
+        """
         pred_str = "".join(pred_chars)
 
         if not pred_str:
             # Nothing recognized at all (silence, or an unusable recording).
-            return [self._unrecited(w) for w in words]
+            return _Scored([self._unrecited(w, surah) for w in words], settled=len(words), consumed=0)
 
         # Trim the expected side to what this much audio could plausibly cover,
         # then hard-cap the DP size. Both cuts only ever move words into the
@@ -550,7 +717,7 @@ class PhonemeAnalysisService:
         # recited because of this. Guaranteeing the floor covers at least the
         # whole starting ayah costs nothing -- the re-align loop below still
         # shrinks back to wherever the recording actually stopped.
-        first_ayah_chars = sum(len(w[3]) for w in words if w[0] == from_ayah)
+        first_ayah_chars = sum(len(w[3]) for w in words if w[0] == words[0][0])
         budget = max(EXPECTED_LENGTH_FLOOR, int(len(pred_str) * EXPECTED_LENGTH_SLACK), first_ayah_chars)
         budget = min(budget, max(1, MAX_DP_CELLS // max(1, len(pred_str))))
         considered: list[tuple[int, int, str, str]] = []
@@ -569,9 +736,6 @@ class PhonemeAnalysisService:
         # So probe for it first, and drop it from the comparison when it simply
         # isn't there; those words come back as "not recited", not as mistakes.
         skipped_prefix: list[tuple[int, int, str, str]] = []
-        prefix_len = (
-            self._mapper.basmala_prefix_len(surah, from_ayah) if from_ayah == 1 else 0
-        )
         if 0 < prefix_len < len(considered):
             prefix = considered[:prefix_len]
             # Compare against just the opening of the recording, barely longer
@@ -586,6 +750,24 @@ class PhonemeAnalysisService:
                 skipped_prefix = prefix
                 considered = considered[prefix_len:]
 
+        # How many entries of `considered` are this call's own words; any after
+        # them are the guard, aligned against and never scored. The guard only
+        # joins once every one of `words` is in reach -- until then the words
+        # themselves are "what follows" -- and then it continues the expected
+        # text under the same budget, as far as this much audio could reach.
+        #
+        # A fixed few words were not enough. Twelve words of Aal-E-Imran
+        # against two minutes of it let the aligner anchor them on a later
+        # repetition of the same phrase (3:2's "la ilaha illa huwa" recurs at
+        # 3:6), and the audio of 3:1-2 fell onto the last word of Al-Baqarah.
+        own = len(considered)
+        if guard and len(skipped_prefix) + own == len(words):
+            for i, g in enumerate(guard):
+                if i >= GUARD_WORDS and used >= budget:
+                    break
+                considered.append(g)
+                used += len(g[3])
+
         # Does `considered` still reach the final word of the *requested range*?
         #
         # It must be measured against `words`, not against whatever `considered`
@@ -594,8 +776,11 @@ class PhonemeAnalysisService:
         # `considered` ends near their stop point. Comparing it to itself would
         # call that "the end of the range" and waive the tail bar exactly where
         # it is needed -- measured, that put spill back from 4.2% to 12.7%.
+        #
+        # With a guard the recitation's text goes on past `words`, so there is
+        # no range end here to waive the bar for.
         def reaches_range_end(window) -> bool:
-            return len(skipped_prefix) + len(window) == len(words)
+            return not guard and len(skipped_prefix) + len(window) == len(words)
 
         # The first alignment runs against the *whole* requested range, so the
         # expected text continues well past wherever the user actually stopped
@@ -668,13 +853,14 @@ class PhonemeAnalysisService:
         # It is why the first ayah of a surah was the worst-scoring ayah in the
         # book: every one of the forty worst ayahs across the whole Quran was an
         # ayah 1, which is exactly where an unspoken Basmala can be dropped.
-        beyond = words[len(skipped_prefix) + len(considered):]
+        own = min(own, len(considered))
+        beyond = words[len(skipped_prefix) + own:]
 
         results: list[WordPhonemeResult] = []
-        for i, (ayah, idx_in_ayah, display, expected_word) in enumerate(considered):
+        for i, (ayah, idx_in_ayah, display, expected_word) in enumerate(considered[:own]):
             in_span = first_heard is not None and first_heard <= i <= last_heard
             if not in_span:
-                results.append(self._unrecited(considered[i]))
+                results.append(self._unrecited(considered[i], surah))
                 continue
 
             pred_idxs = word_pred_chars[i]
@@ -690,7 +876,7 @@ class PhonemeAnalysisService:
             # after stopping at "al-'aalameen" is exactly this case, and both
             # of its words score a flat 0.
             if expected_word and not pred_idxs:
-                results.append(self._unrecited(considered[i]))
+                results.append(self._unrecited(considered[i], surah))
                 continue
             predicted_word = "".join(pred_chars[p] for p in pred_idxs)
 
@@ -720,13 +906,34 @@ class PhonemeAnalysisService:
                 confidence=round(confidence, 3),
                 error_type=verdict.error_type if verdict else None,
                 explanation=verdict.explanation if verdict else None,
+                surah_number=surah,
             ))
 
-        results.extend(self._unrecited(w) for w in beyond)
-        return [self._unrecited(w) for w in skipped_prefix] + results
+        opening = [self._unrecited(w, surah) for w in skipped_prefix]
+        if settle_before is not None:
+            # The recording goes on past this window, so its last stretch was
+            # aligned without the audio that follows it. Settle only the words
+            # whose audio ends well before the window does; the next window
+            # aligns the rest again with what comes after them.
+            last = -1
+            for i in range(own):
+                if word_pred_chars[i]:
+                    if max(word_pred_chars[i]) >= settle_before:
+                        break
+                    last = i
+            if last < 0:
+                return _Scored([], settled=0, consumed=0)
+            return _Scored(opening + results[:last + 1],
+                           settled=len(skipped_prefix) + last + 1,
+                           consumed=max(word_pred_chars[last]) + 1)
+
+        used_chars = [max(word_pred_chars[i]) for i in range(own) if word_pred_chars[i]]
+        results.extend(self._unrecited(w, surah) for w in beyond)
+        return _Scored(opening + results, settled=len(words),
+                       consumed=max(used_chars) + 1 if used_chars else 0)
 
     @staticmethod
-    def _unrecited(word: tuple[int, int, str, str]) -> WordPhonemeResult:
+    def _unrecited(word: tuple[int, int, str, str], surah: int = 0) -> WordPhonemeResult:
         ayah, idx_in_ayah, display, expected_word = word
         return WordPhonemeResult(
             ayah_number=ayah,
@@ -742,7 +949,161 @@ class PhonemeAnalysisService:
             confidence=0.0,
             error_type=None,
             explanation=None,
+            surah_number=surah,
         )
+
+    # ── Recitations that may be long, or run on into the next surah ────────────
+
+    def analyze_span(
+        self,
+        audio_bytes: bytes,
+        start_surah: int,
+        start_ayah: int = 1,
+        end_surah: int | None = None,
+        end_ayah: int | None = None,
+        on_progress=None,
+    ) -> list[WordPhonemeResult]:
+        """Align a recitation that begins at ayah [start_ayah] of [start_surah]
+        and runs on -- through the end of that surah and into the next ones, as
+        far as (end_surah, end_ayah) allows and the recording actually goes.
+
+        [end_surah] defaults to [start_surah], and [end_ayah] to the last ayah of
+        [end_surah]: (start_surah, from, None, to) asks for exactly what
+        analyze_range(audio, start_surah, from, to) does, and a recording short
+        enough for one pass gets exactly its answer.
+
+        Each result carries its `surah_number`. Words past where the recording
+        stopped come back unrecited through the end of the surah it stopped in;
+        surahs it never reached are not listed at all.
+
+        [on_progress] is called with the fraction of the recording aligned so
+        far, from the analysing thread.
+        """
+        with self._analysis_lock:
+            span = self._check_span(start_surah, start_ayah, end_surah, end_ayah)
+            pred_tokens, pred_times = self._decode(audio_bytes)
+            return self._analyze_span(pred_tokens, pred_times, *span, on_progress)
+
+    def analyze_decoded_span(
+        self,
+        pred_tokens,
+        pred_times,
+        start_surah: int,
+        start_ayah: int = 1,
+        end_surah: int | None = None,
+        end_ayah: int | None = None,
+        on_progress=None,
+    ) -> list[WordPhonemeResult]:
+        """[analyze_span] on a recording the recogniser has already decoded --
+        the live socket's own stream, finished. Decoding it again would give the
+        same tokens and timestamps (measured: fed in 200 ms chunks or all at
+        once, identical on Al-Fatihah, Al-Mulk 1-6 and Al-Baqarah 280-286), so
+        the recording need not be uploaded or decoded a second time."""
+        with self._analysis_lock:
+            span = self._check_span(start_surah, start_ayah, end_surah, end_ayah)
+            return self._analyze_span(list(pred_tokens), list(pred_times), *span, on_progress)
+
+    def _check_span(self, start_surah, start_ayah, end_surah, end_ayah):
+        if end_surah is None:
+            end_surah = start_surah
+        start_count = self.ayah_count(start_surah)
+        end_count = self.ayah_count(end_surah)
+        if not start_count or not end_count or not 1 <= start_ayah <= start_count:
+            raise ValueError(f"No phoneme reference for {start_surah}:{start_ayah} to {end_surah}:{end_ayah}")
+        if end_ayah is not None:
+            end_ayah = min(end_ayah, end_count)
+        if (end_surah, end_ayah if end_ayah is not None else end_count) < (start_surah, start_ayah):
+            raise ValueError(f"A recitation cannot end ({end_surah}:{end_ayah}) before it begins "
+                             f"({start_surah}:{start_ayah})")
+        return start_surah, start_ayah, end_surah, end_ayah
+
+    def _guard_after(self, surah: int, end_surah: int, end_ayah: int | None) -> tuple:
+        """The text after [surah], when the recitation's span goes on past it:
+        the next surah's Basmala and opening, and the surahs after it when
+        those are short -- as much as the longest single pass could align
+        against. _score takes what its budget allows."""
+        limit = int(SINGLE_PASS_MAX_CHARS * EXPECTED_LENGTH_SLACK)
+        out: list = []
+        chars = 0
+        s = surah + 1
+        while chars < limit and s <= min(end_surah, 114):
+            last = end_ayah if s == end_surah and end_ayah is not None else self.ayah_count(s)
+            for a in range(1, last + 1):
+                for w in self._range_words(s, a, a):
+                    out.append(w)
+                    chars += len(w[3])
+                if chars >= limit:
+                    break
+            s += 1
+        return tuple(out)
+
+    def _analyze_span(self, pred_tokens, pred_times, start_surah, start_ayah, end_surah, end_ayah,
+                      on_progress=None) -> list[WordPhonemeResult]:
+        pred_chars, pred_char_token_idx = self._flatten(pred_tokens)
+        total = len(pred_chars)
+        results: list[WordPhonemeResult] = []
+        p = 0
+        surah, ayah = start_surah, start_ayah
+
+        def report():
+            if on_progress is not None:
+                on_progress(min(p / total, 1.0) if total else 1.0)
+
+        while True:
+            last = end_ayah if surah == end_surah and end_ayah is not None else self.ayah_count(surah)
+            words = self._range_words(surah, ayah, last)
+            guard = self._guard_after(surah, end_surah, end_ayah) if surah < end_surah else ()
+            # A surah's Basmala is optional wherever the recitation meets it:
+            # at the start, or run into from the surah before.
+            prefix_len = self._mapper.basmala_prefix_len(surah, ayah) if ayah == 1 else 0
+
+            segment: list[WordPhonemeResult] = []
+            w = 0
+            stopped_here = False
+            while w < len(words):
+                if total - p <= SINGLE_PASS_MAX_CHARS:
+                    # The rest of the recording fits one pass: align it all,
+                    # stop point and all, exactly as a short recording is.
+                    scored = self._score(
+                        pred_chars[p:], pred_char_token_idx[p:], pred_times, surah, words[w:],
+                        prefix_len=prefix_len if w == 0 else 0, guard=guard)
+                    segment += scored.results
+                    p += scored.consumed
+                    stopped_here = True
+                    break
+                end = p + WINDOW_CHARS
+                scored = self._score(
+                    pred_chars[p:end], pred_char_token_idx[p:end], pred_times, surah, words[w:],
+                    prefix_len=prefix_len if w == 0 else 0, guard=guard,
+                    settle_before=WINDOW_CHARS - SETTLE_MARGIN_CHARS)
+                if scored.settled:
+                    segment += scored.results
+                    p += scored.consumed
+                    w += scored.settled
+                else:
+                    # Nothing in this stretch could be placed against the text
+                    # -- it is not recitation of it. Move past it rather than
+                    # align the same audio again.
+                    logger.info("No words placed in %d characters at %s:%s; skipping them",
+                                WINDOW_CHARS - SETTLE_MARGIN_CHARS, surah, words[w][0])
+                    p += WINDOW_CHARS - SETTLE_MARGIN_CHARS
+                report()
+
+            if results and not any(r.recited for r in segment):
+                # A surah the recording never actually got into: leave it out
+                # rather than list every word of it as not recited.
+                break
+            results += segment
+            if not guard:
+                break
+            if stopped_here and (not segment or not segment[-1].recited or total - p < CONTINUE_MIN_CHARS):
+                # The reciter stopped inside this surah, or at its very end.
+                break
+            surah, ayah = surah + 1, 1
+
+        p = total
+        report()
+        return results
 
     def analyze(self, audio_bytes: bytes, surah: int, ayah: int) -> list[WordPhonemeResult]:
         """Single-ayah convenience wrapper over [analyze_range]."""

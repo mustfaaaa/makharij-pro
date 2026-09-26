@@ -27,67 +27,27 @@ def _analyze(service, audio_bytes, surah_number, from_ayah, to_ayah):
     return service.analyze_range(audio_bytes, surah_number, from_ayah, to_ayah)
 
 
-@router.post("/sessions/analyze_word_level")
-async def analyze_word_level(
-    request: Request,
-    audio: UploadFile = File(...),
-    surah_number: int = Form(...),
-    from_ayah: int = Form(1),
-    to_ayah: int | None = Form(None),
-    ayah_number: int | None = Form(None),
-    qari_id: str = Form("abdurrahmaan_as_sudais"),
-    uid: str = Depends(get_current_uid),
-):
-    """Gate 1+2 (approved -- see makharij_audit): real per-word phoneme
-    recognition + timing via the Quran-Lab streaming zipformer model,
-    compared directly against that model's own documented expected phoneme
-    sequence -- not a fabricated preview. qari_id is accepted for API
-    compatibility/analytics but not used for comparison, since the phoneme
-    model compares against the ayah's canonical phoneme sequence rather than
-    a specific reciter's audio.
+def record_session(uid: str, results, *, surah_number: int, from_ayah: int, qari_id: str) -> dict:
+    """Store an analysed recitation and build what the app is sent back.
 
-    Analysis covers an ayah *range* -- the whole surah unless from_ayah/to_ayah
-    narrow it. A user recites continuously and stops where they stop, so
-    scoring a single ayah made every word past it look like an error. Words
-    the recording never reached come back with `recited: false` and no error;
-    `reached_ayah`/`reached_word_index` say exactly how far the user got.
-
-    `ayah_number` is the older single-ayah form of this call and still works:
-    it pins the range to that one ayah.
-
-    Covers all 6236 ayat -- see ordered_quran_phonemes.json.
+    One shape whichever way the analysis ran -- on an uploaded recording, or on
+    the live socket's own stream when recording stops -- so the app reads both
+    the same and the history cannot tell them apart. Blocking (Firestore): run
+    it off the event loop.
     """
-    service = request.app.state.phoneme_analysis_service
-    if service is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Word-level analysis isn't available yet on this server (phoneme model not loaded).",
-        )
-
-    audio_bytes = await audio.read()
-    if not audio_bytes:
-        raise HTTPException(status_code=400, detail="Empty audio file")
-
-    if ayah_number is not None:
-        from_ayah = to_ayah = ayah_number
-
-    try:
-        results = await run_in_threadpool(_analyze, service, audio_bytes, surah_number, from_ayah, to_ayah)
-    except ValueError as exc:
-        # No phoneme reference for this surah/range -- helpful, not a bare 404.
-        raise HTTPException(status_code=404, detail=str(exc))
-    except Exception as exc:
-        logger.exception("Word-level phoneme analysis failed")
-        raise HTTPException(status_code=422, detail=f"Could not analyze audio: {exc}")
-
     summary = firestore_service.summarize_word_results(results)
-    session_id = await run_in_threadpool(
-        firestore_service.save_session,
+    # The passage analysed ends with the last word listed: the end of the
+    # surah the recording stopped in, or of the range asked for.
+    final = results[-1] if results else None
+    end_surah = (final.surah_number or surah_number) if final else surah_number
+    to_ayah = final.ayah_number if final else from_ayah
+    session_id = firestore_service.save_session(
         uid=uid,
         model_id=PHONEME_MODEL_ID,
         surah_number=surah_number,
         from_ayah=from_ayah,
-        to_ayah=results[-1].ayah_number if results else from_ayah,
+        to_ayah=to_ayah,
+        end_surah=end_surah,
         summary=summary,
     )
 
@@ -111,9 +71,13 @@ async def analyze_word_level(
         "session_id": session_id,
         "surah_number": surah_number,
         "from_ayah": from_ayah,
-        "to_ayah": results[-1].ayah_number if results else from_ayah,
+        # Where the passage analysed ends: `to_ayah` is an ayah of `end_surah`,
+        # which is `surah_number` unless the recitation ran on into later ones.
+        "end_surah": end_surah,
+        "to_ayah": to_ayah,
         # How far the recording actually got -- what the UI needs to stop
         # rendering "you recited this" past the point the user stopped.
+        "reached_surah": (last.surah_number or surah_number) if last else None,
         "reached_ayah": last.ayah_number if last else None,
         "reached_word_index": last.word_index if last else None,
         "total_words": summary["totalWords"],
@@ -126,6 +90,7 @@ async def analyze_word_level(
         "qari_id": qari_id,
         "words": [
             {
+                "surah_number": r.surah_number or surah_number,
                 "ayah_number": r.ayah_number,
                 "word_index": r.word_index,
                 "word": r.display_word,
@@ -143,15 +108,87 @@ async def analyze_word_level(
     }
 
 
+@router.post("/sessions/analyze_word_level")
+async def analyze_word_level(
+    request: Request,
+    audio: UploadFile = File(...),
+    surah_number: int = Form(...),
+    from_ayah: int = Form(1),
+    to_ayah: int | None = Form(None),
+    end_surah: int | None = Form(None),
+    ayah_number: int | None = Form(None),
+    qari_id: str = Form("abdurrahmaan_as_sudais"),
+    uid: str = Depends(get_current_uid),
+):
+    """Gate 1+2 (approved -- see makharij_audit): real per-word phoneme
+    recognition + timing via the Quran-Lab streaming zipformer model,
+    compared directly against that model's own documented expected phoneme
+    sequence -- not a fabricated preview. qari_id is accepted for API
+    compatibility/analytics but not used for comparison, since the phoneme
+    model compares against the ayah's canonical phoneme sequence rather than
+    a specific reciter's audio.
+
+    Analysis covers an ayah *range* -- the whole surah unless from_ayah/to_ayah
+    narrow it. A user recites continuously and stops where they stop, so
+    scoring a single ayah made every word past it look like an error. Words
+    the recording never reached come back with `recited: false` and no error;
+    `reached_ayah`/`reached_word_index` say exactly how far the user got.
+
+    `ayah_number` is the older single-ayah form of this call and still works:
+    it pins the range to that one ayah.
+
+    `end_surah` lets the recitation run on past the surah it began in: the
+    range is then from_ayah of surah_number to to_ayah of end_surah (to the
+    end of end_surah without to_ayah), each surah analysed from its own ayah 1
+    with its Basmala optional, and every word says which surah it is in. Left
+    out, the range stays inside surah_number, exactly as before. A recording
+    too long for one alignment is aligned in windows (see
+    PhonemeAnalysisService.analyze_span), so it has no length ceiling.
+
+    Covers all 6236 ayat -- see ordered_quran_phonemes.json.
+    """
+    service = request.app.state.phoneme_analysis_service
+    if service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Word-level analysis isn't available yet on this server (phoneme model not loaded).",
+        )
+
+    audio_bytes = await audio.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Empty audio file")
+
+    if ayah_number is not None:
+        from_ayah = to_ayah = ayah_number
+        end_surah = None
+
+    try:
+        results = await run_in_threadpool(
+            service.analyze_span, audio_bytes, surah_number, from_ayah, end_surah, to_ayah)
+    except ValueError as exc:
+        # No phoneme reference for this surah/range -- helpful, not a bare 404.
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Word-level phoneme analysis failed")
+        raise HTTPException(status_code=422, detail=f"Could not analyze audio: {exc}")
+
+    return await run_in_threadpool(
+        record_session, uid, results, surah_number=surah_number, from_ayah=from_ayah, qari_id=qari_id)
+
+
 @router.post("/sessions/{session_id}/word-feedback")
 async def word_feedback(
     session_id: str,
     ayah_number: int = Form(...),
     word_index: int = Form(...),
     agreed: bool = Form(False),
+    surah_number: int | None = Form(None),
     uid: str = Depends(get_current_uid),
 ):
     """The reciter's own verdict on a word the app flagged.
+
+    `surah_number` says which surah the word is in, for a recitation that ran
+    on past the one it began in; left out, it is the session's own surah.
 
     `agreed=false` means "I said this correctly" -- the app was wrong here.
     Given the measured false-alarm rate, offering this is honesty rather than a
@@ -160,7 +197,7 @@ async def word_feedback(
     """
     try:
         return firestore_service.record_word_feedback(
-            uid, session_id, ayah_number, word_index, agreed
+            uid, session_id, ayah_number, word_index, agreed, surah_number=surah_number
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -222,7 +259,8 @@ async def reattempt(
         raise HTTPException(status_code=422, detail=f"Could not analyze audio: {exc}")
 
     try:
-        return await run_in_threadpool(firestore_service.apply_reattempt, uid, session_id, results, scope)
+        return await run_in_threadpool(
+            firestore_service.apply_reattempt, uid, session_id, results, scope, surah_number)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:

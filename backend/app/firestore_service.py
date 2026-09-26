@@ -65,6 +65,14 @@ PRACTICE_PLAN_HISTORY = 200
 MAX_STORED_WORD_VERDICTS = 400
 
 
+def _surah_field(result) -> dict:
+    """{"surahNumber": n} for a word that knows its surah -- every word the
+    analyser produces -- and nothing for one that does not, so a stored word
+    never carries a null where older ones carry no field at all."""
+    surah = getattr(result, "surah_number", None)
+    return {"surahNumber": surah} if surah else {}
+
+
 def word_verdicts_for_storage(results) -> list[dict]:
     """The per-word record a later "I said it right" needs to become a label.
 
@@ -95,6 +103,7 @@ def word_verdicts_for_storage(results) -> list[dict]:
 
     return [
         {
+            **_surah_field(r),
             "ayahNumber": r.ayah_number,
             "wordIndex": r.word_index,
             "word": r.display_word,
@@ -125,6 +134,7 @@ def summarize_word_results(results) -> dict:
     correct = [r for r in recited if r.correct]
     mistakes = [
         {
+            **_surah_field(r),
             "ayahNumber": r.ayah_number,
             "wordIndex": r.word_index,
             "word": r.display_word,
@@ -142,6 +152,10 @@ def summarize_word_results(results) -> dict:
         "wordsRecited": len(recited),
         "wordsCorrect": len(correct),
         "reachedAyah": recited[-1].ayah_number if recited else None,
+        # Which surah that ayah is in: a recitation can run on past the one it
+        # began in. Absent from sessions stored before that could happen, where
+        # it is the session's own surahNumber.
+        "reachedSurah": (getattr(recited[-1], "surah_number", None) or None) if recited else None,
         "mistakes": mistakes,
         # Per-rule tallies, so the practice plan and mastery chart never have to
         # re-read the (much larger) mistake list.
@@ -156,7 +170,7 @@ def summarize_word_results(results) -> dict:
 
 
 def save_session(uid: str, model_id: str, surah_number: int, from_ayah: int,
-                 to_ayah: int, summary: dict) -> str:
+                 to_ayah: int, summary: dict, end_surah: int | None = None) -> str:
     db = get_firestore_client()
     session_ref = db.collection("users").document(uid).collection("sessions").document()
     session_ref.set({
@@ -164,6 +178,11 @@ def save_session(uid: str, model_id: str, surah_number: int, from_ayah: int,
         "modelId": model_id,
         "surahNumber": surah_number,
         "fromAyah": from_ayah,
+        # `toAyah` is an ayah of `endSurah`: the surah the passage ends in,
+        # which is `surahNumber` unless the recitation ran on past it. Sessions
+        # stored before that could happen have no endSurah; read it as
+        # surahNumber.
+        "endSurah": end_surah if end_surah is not None else surah_number,
         "toAyah": to_ayah,
         **summary,
     })
@@ -172,7 +191,7 @@ def save_session(uid: str, model_id: str, surah_number: int, from_ayah: int,
 
 
 def record_word_feedback(uid: str, session_id: str, ayah_number: int,
-                         word_index: int, agreed: bool) -> dict:
+                         word_index: int, agreed: bool, surah_number: int | None = None) -> dict:
     """Records the reciter's own verdict on one flagged word.
 
     The detector wrongly flags roughly two correct recitations in five
@@ -192,14 +211,22 @@ def record_word_feedback(uid: str, session_id: str, ayah_number: int,
     if not session.exists:
         raise KeyError(f"Session {session_id} not found for this user")
 
-    feedback = session.to_dict().get("wordFeedback", [])
+    data = session.to_dict()
+    # A word is (surah, ayah, word): a recitation can span surahs. An entry
+    # stored without a surah, and a call that names none, mean the session's
+    # own surah -- which every session before that could happen was in.
+    session_surah = data.get("surahNumber")
+    surah = surah_number if surah_number is not None else session_surah
+    feedback = data.get("wordFeedback", [])
     # One verdict per word: pressing it again replaces, rather than stacking up
     # contradictory entries for the same word.
     feedback = [
         f for f in feedback
-        if not (f.get("ayahNumber") == ayah_number and f.get("wordIndex") == word_index)
+        if not (f.get("surahNumber", session_surah) == surah
+                and f.get("ayahNumber") == ayah_number and f.get("wordIndex") == word_index)
     ]
     feedback.append({
+        **({"surahNumber": surah} if surah is not None else {}),
         "ayahNumber": ayah_number,
         "wordIndex": word_index,
         "agreed": agreed,
@@ -476,7 +503,8 @@ def generate_practice_plan(uid: str, sessions: list[dict] | None = None) -> dict
 
 
 def apply_reattempt(uid: str, session_id: str, results,
-                    scope: tuple[int, int | None] | None = None) -> dict:
+                    scope: tuple[int, int | None] | None = None,
+                    surah_number: int | None = None) -> dict:
     """FR-8/BR-5 self-correction, at word granularity.
 
     What a re-attempt is allowed to change
@@ -491,7 +519,9 @@ def apply_reattempt(uid: str, session_id: str, results,
 
     `scope` narrows it further to (ayah_number, word_index) when the reciter
     re-recorded a single word rather than the passage; word_index None means
-    the whole ayah.
+    the whole ayah. Both are in `surah_number` -- the session's own surah when
+    not given, which is where every word of a session is unless the recitation
+    ran on past it.
 
     Why the original per-word record is not overwritten
     ---------------------------------------------------
@@ -514,46 +544,62 @@ def apply_reattempt(uid: str, session_id: str, results,
         raise KeyError(f"Session {session_id} not found for this user")
     data = session.to_dict()
 
-    was_flagged = {(m["ayahNumber"], m["wordIndex"]) for m in data.get("mistakes", [])}
+    # Words are keyed (surah, ayah, word). A stored word without a surah is in
+    # the session's own; so is a result that does not say.
+    session_surah = data.get("surahNumber")
+    surah = surah_number if surah_number is not None else session_surah
+
+    def key_of(m):
+        return (m.get("surahNumber", session_surah), m["ayahNumber"], m["wordIndex"])
+
+    def coordinate_of(key):
+        # The session's own surah keeps the "ayah:word" every stored session
+        # already uses; another surah's word needs its surah in front.
+        return f"{key[1]}:{key[2]}" if key[0] == session_surah else f"{key[0]}:{key[1]}:{key[2]}"
+
+    def entry_of(key, **extra):
+        return {**({"surahNumber": key[0]} if key[0] != session_surah else {}),
+                "ayahNumber": key[1], "wordIndex": key[2], **extra}
+
+    was_flagged = {key_of(m) for m in data.get("mistakes", [])}
     if scope is not None:
         ayah, word_index = scope
         was_flagged = {
             key for key in was_flagged
-            if key[0] == ayah and (word_index is None or key[1] == word_index)
+            if key[0] == surah and key[1] == ayah and (word_index is None or key[2] == word_index)
         }
     if not was_flagged:
         raise ValueError(
             "Nothing to re-attempt: this session has no flagged words in that range")
 
     # New verdicts, keyed the same way, for words the recording actually reached.
-    fresh = {(r.ayah_number, r.word_index): r for r in results if r.recited}
+    fresh = {(getattr(r, "surah_number", None) or surah, r.ayah_number, r.word_index): r
+             for r in results if r.recited}
 
     attempt_counts = dict(data.get("attemptCounts", {}))
     had_multiple = set(data.get("hadMultipleAttempts", []))
     mistakes = [dict(m) for m in data.get("mistakes", [])]
-    by_key = {(m["ayahNumber"], m["wordIndex"]): m for m in mistakes}
+    by_key = {key_of(m): m for m in mistakes}
 
     corrected: list[dict] = []
     still_wrong: list[dict] = []
     not_reached: list[dict] = []
 
-    for key in sorted(was_flagged):
-        coordinate = f"{key[0]}:{key[1]}"
+    for key in sorted(was_flagged, key=lambda k: (k[0] or 0, k[1], k[2])):
+        coordinate = coordinate_of(key)
         result = fresh.get(key)
         if result is None:
             # The re-recording never got to this word; its original verdict
             # stands, and it does not count as an attempt.
-            not_reached.append({"ayahNumber": key[0], "wordIndex": key[1]})
+            not_reached.append(entry_of(key))
             continue
 
         attempt_counts[coordinate] = attempt_counts.get(coordinate, 1) + 1
         had_multiple.add(coordinate)
-        entry = {"ayahNumber": key[0], "wordIndex": key[1],
-                 "word": result.display_word}
+        entry = entry_of(key, word=result.display_word)
 
         if result.correct:
-            mistakes = [m for m in mistakes
-                        if (m["ayahNumber"], m["wordIndex"]) != key]
+            mistakes = [m for m in mistakes if key_of(m) != key]
             corrected.append(entry)
         else:
             # Still wrong, but possibly wrong in a new way -- the explanation
@@ -571,7 +617,7 @@ def apply_reattempt(uid: str, session_id: str, results,
     reattempts = list(data.get("reattempts", []))
     reattempts.append({
         "at": datetime.now(timezone.utc),
-        "scope": {"ayahNumber": scope[0], "wordIndex": scope[1]} if scope else None,
+        "scope": entry_of((surah, scope[0], scope[1])) if scope else None,
         "corrected": corrected,
         "stillWrong": still_wrong,
         "notReached": not_reached,
