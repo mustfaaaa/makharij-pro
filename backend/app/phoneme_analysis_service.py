@@ -40,6 +40,20 @@ logger = logging.getLogger(__name__)
 MODEL_DIR = Path(__file__).resolve().parent.parent / "models_cache" / "quran-lab-zipformer"
 SAMPLE_RATE = 16000
 
+# What follows the last of a recording into the recognizer (see finish_stream):
+# 1.5 s of quiet noise at about -60 dBFS rather than digital silence. The same
+# samples every time -- a fixed seed, generated once -- so a recording always
+# decodes to the same tokens, and the live socket and the upload still agree.
+#
+# Digital silence (exact zeros) is a signal no microphone produces, and the
+# model never heard it in training. Ending on it cost the soft closing madd a
+# learner trails off on: ٱلرَّحِيمِ came out ررَحِ and was reported as a dropped
+# madd. Of the 35 labelled learner recordings where that happened, 21 keep the
+# madd with this padding. The before/after over all 773 learner and 865
+# professional recordings is in ml/eval/tajweed_rules/results.
+END_PADDING = (np.random.default_rng(0).standard_normal(int(1.5 * SAMPLE_RATE))
+               * 10 ** (-60 / 20)).astype(np.float32)
+
 # A word counts as actually heard when at least this fraction of its expected
 # phoneme characters matched, and at least this many characters matched
 # outright. Below either bar the word is skipped (inside the recited span) or
@@ -357,8 +371,9 @@ class PhonemeAnalysisService:
         # real audio before it will emit the final tokens. 0.5s was not enough
         # -- it clipped the closing letters of whatever word the user stopped
         # on, which then got reported as a dropped madd on the last word of
-        # every recitation. 1.5s costs nothing and stops that.
-        stream.accept_waveform(SAMPLE_RATE, np.zeros(int(1.5 * SAMPLE_RATE), dtype=np.float32))
+        # every recitation. 1.5s costs nothing and stops that. It is quiet
+        # noise, not zeros -- see END_PADDING.
+        stream.accept_waveform(SAMPLE_RATE, END_PADDING)
         stream.input_finished()
         while self.recognizer.is_ready(stream):
             self.recognizer.decode_stream(stream)
