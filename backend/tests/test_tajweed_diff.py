@@ -56,6 +56,39 @@ def test_substituted_letter_is_flagged_as_makhraj():
     assert tajweed_diff.MAKHRAJ in _types(findings)
 
 
+# Ikhfa: the noon/meem hidden into the next letter (ں / ۾ in the phoneme
+# alphabet). Whether it is missing or said as a plain letter, it is the ikhfa
+# that was not made -- reported under ghunnah, never as a makhraj mistake.
+
+def test_ikhfa_heard_nowhere_is_flagged_as_ghunnah():
+    findings = classify("مِن", "مِںںں", "مِ")
+    assert _types(findings) == [tajweed_diff.GHUNNAH]
+
+
+def test_ikhfa_said_as_a_plain_noon_is_flagged_as_ghunnah():
+    # Measured on learner audio: مِن before ش read back as مِن, not مِںںں.
+    findings = classify("مِن", "مِںںں", "مِن")
+    assert _types(findings) == [tajweed_diff.GHUNNAH]
+    assert "ikhfa" in findings[0].explanation and "“ن”" in findings[0].explanation
+
+
+def test_ikhfa_said_as_a_plain_meem_is_flagged_as_ghunnah():
+    # ۾ is a meem hidden before ب (iqlab here: نۢب), said as a clear meem.
+    findings = classify("لَيُنۢبَذَنَّ", "لَيُ۾۾۾بَذَننننَ", "لَيُمبَذَننننَ")
+    assert _types(findings) == [tajweed_diff.GHUNNAH]
+
+
+def test_ikhfa_made_as_expected_is_not_flagged():
+    assert classify("مِن", "مِںںں", "مِںںں") == []
+
+
+def test_other_letter_substitutions_are_still_makhraj():
+    # The ikhfa branch only claims a plain noon/meem in place of an ikhfa.
+    assert _types(classify("مِن", "مِںںں", "مِل")) == [tajweed_diff.MAKHRAJ]
+    assert _types(classify("صِرَٰطَ", "صِرَااطَ", "سِرَااطَ")) == [tajweed_diff.MAKHRAJ]
+    assert _types(classify("نَعْبُدُ", "نَعبُدُ", "مَعبُدُ")) == [tajweed_diff.MAKHRAJ]
+
+
 def test_word_never_heard_is_reported_as_skipped():
     findings = classify("مَـٰلِكِ", "مَاالِكِ", "")
     assert _types(findings) == [tajweed_diff.SKIPPED]

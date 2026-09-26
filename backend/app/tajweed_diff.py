@@ -228,6 +228,17 @@ def classify(display_word: str, expected: str, predicted: str) -> list[Finding]:
             # a word on that alone.
             if e_ch in MARK_CHARS or p_ch in MARK_CHARS:
                 continue
+            if e_ch in IKHFA_CHARS and p_ch in NASAL_CHARS:
+                # An ikhfa pronounced as a plain, clear noon or meem. That is
+                # the ikhfa itself not being made -- the same rule as the ikhfa
+                # heard nowhere above -- not a letter from the wrong makhraj.
+                findings.append(Finding(
+                    GHUNNAH,
+                    f"“{display_word}” expects an ikhfa — the noon/meem hidden into the next "
+                    f"letter with a nasal hum. It came through as a clear “{p_ch}” instead — "
+                    f"listen back.",
+                ))
+                continue
             findings.append(Finding(
                 MAKHRAJ,
                 f"In “{display_word}”, “{e_ch}” sounded closer to “{p_ch}” — listen back "
