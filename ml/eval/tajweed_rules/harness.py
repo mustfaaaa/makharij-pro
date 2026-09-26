@@ -148,7 +148,8 @@ def analyse_clip(svc, item: dict, tokens, times) -> tuple[list[dict], list[dict]
                 a, cursor = f, f + len(r.predicted_phonemes)
         words.append({"clip": item["clip"], "i": wi, "n": n, "in_prefix": wi < prefix,
                       "word": r.display_word, "exp": r.expected_phonemes, "pred": r.predicted_phonemes,
-                      "recited": r.recited, "correct": r.correct, "type": r.error_type})
+                      "recited": r.recited, "correct": r.correct, "type": r.error_type,
+                      "explanation": r.explanation})
         if not r.expected_phonemes or not r.recited:
             continue
         e_runs = td.runs(r.expected_phonemes)

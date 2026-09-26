@@ -1,0 +1,26 @@
+{
+ "name": "c1",
+ "git_head": "18a2ba9",
+ "backend_uncommitted_changes": false,
+ "backend_diff_sha1": null,
+ "started": "2026-09-27 00:01:58",
+ "latency_learners": {
+  "clips": 773,
+  "audio_sec": 3000.4,
+  "decode_sec_total": 241.85,
+  "analysis_sec_total": 0.785,
+  "decode_ms_median": 273.5,
+  "analysis_ms_median": 0.79,
+  "real_time_factor": 0.0809
+ },
+ "latency_experts": {
+  "clips": 865,
+  "audio_sec": 5686.1,
+  "decode_sec_total": 365.95,
+  "analysis_sec_total": 3.15,
+  "decode_ms_median": 285.3,
+  "analysis_ms_median": 0.85,
+  "real_time_factor": 0.0649
+ },
+ "finished": "2026-09-27 00:17:49"
+}
