@@ -95,8 +95,8 @@ lighter surfaces for elevation, no shadows.
 | Screen | Focal point | Then |
 |---|---|---|
 | Home | photo header with greeting and Hijri date | continue-recitation block → practise / read / listen → progress glance → ayah to reflect on |
-| Quran | continue banner | search → surah list |
-| Reader | the Quran text on a page | cartouche → dock (range · recite · listen) |
+| Quran | continue banner | Surah · Juz switch → search → surah list, or the thirty juz |
+| Reader | the Quran text on a page | ayah selector → cartouche → start marker → dock (passage · recite · listen) |
 | Recording | the recited words inking in | live level ring + timer in the dock |
 | Results | "N of M words matched" | rules to review → marked passage → review list → Try again |
 | Rattil | reciter plate + listening card | prompts → composer |
@@ -156,3 +156,22 @@ lighter surfaces for elevation, no shadows.
   an ayah opens its translation in a sheet (the ayah tinted meanwhile), since continuous text has no
   room beside the ayah; "Always" and transliteration switch to ayah by ayah. The Basmala line never
   takes ayah 1's tint: it opens the surah, and the Qari's ayah-1 recording does not say it.
+- 2026-09-26 A recitation is a place to begin and a direction, not a box around one ayah. The Quran
+  tab has a Surah · Juz switch (a SegmentedButton, the app's one control for a choice; there are no
+  tabs anywhere else). A juz opens the reader at its first ayah with recitation beginning there; the
+  boundaries are the Madinah mushaf's, read from the juz number the scripts asset carries, behind a
+  JuzDivision interface so a verified IndoPak division can be added later. The reader always shows
+  the whole surah: an "Ayah N" selector under the title goes to an ayah and begins recitation there,
+  and a gold hairline with a rosette marks where recitation begins (and where a juz does) between
+  paragraphs, rather than hiding what comes before. Ayahs outside the recitation keep full ink and
+  step back to 45% while practising; they are never marked. Results offer "Continue from ayah N".
+- 2026-09-26 Checking a recitation shows real progress when there is one: the live socket judges the
+  recording it already decoded and reports how far it has got, so the processing screen fills its bar
+  and says "Checked 2:10 of 6:20". Without that measure (the recording is being uploaded) the bar stays
+  indeterminate and only the elapsed time is shown. Results offer "Continue from ayah N" on their own
+  full-width row above Try again and Done.
+- 2026-09-26 The reader runs on past the end of a surah: reaching the end loads the next one under its own
+  cartouche, and a recitation left open is followed into it, the page staying ahead of the reciter. The title
+  names the surah at the top of the page; the bookmark shows only while that is the surah opened. Results
+  list every surah the recitation covered, each after the first under its name in gold, and name the surah
+  wherever it is not the one begun in ("Aal-E-Imran 2 · word 3", "Continue from Aal-E-Imran 4").

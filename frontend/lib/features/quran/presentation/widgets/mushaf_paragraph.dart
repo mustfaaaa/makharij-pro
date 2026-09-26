@@ -48,11 +48,19 @@ class ParagraphAyah {
 /// [ayahs] (consecutive, from [surah]) grouped the way the mushaf paragraphs
 /// them: a paragraph closes where a ruku does, or where [ayahs] runs out.
 /// Needs QuranScriptRepository loaded; before that, every ayah stands alone.
-List<List<Ayah>> paragraphsByRuku(int surah, List<Ayah> ayahs) {
+///
+/// Each ayah in [breakBefore] also opens a new paragraph, so the page can set
+/// something between the lines there -- where a recitation begins, or where a
+/// juz does -- without breaking into the text.
+List<List<Ayah>> paragraphsByRuku(int surah, List<Ayah> ayahs, {Set<int> breakBefore = const {}}) {
   final repo = QuranScriptRepository.instance;
   final paragraphs = <List<Ayah>>[];
   var current = <Ayah>[];
   for (final ayah in ayahs) {
+    if (current.isNotEmpty && breakBefore.contains(ayah.number)) {
+      paragraphs.add(current);
+      current = [];
+    }
     current.add(ayah);
     if (repo.placement(surah, ayah.number)?.endsRuku ?? true) {
       paragraphs.add(current);

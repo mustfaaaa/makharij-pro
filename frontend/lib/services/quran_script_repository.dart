@@ -90,6 +90,14 @@ class QuranScriptRepository {
     ];
   }
 
+  /// How many ayahs [surah] has -- 0 before [ensureLoaded] has finished, or
+  /// for a surah number outside 1..114.
+  int ayahCount(int surah) {
+    final surahs = _surahs;
+    if (surahs == null || surah < 1 || surah > surahs.length) return 0;
+    return surahs[surah - 1].length;
+  }
+
   Map<String, dynamic>? _raw(int surah, int ayah) {
     final surahs = _surahs;
     if (surahs == null || surah < 1 || surah > surahs.length) return null;

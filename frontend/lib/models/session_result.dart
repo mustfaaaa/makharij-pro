@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'quran_position.dart';
 import 'tajweed_error.dart';
 import 'word_verdict.dart';
 
@@ -49,6 +50,21 @@ class SessionResult {
   final int? fromAyah;
   final int? toAyah;
 
+  /// The surah the covered range ends in. Null for a session that stayed in
+  /// [surahNumber], which every session stored so far did.
+  final int? endSurah;
+
+  /// The last word the analysis is confident was recited -- where "Continue
+  /// from here" picks up. Null when nothing was recited, or for an older
+  /// stored session that did not keep it.
+  final QuranPosition? reached;
+
+  /// [toAyah] when it is an ayah of [surahNumber] -- what a link that opens
+  /// [surahNumber] can pass as where to stop. A passage that ran on into a
+  /// later surah ends in that surah, so there is no end to pass: 3:5 is not
+  /// an ayah of Al-Baqarah.
+  int? get toAyahInOwnSurah => (endSurah == null || endSurah == surahNumber) ? toAyah : null;
+
   const SessionResult({
     required this.id,
     required this.surahName,
@@ -64,5 +80,7 @@ class SessionResult {
     this.hasanahEarned = 0,
     this.fromAyah,
     this.toAyah,
+    this.endSurah,
+    this.reached,
   });
 }

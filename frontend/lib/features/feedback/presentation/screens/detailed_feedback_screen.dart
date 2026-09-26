@@ -47,8 +47,9 @@ class _DetailedFeedbackScreenState extends State<DetailedFeedbackScreen> {
         builder: (context, session) {
           final surah = dummySurahs.where((s) => s.number == session.surahNumber).firstOrNull;
           final from = session.fromAyah;
-          final to = session.toAyah;
-          final range = from == null ? null : (to == null || to == from ? 'Ayah $from' : 'Ayahs $from–$to');
+          // An end in a later surah is not an ayah of this one.
+          final to = session.toAyahInOwnSurah;
+          final range = from == null ? null : (to == null ? 'From ayah $from' : (to == from ? 'Ayah $from' : 'Ayahs $from–$to'));
           final counts = <TajweedErrorType, int>{};
           for (final e in session.errors) {
             counts[e.type] = (counts[e.type] ?? 0) + 1;

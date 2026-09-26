@@ -8,6 +8,9 @@ import 'tajweed_error.dart';
 /// own token timings, [errorType]/[explanation] from which Tajweed feature the
 /// phoneme diff actually broke.
 class WordVerdict {
+  /// The surah this word is in. Null from a server that analyses one surah per
+  /// recording and so never says: the word is then in the session's own surah.
+  final int? surahNumber;
   final int ayahNumber;
 
   /// Index of this word within its own ayah (not within the whole surah).
@@ -29,6 +32,7 @@ class WordVerdict {
   final String? explanation;
 
   const WordVerdict({
+    this.surahNumber,
     required this.ayahNumber,
     required this.wordIndex,
     required this.word,
@@ -44,6 +48,7 @@ class WordVerdict {
 
   factory WordVerdict.fromJson(Map<String, dynamic> json) {
     return WordVerdict(
+      surahNumber: json['surah_number'] as int?,
       ayahNumber: json['ayah_number'] as int? ?? 1,
       wordIndex: json['word_index'] as int? ?? 0,
       word: json['word'] as String,

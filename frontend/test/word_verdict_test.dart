@@ -126,5 +126,22 @@ void main() {
 
       expect(verdict.recited, isTrue);
     });
+
+    test('a word says which surah it is in when the server does, and nothing otherwise', () {
+      final base = {
+        'ayah_number': 1,
+        'word_index': 0,
+        'word': 'قُلْ',
+        'start_sec': 0,
+        'end_sec': 1,
+        'distance': 0,
+        'confidence': 1,
+        'flagged': false,
+      };
+      // A server analysing one surah per recording never sends it: the word is
+      // in the session's own surah, which the reader fills in.
+      expect(WordVerdict.fromJson(base).surahNumber, isNull);
+      expect(WordVerdict.fromJson({...base, 'surah_number': 3}).surahNumber, 3);
+    });
   });
 }

@@ -60,6 +60,27 @@ class _ProcessingScreenState extends State<ProcessingScreen> with SingleTickerPr
     super.dispose();
   }
 
+  static String _clock(Duration d) => '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+
+  /// What the wait is doing, in the terms it can measure. With the server's
+  /// count: how far through the recitation the checking has got. Without it
+  /// (the recording is being uploaded): only how long it has taken, and --
+  /// once that is long -- that long recitations take longer.
+  String _statusLine(RecitationState state) {
+    final fraction = state.analysisProgress;
+    final length = state.recordedDuration;
+    if (fraction != null && length != null && length > Duration.zero) {
+      return 'Checked ${_clock(length * fraction)} of ${_clock(length)}';
+    }
+    if (_isSlow) {
+      final minutes = length?.inMinutes ?? 0;
+      return minutes >= 3
+          ? 'Sending and checking ${_clock(length!)} of recitation (${_elapsed.inSeconds}s). Longer recitations take longer.'
+          : 'Taking longer than usual (${_elapsed.inSeconds}s). Longer passages take longer.';
+    }
+    return '${_elapsed.inSeconds}s';
+  }
+
   void _cancel() {
     context.read<RecitationCubit>().reset();
     if (context.canPop()) {
@@ -87,16 +108,19 @@ class _ProcessingScreenState extends State<ProcessingScreen> with SingleTickerPr
             body: ErrorStateWidget(
               title: 'The recitation could not be checked',
               message: state.errorMessage ?? 'Something went wrong while checking your recitation.',
-              onRetry: () => context.read<RecitationCubit>().stopAndProcess(),
+              // The recording is kept until it has been checked, so trying
+              // again sends the same recitation rather than asking for a new
+              // one. A recording that failed or was too short has nothing to
+              // send again.
+              onRetry: context.read<RecitationCubit>().canRetryAnalysis
+                  ? () => context.read<RecitationCubit>().retryAnalysis()
+                  : null,
             ),
           );
         }
 
         final surah = dummySurahs.where((s) => s.number == widget.surahNumber).firstOrNull;
-        final to = state.toAyah;
-        final range = state.isWholeSurah
-            ? 'Whole surah'
-            : (to == null || to == state.fromAyah ? 'Ayah ${state.fromAyah}' : 'Ayahs ${state.fromAyah}–$to');
+        final range = state.passageLabel;
 
         return Scaffold(
           body: Stack(
@@ -147,18 +171,27 @@ class _ProcessingScreenState extends State<ProcessingScreen> with SingleTickerPr
                           const SizedBox(height: AppSpacing.lg),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(2),
-                            child: const SizedBox(width: 200, child: LinearProgressIndicator(minHeight: 3)),
+                            child: SizedBox(
+                              width: 200,
+                              // Filled only by the server's own count of how
+                              // much it has checked; without one the bar only
+                              // says that work is happening.
+                              child: LinearProgressIndicator(value: state.analysisProgress, minHeight: 3),
+                            ),
                           ),
                           const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            _isSlow
-                                ? 'Taking longer than usual (${_elapsed.inSeconds}s). Longer passages take longer.'
-                                : '${_elapsed.inSeconds}s',
-                            textAlign: TextAlign.center,
-                            style: AppTypography.numeric(
-                              fontSize: 13,
-                              weight: FontWeight.w500,
-                              color: _isSlow ? AppColors.warning : AppColors.textMuted,
+                          Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              _statusLine(state),
+                              textAlign: TextAlign.center,
+                              style: AppTypography.numeric(
+                                fontSize: 13,
+                                weight: FontWeight.w500,
+                                color: _isSlow && state.analysisProgress == null
+                                    ? AppColors.warning
+                                    : AppColors.textMuted,
+                              ),
                             ),
                           ),
                           const SizedBox(height: AppSpacing.lg),

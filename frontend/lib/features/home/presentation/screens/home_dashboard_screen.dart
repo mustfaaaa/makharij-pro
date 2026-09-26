@@ -399,12 +399,13 @@ class _ContinueLast extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final surah = _surah(session.surahNumber);
     final from = session.fromAyah;
-    final to = session.toAyah;
+    // An end in a later surah is not an ayah of this one.
+    final to = session.toAyahInOwnSurah;
     final range = from == null
         ? null
-        : (to == null || to == from)
-            ? 'Ayah $from'
-            : 'Ayahs $from–$to';
+        : to == null
+            ? 'From ayah $from'
+            : (to == from ? 'Ayah $from' : 'Ayahs $from–$to');
     final matched = session.totalWords > 0
         ? '${(session.wordsRecited - session.errors.length).clamp(0, session.wordsRecited)} of ${session.wordsRecited} words matched'
         : null;

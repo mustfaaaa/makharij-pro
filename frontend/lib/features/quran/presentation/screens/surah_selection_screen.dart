@@ -12,11 +12,16 @@ import '../../../../shared/widgets/states/error_state_widget.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
+import '../widgets/juz_list.dart';
 
 enum _SurahFilter { all, practised, saved }
 
+/// The two ways into the Quran: by surah, or by juz.
+enum _QuranView { surah, juz }
+
 /// The Quran tab: the 114 surahs, searchable by name, meaning, Arabic or
-/// number, with the reader's real place to continue from at the top.
+/// number, or the thirty juz -- with the reader's real place to continue from
+/// at the top.
 ///
 /// The list starts in the first viewport. It used to sit under a 300px photo
 /// hero, a duplicated "114 Surahs" chip and a caps title, halfway down the
@@ -30,6 +35,7 @@ class SurahSelectionScreen extends StatefulWidget {
 
 class _SurahSelectionScreenState extends State<SurahSelectionScreen> {
   final _searchController = TextEditingController();
+  _QuranView _view = _QuranView.surah;
   _SurahFilter _filter = _SurahFilter.all;
   String _query = '';
   late Future<List<Surah>> _surahs = Services.surah.getSurahs();
@@ -91,46 +97,63 @@ class _SurahSelectionScreenState extends State<SurahSelectionScreen> {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    _ContinueBanner(all: all),
-                    const SizedBox(height: AppSpacing.lg),
-                    TextField(
-                      controller: _searchController,
-                      onChanged: (v) => setState(() => _query = v),
-                      textInputAction: TextInputAction.search,
-                      decoration: InputDecoration(
-                        hintText: 'Name, meaning or number',
-                        prefixIcon: const Icon(Icons.search_rounded),
-                        suffixIcon: _query.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: 'Clear search',
-                                icon: const Icon(Icons.close_rounded),
-                                onPressed: () => setState(() {
-                                  _searchController.clear();
-                                  _query = '';
-                                }),
-                              ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(color: AppColors.border),
-                        ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<_QuranView>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(value: _QuranView.surah, label: Text('Surah')),
+                          ButtonSegment(value: _QuranView.juz, label: Text('Juz')),
+                        ],
+                        selected: {_view},
+                        onSelectionChanged: (v) => setState(() => _view = v.first),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    SegmentedButton<_SurahFilter>(
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(value: _SurahFilter.all, label: Text('All')),
-                        ButtonSegment(value: _SurahFilter.practised, label: Text('Practised')),
-                        ButtonSegment(value: _SurahFilter.saved, label: Text('Saved')),
-                      ],
-                      selected: {_filter},
-                      onSelectionChanged: (v) => setState(() => _filter = v.first),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
+                    _ContinueBanner(all: all),
+                    const SizedBox(height: AppSpacing.lg),
+                    if (_view == _QuranView.surah) ...[
+                      TextField(
+                        controller: _searchController,
+                        onChanged: (v) => setState(() => _query = v),
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          hintText: 'Name, meaning or number',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _query.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Clear search',
+                                  icon: const Icon(Icons.close_rounded),
+                                  onPressed: () => setState(() {
+                                    _searchController.clear();
+                                    _query = '';
+                                  }),
+                                ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: AppColors.border),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      SegmentedButton<_SurahFilter>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(value: _SurahFilter.all, label: Text('All')),
+                          ButtonSegment(value: _SurahFilter.practised, label: Text('Practised')),
+                          ButtonSegment(value: _SurahFilter.saved, label: Text('Saved')),
+                        ],
+                        selected: {_filter},
+                        onSelectionChanged: (v) => setState(() => _filter = v.first),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                    ],
                   ]),
                 ),
-                if (snap.hasError)
+                if (_view == _QuranView.juz)
+                  const JuzSliverList()
+                else if (snap.hasError)
                   SliverFillRemaining(
                     hasScrollBody: false,
                     child: ErrorStateWidget(

@@ -24,8 +24,9 @@ const _faqs = [
   ),
   _Faq(
     'Which surahs can I recite?',
-    'All 114. Choose a whole surah or a range of ayahs from the reader, and stop whenever you like: only the '
-        'words you reached are checked.',
+    'All 114. Open a surah, or a juz from the Quran tab, and choose the ayah to begin at; you are followed from '
+        'there onward, into the surahs after it, or to an ayah you choose. Stop whenever you like: only the '
+        'words you reached are checked, and you can continue from where you stopped.',
   ),
   _Faq(
     'What does the number after a recitation mean?',

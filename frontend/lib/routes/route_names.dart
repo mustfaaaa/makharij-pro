@@ -13,6 +13,7 @@ abstract class RouteNames {
   static const String profile = 'profile';
 
   static const String surahDetails = 'surahDetails';
+  static const String juz = 'juz';
   static const String recitation = 'recitation';
   static const String listening = 'listening';
   static const String processing = 'processing';
@@ -54,6 +55,7 @@ abstract class RoutePaths {
   static const String profile = '/profile';
 
   static const String surahDetails = '/surah/:surahNumber';
+  static const String juz = '/juz/:juzNumber';
   static const String recitation = '/recitation/:surahNumber';
   static const String listening = '/recitation/:surahNumber/listening';
   static const String processing = '/recitation/:surahNumber/processing';
@@ -89,6 +91,10 @@ abstract class RoutePaths {
     };
     return Uri(path: '/surah/$number', queryParameters: query.isEmpty ? null : query).toString();
   }
+
+  /// The Quran opened at the start of juz [number], with recitation beginning
+  /// there.
+  static String juzPath(int number) => '/juz/$number';
   static String recitationPath(int number) => '/recitation/$number';
   static String listeningPath(int number) => '/recitation/$number/listening';
   static String processingPath(int number) => '/recitation/$number/processing';

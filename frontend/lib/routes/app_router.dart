@@ -31,6 +31,7 @@ import '../features/splash/presentation/screens/splash_screen.dart';
 import '../features/tajweed_rules/presentation/screens/bookmarks_screen.dart';
 import '../features/tajweed_rules/presentation/screens/rule_details_screen.dart';
 import '../features/tajweed_rules/presentation/screens/tajweed_rules_library_screen.dart';
+import '../services/juz_division.dart';
 import '../services/service_locator.dart';
 import 'app_shell.dart';
 import 'go_router_refresh_stream.dart';
@@ -119,6 +120,20 @@ final GoRouter appRouter = GoRouter(
           ),
         ),
       ),
+    ),
+    // A juz is a place to begin, not a page of its own: it opens the reader at
+    // the juz's first ayah, with recitation beginning there. Callers link here
+    // rather than working the start out themselves, so a reader that shows a
+    // whole juz across its surahs can take this route over without them.
+    GoRoute(
+      path: RoutePaths.juz,
+      name: RouteNames.juz,
+      redirect: (c, s) async {
+        final number = int.tryParse(s.pathParameters['juzNumber'] ?? '');
+        if (number == null || number < 1 || number > 30) return RoutePaths.quran;
+        final start = (await JuzDivision.load()).juz(number).start;
+        return RoutePaths.surahDetailsPath(start.surah, from: start.ayah, ayah: start.ayah);
+      },
     ),
     // Recitation used to have its own screen plus a separate "listening"
     // screen whose word highlighting was a timed animation, not the reciter's

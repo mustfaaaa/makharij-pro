@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -11,17 +12,21 @@ import '../../../../dummy/dummy_surahs.dart';
 import '../../../../features/quran/presentation/widgets/mushaf_ayah.dart';
 import '../../../../features/quran/presentation/widgets/mushaf_paragraph.dart';
 import '../../../../models/ayah.dart';
+import '../../../../models/quran_position.dart';
 import '../../../../models/quran_script.dart';
+import '../../../../models/recitation_span.dart';
 import '../../../../models/session_result.dart';
 import '../../../../models/tajweed_error.dart';
 import '../../../../models/tajweed_word_info.dart';
 import '../../../../models/word_verdict.dart';
 import '../../../../routes/route_names.dart';
 import '../../../../services/quran_script_repository.dart';
+import '../../../../services/quran_text_repository.dart';
 import '../../../../services/service_locator.dart';
 import '../../../../shared/ui/ornaments.dart';
 import '../../../../shared/ui/tajweed_marks.dart';
 import '../../../../shared/widgets/hasanah/hasanah_earned_banner.dart';
+import '../../../../shared/widgets/loading/app_loading_indicator.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/states/empty_state_widget.dart';
 import '../../../../theme/app_colors.dart';
@@ -30,6 +35,7 @@ import '../../../../theme/app_spacing.dart';
 import '../../../../theme/app_typography.dart';
 import '../../../../theme/tajweed_rule_style.dart';
 import '../bloc/recitation_cubit.dart';
+import '../bloc/recitation_state.dart';
 import '../widgets/mistake_legend.dart';
 import '../widgets/reference_playback_button.dart';
 import '../widgets/said_it_right_button.dart';
@@ -55,25 +61,100 @@ class ResultScreen extends StatefulWidget {
 class _ResultScreenState extends State<ResultScreen> {
   bool _hasanahCredited = false;
 
+  /// What this screen is showing, kept once shown. Leaving for the reading
+  /// page opens a new recitation on the shared cubit, which clears its
+  /// result; without these the screen flashed "no recitation" as it slid away.
+  SessionResult? _result;
+  RecitationSpan? _span;
+
+  /// The text of the passage recited, surah by surah: from where the
+  /// recitation began to the end of the surah it stopped in. Loaded here
+  /// rather than taken from the reading page, which may not have shown a
+  /// surah the recitation reached (with no live connection it does not
+  /// follow the reciter).
+  Future<_Recited>? _recited;
+
   void _done() {
     context.read<RecitationCubit>().reset();
     context.go(RoutePaths.home);
   }
 
   void _tryAgain(SessionResult result) {
-    // Back to the same reading page recitation started from, with the same
-    // range -- there is only one place to recite.
-    final from = result.fromAyah;
-    final to = result.toAyah;
-    context.read<RecitationCubit>().beginSession(widget.surahNumber);
-    context.pushReplacement(RoutePaths.surahDetailsPath(widget.surahNumber, from: from, to: to));
+    // Back to the same reading page recitation started from, beginning at the
+    // same ayah and, for a fixed range, stopping at the same one -- there is
+    // only one place to recite. The page opens its own recitation.
+    final span = _span;
+    final surah = span?.start.surah ?? widget.surahNumber;
+    final from = span?.start.ayah ?? result.fromAyah;
+    final to = span == null ? result.toAyahInOwnSurah : span.end?.ayah;
+    context.pushReplacement(RoutePaths.surahDetailsPath(surah, from: from, to: to));
   }
+
+  static Future<_Recited> _load(SessionResult result, RecitationSpan? span) async {
+    final start = span?.start ?? QuranPosition(result.surahNumber, result.fromAyah ?? 1);
+    var last = start.surah;
+    for (final v in result.wordVerdicts ?? const <WordVerdict>[]) {
+      last = max(last, v.surahNumber ?? result.surahNumber);
+    }
+    final reached = result.reached;
+    if (reached != null) last = max(last, reached.surah);
+
+    final whole = <int, List<Ayah>>{};
+    final sections = <PassageSurah>[];
+    for (var surah = start.surah; surah <= last; surah++) {
+      final ayahs = await QuranTextRepository.instance.ayahsForSurah(surah);
+      whole[surah] = ayahs;
+      final inSpan = [
+        for (final a in ayahs)
+          if (span == null ? (surah > start.surah || a.number >= start.ayah) : span.containsAyah(surah, a.number)) a,
+      ];
+      if (inSpan.isNotEmpty) sections.add(PassageSurah(surah, inSpan));
+    }
+    return _Recited(sections, whole);
+  }
+
+  /// Where a new recitation would pick up from this one: the ayah after the
+  /// last one completed -- in the next surah after a surah's last ayah -- or
+  /// the start of the one the reciter stopped inside.
+  static QuranPosition? _continuePoint(SessionResult result, _Recited recited) {
+    var reached = result.reached;
+    if (reached == null) {
+      final last = result.wordVerdicts?.where((v) => v.recited).lastOrNull;
+      if (last == null) return null;
+      reached = QuranPosition(last.surahNumber ?? result.surahNumber, last.ayahNumber, word: last.wordIndex);
+    }
+    final ayahs = recited.whole[reached.surah];
+    final ayah = ayahs?.where((a) => a.number == reached!.ayah).firstOrNull;
+    if (ayahs == null || ayah == null) return null;
+    return RecitationSpan.resumeAfter(
+      reached,
+      reachedAyahWords: ayah.arabicText.split(' '),
+      ayahsInSurah: ayahs.length,
+    );
+  }
+
+  void _continueFrom(QuranPosition next) {
+    context.pushReplacement(RoutePaths.surahDetailsPath(next.surah, from: next.ayah, ayah: next.ayah));
+  }
+
+  /// The surah of the last word recited.
+  static int _reachedSurah(SessionResult result) =>
+      result.reached?.surah ??
+      result.wordVerdicts?.where((v) => v.recited).lastOrNull?.surahNumber ??
+      result.surahNumber;
+
+  static String _surahName(int number) =>
+      dummySurahs.where((s) => s.number == number).firstOrNull?.nameEnglish ?? 'Surah $number';
 
   @override
   Widget build(BuildContext context) {
     final recitationState = context.watch<RecitationCubit>().state;
-    final result = recitationState.result;
-    final ayahs = recitationState.selectedAyahs;
+    if (recitationState.result != null && !identical(recitationState.result, _result)) {
+      _result = recitationState.result;
+      _span = recitationState.span;
+      _recited = _load(_result!, _span);
+    }
+    final result = _result;
     if (result == null) {
       // A direct deep-link without a recitation behind it.
       return Scaffold(
@@ -95,54 +176,98 @@ class _ResultScreenState extends State<ResultScreen> {
       });
     }
 
-    final surah = dummySurahs.where((s) => s.number == widget.surahNumber).firstOrNull;
-    final verdicts = result.wordVerdicts;
-    final from = ayahs.isEmpty ? result.fromAyah : ayahs.first.number;
-    final to = ayahs.isEmpty ? result.toAyah : ayahs.last.number;
-    final range = from == null ? '' : (to == null || to == from ? 'Ayah $from' : 'Ayahs $from–$to');
+    return FutureBuilder<_Recited>(
+      future: _recited,
+      builder: (context, snap) {
+        final recited = snap.data;
+        if (recited == null) return const Scaffold(body: AppLoadingIndicator());
 
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        titleSpacing: AppSpacing.screenPadding,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(surah?.nameEnglish ?? result.surahName, style: Theme.of(context).textTheme.titleMedium),
-            if (range.isNotEmpty)
-              Text(range, style: Theme.of(context).textTheme.labelSmall),
-          ],
-        ),
-        actions: [
-          // The flow arrives via pushReplacement, so there is no back stack to
-          // pop -- an explicit way home.
-          IconButton(tooltip: 'Close', icon: const Icon(Icons.close_rounded), onPressed: _done),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: verdicts != null && verdicts.isNotEmpty
-                ? _VerdictResults(
-                    result: result,
-                    ayahs: ayahs,
-                    verdicts: verdicts,
-                    surahNumber: widget.surahNumber,
-                  )
-                : _ErrorListResults(result: result, surahNumber: widget.surahNumber),
+        final verdicts = result.wordVerdicts;
+        final next = _continuePoint(result, recited);
+        final sections = recited.sections;
+        final first = sections.firstOrNull;
+        final last = sections.lastOrNull;
+        final String range;
+        if (first == null || last == null) {
+          range = '';
+        } else if (first.surah == last.surah) {
+          final from = first.ayahs.first.number;
+          final to = last.ayahs.last.number;
+          range = to == from ? 'Ayah $from' : 'Ayahs $from–$to';
+        } else {
+          range = '${first.surah}:${first.ayahs.first.number} – ${last.surah}:${last.ayahs.last.number}';
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            titleSpacing: AppSpacing.screenPadding,
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  first == null || last == null || first.surah == last.surah
+                      ? _surahName(first?.surah ?? result.surahNumber)
+                      : '${_surahName(first.surah)} to ${_surahName(last.surah)}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (range.isNotEmpty) Text(range, style: Theme.of(context).textTheme.labelSmall),
+              ],
+            ),
+            actions: [
+              // The flow arrives via pushReplacement, so there is no back stack to
+              // pop -- an explicit way home.
+              IconButton(tooltip: 'Close', icon: const Icon(Icons.close_rounded), onPressed: _done),
+            ],
           ),
-          _ActionBar(onTryAgain: () => _tryAgain(result), onDone: _done),
-        ],
-      ),
+          body: Column(
+            children: [
+              Expanded(
+                child: verdicts != null && verdicts.isNotEmpty
+                    ? _VerdictResults(result: result, sections: sections, verdicts: verdicts)
+                    : _ErrorListResults(result: result, surahNumber: widget.surahNumber),
+              ),
+              _ActionBar(
+                onTryAgain: () => _tryAgain(result),
+                onDone: _done,
+                // A surah finished continues into the next one, named; so
+                // does any place outside the surah the recitation began in.
+                continueLabel: next == null
+                    ? null
+                    : (next.ayah == 1 && next.surah != _reachedSurah(result)
+                        ? 'Continue to ${_surahName(next.surah)}'
+                        : (next.surah == result.surahNumber
+                            ? 'Continue from ayah ${next.ayah}'
+                            : 'Continue from ${_surahName(next.surah)} ${next.ayah}')),
+                onContinue: next == null ? null : () => _continueFrom(next),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
+}
+
+/// The recited passage's text: the part of each surah the recitation covered,
+/// and every surah's whole text, which "Continue" needs to count ayahs by.
+class _Recited {
+  final List<PassageSurah> sections;
+  final Map<int, List<Ayah>> whole;
+  const _Recited(this.sections, this.whole);
 }
 
 class _ActionBar extends StatelessWidget {
   final VoidCallback onTryAgain;
   final VoidCallback onDone;
-  const _ActionBar({required this.onTryAgain, required this.onDone});
+
+  /// "Continue from here": a new recitation that begins where this one
+  /// reliably reached. Absent when nothing was recited, or the Quran ended;
+  /// the bar is then exactly what it was before there was one.
+  final String? continueLabel;
+  final VoidCallback? onContinue;
+  const _ActionBar({required this.onTryAgain, required this.onDone, this.continueLabel, this.onContinue});
 
   @override
   Widget build(BuildContext context) {
@@ -155,17 +280,42 @@ class _ActionBar extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, 12, AppSpacing.screenPadding, 12),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onTryAgain,
-                  icon: const Icon(Icons.replay_rounded, size: 20),
-                  label: const Text('Try again'),
+              // Going on is the natural next step, so when there is somewhere
+              // to go it leads, on a row of its own: beside the other two its
+              // label ("Continue to Aal-E-Imran") did not fit a phone.
+              if (continueLabel != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: onContinue,
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+                    label: Text(continueLabel!, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
                 ),
+                const SizedBox(height: 8),
+              ],
+              Row(
+                children: [
+                  Expanded(
+                    child: continueLabel == null
+                        ? FilledButton.icon(
+                            onPressed: onTryAgain,
+                            icon: const Icon(Icons.replay_rounded, size: 20),
+                            label: const Text('Try again'),
+                          )
+                        : OutlinedButton.icon(
+                            onPressed: onTryAgain,
+                            icon: const Icon(Icons.replay_rounded, size: 20),
+                            label: const Text('Try again'),
+                          ),
+                  ),
+                  const SizedBox(width: 10),
+                  OutlinedButton(onPressed: onDone, child: const Text('Done')),
+                ],
               ),
-              const SizedBox(width: 10),
-              OutlinedButton(onPressed: onDone, child: const Text('Done')),
             ],
           ),
         ),
@@ -178,16 +328,18 @@ class _ActionBar extends StatelessWidget {
 
 class _VerdictResults extends StatelessWidget {
   final SessionResult result;
-  final List<Ayah> ayahs;
+
+  /// The passage recited, surah by surah.
+  final List<PassageSurah> sections;
   final List<WordVerdict> verdicts;
-  final int surahNumber;
 
   const _VerdictResults({
     required this.result,
-    required this.ayahs,
+    required this.sections,
     required this.verdicts,
-    required this.surahNumber,
   });
+
+  int _surahOf(WordVerdict v) => v.surahNumber ?? result.surahNumber;
 
   @override
   Widget build(BuildContext context) {
@@ -195,18 +347,32 @@ class _VerdictResults extends StatelessWidget {
     final recited = verdicts.where((v) => v.recited).toList();
     final flagged = recited.where((v) => v.flagged).toList();
     final matched = recited.length - flagged.length;
-    final reachedAyah = recited.isEmpty ? 0 : recited.last.ayahNumber;
-    final lastAyah = ayahs.isEmpty ? 0 : ayahs.last.number;
-    final stoppedEarly = reachedAyah > 0 && reachedAyah < lastAyah;
+    final reached = recited.isEmpty ? null : (_surahOf(recited.last), recited.last.ayahNumber);
+    final lastSection = sections.lastOrNull;
+    final end = lastSection == null || lastSection.ayahs.isEmpty
+        ? null
+        : (lastSection.surah, lastSection.ayahs.last.number);
+    final stoppedEarly = reached != null &&
+        end != null &&
+        (reached.$1 < end.$1 || (reached.$1 == end.$1 && reached.$2 < end.$2));
+    final String stoppedAt;
+    if (reached == null) {
+      stoppedAt = '';
+    } else if (sections.length == 1) {
+      stoppedAt = 'You recited up to ayah ${reached.$2} of ${end?.$2}.';
+    } else {
+      stoppedAt = 'You recited up to ${_ResultScreenState._surahName(reached.$1)} ${reached.$2}.';
+    }
 
-    // Verdicts indexed by (ayah, word), carrying the rule so each word can be
-    // coloured by which mistake it was.
-    final markFor = <int, Map<int, WordMark>>{};
-    final verdictAt = <int, Map<int, WordVerdict>>{};
+    // Verdicts indexed by (surah, ayah) and word, carrying the rule so each
+    // word can be coloured by which mistake it was.
+    final markFor = <(int, int), Map<int, WordMark>>{};
+    final verdictAt = <(int, int), Map<int, WordVerdict>>{};
     for (final v in verdicts) {
-      (verdictAt[v.ayahNumber] ??= {})[v.wordIndex] = v;
+      final at = (_surahOf(v), v.ayahNumber);
+      (verdictAt[at] ??= {})[v.wordIndex] = v;
       if (!v.recited) continue;
-      (markFor[v.ayahNumber] ??= {})[v.wordIndex] =
+      (markFor[at] ??= {})[v.wordIndex] =
           v.flagged ? WordMark(WordTone.flagged, rule: v.errorType) : WordMark.recited;
     }
     final counts = <TajweedErrorType, int>{};
@@ -220,15 +386,21 @@ class _VerdictResults extends StatelessWidget {
     final script = context.watch<QuranScriptCubit>().state;
     final repo = QuranScriptRepository.instance;
     // Written as the reading page writes it: continuous, a paragraph per ruku,
-    // in the script the reader chose. The page loads that text before any
-    // recitation can start, so it is here; a result reached some other way
-    // falls back to one ayah per paragraph in Uthmani.
-    final paragraphs = paragraphsByRuku(surahNumber, ayahs);
+    // in the script the reader chose, with each surah after the first under
+    // its own title. The page loads that text before any recitation can
+    // start, so it is here; a result reached some other way falls back to one
+    // ayah per paragraph in Uthmani.
+    final items = <(int, List<Ayah>?)>[
+      for (final section in sections) ...[
+        if (section != sections.first) (section.surah, null),
+        for (final group in paragraphsByRuku(section.surah, section.ayahs)) (section.surah, group),
+      ],
+    ];
 
     void review(WordVerdict v) => WordReviewSheet.show(
           context,
           verdict: v,
-          surahNumber: surahNumber,
+          surahNumber: _surahOf(v),
           sessionId: result.id,
           audioPcm: result.audioPcm,
         );
@@ -241,8 +413,7 @@ class _VerdictResults extends StatelessWidget {
             _Summary(matched: matched, recited: recited.length, flagged: flagged.length),
             if (stoppedEarly) ...[
               const SizedBox(height: 6),
-              Text('You recited up to ayah $reachedAyah of $lastAyah. The rest is shown in grey and not counted.',
-                  style: textTheme.bodySmall),
+              Text('$stoppedAt The rest is shown in grey and not counted.', style: textTheme.bodySmall),
             ],
             const SizedBox(height: AppSpacing.md),
             if (result.hasanahEarned > 0) HasanahEarnedBanner(amount: result.hasanahEarned),
@@ -296,7 +467,14 @@ class _VerdictResults extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(AppSpacing.screenPadding, AppSpacing.sm, AppSpacing.screenPadding, 0),
             sliver: SliverList.builder(
               itemCount: flagged.length,
-              itemBuilder: (context, i) => _ReviewRow(verdict: flagged[i], onTap: () => review(flagged[i])),
+              itemBuilder: (context, i) => _ReviewRow(
+                verdict: flagged[i],
+                // Named only when the recitation ran on past its first surah.
+                surahName: _surahOf(flagged[i]) == result.surahNumber
+                    ? null
+                    : _ResultScreenState._surahName(_surahOf(flagged[i])),
+                onTap: () => review(flagged[i]),
+              ),
             ),
           ),
         SliverPadding(
@@ -321,9 +499,9 @@ class _VerdictResults extends StatelessWidget {
             sliver: SliverPadding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
               sliver: SliverList.builder(
-                itemCount: paragraphs.length + 1,
+                itemCount: items.length + 1,
                 itemBuilder: (context, i) {
-                  if (i == paragraphs.length) {
+                  if (i == items.length) {
                     final rulesPresent = counts.keys.toSet();
                     if (rulesPresent.isEmpty && !stoppedEarly) return const SizedBox.shrink();
                     return Padding(
@@ -331,7 +509,17 @@ class _VerdictResults extends StatelessWidget {
                       child: MistakeLegend(rules: rulesPresent, showNotRecited: stoppedEarly),
                     );
                   }
-                  final group = paragraphs[i];
+                  final (surah, group) = items[i];
+                  if (group == null) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.md),
+                      child: Text(
+                        _ResultScreenState._surahName(surah),
+                        textAlign: TextAlign.center,
+                        style: textTheme.titleSmall?.copyWith(color: AppColors.goldInk),
+                      ),
+                    );
+                  }
                   final shown = repo.isLoaded ? script : QuranScript.uthmani;
                   return MushafParagraph(
                     script: shown,
@@ -340,15 +528,15 @@ class _VerdictResults extends StatelessWidget {
                       for (final ayah in group)
                         ParagraphAyah(
                           ayah: ayah,
-                          text: repo.ayah(surahNumber, ayah.number, shown) ??
+                          text: repo.ayah(surah, ayah.number, shown) ??
                               ScriptedAyah(words: ayah.arabicText.split(' '), end: arabicNumber(ayah.number)),
-                          placement: repo.placement(surahNumber, ayah.number),
-                          leadingCenteredWords: basmalaWordsIn(surahNumber, ayah),
-                          marks: markFor[ayah.number] ?? const {},
+                          placement: repo.placement(surah, ayah.number),
+                          leadingCenteredWords: basmalaWordsIn(surah, ayah),
+                          marks: markFor[(surah, ayah.number)] ?? const {},
                         ),
                     ],
                     onWordLongPress: (number, index) {
-                      final v = verdictAt[number]?[index];
+                      final v = verdictAt[(surah, number)]?[index];
                       if (v != null && v.recited && v.flagged) review(v);
                     },
                   );
@@ -418,8 +606,11 @@ class _Summary extends StatelessWidget {
 
 class _ReviewRow extends StatelessWidget {
   final WordVerdict verdict;
+
+  /// The word's surah, when it is not the one the recitation began in.
+  final String? surahName;
   final VoidCallback onTap;
-  const _ReviewRow({required this.verdict, required this.onTap});
+  const _ReviewRow({required this.verdict, this.surahName, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -428,7 +619,7 @@ class _ReviewRow extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     return Semantics(
       button: true,
-      label: '${TajweedCopy.headline(rule)}. Ayah ${verdict.ayahNumber}, word ${verdict.wordIndex + 1}.',
+      label: '${TajweedCopy.headline(rule)}. ${surahName ?? 'Ayah'} ${verdict.ayahNumber}, word ${verdict.wordIndex + 1}.',
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
@@ -458,7 +649,7 @@ class _ReviewRow extends StatelessWidget {
                   children: [
                     Text(TajweedCopy.headline(rule), style: textTheme.titleSmall),
                     const SizedBox(height: 2),
-                    Text('Ayah ${verdict.ayahNumber} · word ${verdict.wordIndex + 1}', style: textTheme.bodySmall),
+                    Text('${surahName ?? 'Ayah'} ${verdict.ayahNumber} · word ${verdict.wordIndex + 1}', style: textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -574,6 +765,7 @@ class WordReviewSheet extends StatelessWidget {
               ),
               SaidItRightButton(
                 sessionId: sessionId,
+                surahNumber: verdict.surahNumber,
                 ayahNumber: verdict.ayahNumber,
                 wordIndex: verdict.wordIndex,
               ),

@@ -5,7 +5,9 @@ import '../core/audio/wav_encoder.dart';
 import '../dummy/dummy_sessions.dart';
 import '../dummy/dummy_surahs.dart';
 import '../models/ayah.dart';
+import '../models/quran_position.dart';
 import '../models/reattempt_outcome.dart';
+import '../models/recitation_span.dart';
 import '../models/session_result.dart';
 import '../models/tajweed_error.dart';
 import '../models/word_verdict.dart';
@@ -18,31 +20,113 @@ import 'quran_text_repository.dart';
 /// reciter's audio. Matches the backend's own default.
 const _defaultQariId = 'abdurrahmaan_as_sudais';
 
+/// The form fields that ask the analysis endpoint for [span]: where the
+/// recitation begins, and how far it may run -- to [span]'s end, or, left
+/// open, on through the surahs after it for as long as the recording goes.
+/// The one place a span becomes a request; the live socket's handshake says
+/// the same thing in the same terms.
+Map<String, String> analysisFields(RecitationSpan span) {
+  final end = span.end;
+  return {
+    'surah_number': span.start.surah.toString(),
+    'from_ayah': span.start.ayah.toString(),
+    'end_surah': (end?.surah ?? 114).toString(),
+    if (end != null) 'to_ayah': end.ayah.toString(),
+  };
+}
+
+/// How long uploading a recording of [length] and having it analysed may
+/// take before the app gives up on it: the usual two minutes, plus a share of
+/// the recording's own length. A 16 kHz WAV is about 1.9 MB a minute, which a
+/// slow phone connection uploads in roughly a quarter of the time it took to
+/// recite; the server decodes and aligns it in under a tenth (measured: 18
+/// minutes of Al-Baqarah in 71 s). So a full juz of about 45 minutes gets
+/// some 18 minutes, and a two-minute recitation the two minutes it always had.
+Duration uploadTimeoutFor(Duration length) => const Duration(minutes: 2) + length * 0.35;
+
+/// How long the live socket may take to judge a recitation it has already
+/// decoded: only the alignment is left, which runs at about a fiftieth of the
+/// recording's length (18 minutes aligned in 19 s).
+Duration finishTimeoutFor(Duration length) => const Duration(minutes: 1) + length * 0.2;
+
+/// A [SessionResult] from the analysis response -- the same shape whether the
+/// recording was uploaded or judged on the live socket.
+SessionResult resultFromAnalysis(
+  RecitationSpan span,
+  Map<String, dynamic> json,
+  Uint8List audioPcm, {
+  Duration durationRecorded = Duration.zero,
+}) {
+  final surahNumber = json['surah_number'] as int? ?? span.start.surah;
+  final surah = dummySurahs.firstWhere((s) => s.number == surahNumber, orElse: () => dummySurahs.first);
+  final words = (json['words'] as List).cast<Map<String, dynamic>>();
+  final wordVerdicts = words.map(WordVerdict.fromJson).toList();
+  final recited = wordVerdicts.where((v) => v.recited).toList();
+  final ayah = json['reached_ayah'] as int?;
+
+  return SessionResult(
+    id: json['session_id'] as String,
+    surahName: surah.nameEnglish,
+    surahNumber: surah.number,
+    dateTime: DateTime.now(),
+    accuracyScore: (json['accuracy_score'] as num).toDouble() * 100,
+    duration: durationRecorded,
+    errors: _errorsFromVerdicts(wordVerdicts),
+    wordVerdicts: wordVerdicts,
+    wordsRecited: json['words_recited'] as int? ?? recited.length,
+    totalWords: json['total_words'] as int? ?? wordVerdicts.length,
+    audioPcm: audioPcm,
+    hasanahEarned: _hasanahForVerdicts(recited),
+    fromAyah: json['from_ayah'] as int? ?? span.start.ayah,
+    toAyah: json['to_ayah'] as int? ?? span.end?.ayah,
+    endSurah: json['end_surah'] as int?,
+    // The last word the analysis placed the reciter on. A server analysing
+    // one surah per recording does not send `reached_surah`: that surah it is.
+    reached: ayah == null
+        ? null
+        : QuranPosition(
+            json['reached_surah'] as int? ?? surahNumber,
+            ayah,
+            word: json['reached_word_index'] as int? ?? 0,
+          ),
+  );
+}
+
 abstract class SessionService {
   Future<List<SessionResult>> getSessions();
   Future<SessionResult> getSessionById(String id);
 
-  /// Analyzes a just-recorded recitation of [surahNumber], ayahs [fromAyah] to
-  /// [toAyah] (the whole surah when [toAyah] is null).
+  /// Analyzes a just-recorded recitation that began at [span]'s start and ran
+  /// on from there (to its end, for a fixed practice range).
   ///
   /// [audioPcm] is raw 16 kHz mono PCM16 straight from the recorder: it gets a
   /// WAV header for upload, and is kept on the result so the user can play back
   /// individual words. [DummySessionService] accepts but ignores it.
   Future<SessionResult> generateSessionResult(
-    int surahNumber,
+    RecitationSpan span,
     Uint8List audioPcm, {
-    int fromAyah = 1,
-    int? toAyah,
+    Duration durationRecorded = Duration.zero,
+  });
+
+  /// The result of a recitation the server already judged and stored -- the
+  /// live socket's answer to "finish", which has the same shape as the upload
+  /// endpoint's. Read exactly as [generateSessionResult] reads that one.
+  SessionResult adoptAnalysis(
+    RecitationSpan span,
+    Map<String, dynamic> json,
+    Uint8List audioPcm, {
     Duration durationRecorded = Duration.zero,
   });
 
   /// Records the reciter's own verdict on a word the analysis flagged --
-  /// `agreed: false` meaning "I said this correctly".
+  /// `agreed: false` meaning "I said this correctly". [surahNumber] is the
+  /// word's surah, for a recitation that ran on past the one it began in.
   Future<void> recordWordFeedback({
     required String sessionId,
     required int ayahNumber,
     required int wordIndex,
     required bool agreed,
+    int? surahNumber,
   });
 
   /// Re-recites a flagged word (FR-8/BR-5) and returns what changed.
@@ -154,7 +238,19 @@ class DummySessionService implements SessionService {
     required int ayahNumber,
     required int wordIndex,
     required bool agreed,
+    int? surahNumber,
   }) async {}
+
+  /// Never reached: this implementation has no backend, so the live socket
+  /// never connects and there is no server result to adopt.
+  @override
+  SessionResult adoptAnalysis(
+    RecitationSpan span,
+    Map<String, dynamic> json,
+    Uint8List audioPcm, {
+    Duration durationRecorded = Duration.zero,
+  }) =>
+      resultFromAnalysis(span, json, audioPcm, durationRecorded: durationRecorded);
 
   /// Same reason: there is no stored session to re-score. Reports the word as
   /// corrected so the flow can be walked through without a backend, and says
@@ -192,13 +288,12 @@ class DummySessionService implements SessionService {
 
   @override
   Future<SessionResult> generateSessionResult(
-    int surahNumber,
+    RecitationSpan span,
     Uint8List audioPcm, {
-    int fromAyah = 1,
-    int? toAyah,
     Duration durationRecorded = Duration.zero,
   }) async {
     await Future.delayed(const Duration(milliseconds: 2200));
+    final surahNumber = span.start.surah;
 
     final surah = dummySurahs.firstWhere((s) => s.number == surahNumber, orElse: () => dummySurahs.first);
     final ayahs = await QuranTextRepository.instance.ayahsForSurah(surahNumber);
@@ -290,44 +385,27 @@ class ApiSessionService implements SessionService {
 
   @override
   Future<SessionResult> generateSessionResult(
-    int surahNumber,
+    RecitationSpan span,
     Uint8List audioPcm, {
-    int fromAyah = 1,
-    int? toAyah,
     Duration durationRecorded = Duration.zero,
   }) async {
-    final surah = dummySurahs.firstWhere((s) => s.number == surahNumber, orElse: () => dummySurahs.first);
     final json = await _client.postAudio(
       '/api/v1/sessions/analyze_word_level',
       pcm16ToWav(audioPcm),
-      fields: {
-        'surah_number': surahNumber.toString(),
-        'from_ayah': fromAyah.toString(),
-        if (toAyah != null) 'to_ayah': toAyah.toString(),
-        'qari_id': _defaultQariId,
-      },
+      fields: {...analysisFields(span), 'qari_id': _defaultQariId},
+      timeout: uploadTimeoutFor(durationRecorded),
     );
+    return adoptAnalysis(span, json, audioPcm, durationRecorded: durationRecorded);
+  }
 
-    final words = (json['words'] as List).cast<Map<String, dynamic>>();
-    final wordVerdicts = words.map(WordVerdict.fromJson).toList();
-    final recited = wordVerdicts.where((v) => v.recited).toList();
-
-    final result = SessionResult(
-      id: json['session_id'] as String,
-      surahName: surah.nameEnglish,
-      surahNumber: surah.number,
-      dateTime: DateTime.now(),
-      accuracyScore: (json['accuracy_score'] as num).toDouble() * 100,
-      duration: durationRecorded,
-      errors: _errorsFromVerdicts(wordVerdicts),
-      wordVerdicts: wordVerdicts,
-      wordsRecited: json['words_recited'] as int? ?? recited.length,
-      totalWords: json['total_words'] as int? ?? wordVerdicts.length,
-      audioPcm: audioPcm,
-      hasanahEarned: _hasanahForVerdicts(recited),
-      fromAyah: json['from_ayah'] as int? ?? fromAyah,
-      toAyah: json['to_ayah'] as int? ?? toAyah,
-    );
+  @override
+  SessionResult adoptAnalysis(
+    RecitationSpan span,
+    Map<String, dynamic> json,
+    Uint8List audioPcm, {
+    Duration durationRecorded = Duration.zero,
+  }) {
+    final result = resultFromAnalysis(span, json, audioPcm, durationRecorded: durationRecorded);
     _lastResult = result;
     _forgetHistory();
     return result;
@@ -345,6 +423,7 @@ class ApiSessionService implements SessionService {
     required int ayahNumber,
     required int wordIndex,
     required bool agreed,
+    int? surahNumber,
   }) async {
     await _client.postForm(
       '/api/v1/sessions/$sessionId/word-feedback',
@@ -352,6 +431,7 @@ class ApiSessionService implements SessionService {
         'ayah_number': ayahNumber.toString(),
         'word_index': wordIndex.toString(),
         'agreed': agreed.toString(),
+        if (surahNumber != null) 'surah_number': surahNumber.toString(),
       },
     );
   }
@@ -401,6 +481,7 @@ class ApiSessionService implements SessionService {
       totalWords: json['totalWords'] as int? ?? 0,
       fromAyah: json['fromAyah'] as int?,
       toAyah: json['toAyah'] as int?,
+      endSurah: json['endSurah'] as int?,
     );
   }
 }

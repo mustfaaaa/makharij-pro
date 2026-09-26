@@ -110,11 +110,15 @@ class ApiClient {
   /// time, and the same samples are then wrapped as a WAV here. That also
   /// removes the web special case -- there is no `blob:` URL to re-fetch,
   /// because nothing was ever written to a file.
+  ///
+  /// [timeout] replaces the usual two minutes for a recording long enough to
+  /// need more: the upload and the analysis both grow with its length.
   Future<Map<String, dynamic>> postAudio(
     String path,
     Uint8List audioBytes, {
     Map<String, String> fields = const {},
     bool authRequired = true,
+    Duration? timeout,
   }) async {
     final headers = await _authHeader(required: authRequired);
     final streamed = await _send(
@@ -127,7 +131,7 @@ class ApiClient {
         return request.send();
       },
       idempotent: false,
-      timeout: _analysisTimeout,
+      timeout: timeout ?? _analysisTimeout,
     );
     final response = await http.Response.fromStream(streamed);
     return _decode(response);

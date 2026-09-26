@@ -19,12 +19,17 @@ import '../../../../theme/app_spacing.dart';
 /// would have to be trained on.
 class SaidItRightButton extends StatefulWidget {
   final String? sessionId;
+
+  /// The word's surah. Null for the session's own surah, which is every word's
+  /// unless the recitation ran on past it.
+  final int? surahNumber;
   final int ayahNumber;
   final int wordIndex;
 
   const SaidItRightButton({
     super.key,
     required this.sessionId,
+    this.surahNumber,
     required this.ayahNumber,
     required this.wordIndex,
   });
@@ -54,6 +59,7 @@ class _SaidItRightButtonState extends State<SaidItRightButton> {
         ayahNumber: widget.ayahNumber,
         wordIndex: widget.wordIndex,
         agreed: false,
+        surahNumber: widget.surahNumber,
       );
     } catch (_) {
       // The mark stands either way. It is the reciter's own reading of their

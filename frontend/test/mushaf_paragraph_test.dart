@@ -82,6 +82,42 @@ List<Color?> _wordColors(WidgetTester tester) => _wordSpans(tester).map((s) => s
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
+  group('paragraphs', () {
+    // Al-Baqarah's first rukus in the bundled count: 1-7, then 8-20.
+    final baqarah = [for (var n = 1; n <= 20; n++) Ayah(number: n, arabicText: 'كَلِمَة', translation: '')];
+    List<List<int>> numbers(List<List<Ayah>> paragraphs) =>
+        [for (final p in paragraphs) [for (final a in p) a.number]];
+
+    setUpAll(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      await QuranScriptRepository.instance.ensureLoaded();
+    });
+
+    test('a paragraph closes where a ruku does', () {
+      expect(numbers(paragraphsByRuku(2, baqarah)), [
+        [1, 2, 3, 4, 5, 6, 7],
+        [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+      ]);
+    });
+
+    test('an ayah asked to open a paragraph does, and a ruku still closes one', () {
+      // Where a recitation begins, mid-ruku: the ayahs before it keep their own
+      // paragraph, so the page can mark the line between them.
+      expect(numbers(paragraphsByRuku(2, baqarah, breakBefore: {5})), [
+        [1, 2, 3, 4],
+        [5, 6, 7],
+        [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+      ]);
+    });
+
+    test('a break already at a ruku, or before the first ayah, adds no empty paragraph', () {
+      expect(numbers(paragraphsByRuku(2, baqarah, breakBefore: {1, 8})), [
+        [1, 2, 3, 4, 5, 6, 7],
+        [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+      ]);
+    });
+  });
+
   group('word colouring', () {
     testWidgets('every word rests muted when nothing has been recited', (tester) async {
       await _pump(tester, const {});
