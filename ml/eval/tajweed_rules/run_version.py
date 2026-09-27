@@ -71,12 +71,14 @@ def make_manifest(expert_opps: list[dict], items: dict) -> list[dict]:
     return out
 
 
-def main():
+def main(argv=None, note=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("name")
     ap.add_argument("--make-manifest", action="store_true", help="baseline only: choose the controlled edits")
     ap.add_argument("--limit", type=int, help="smoke test on the first N items of each set")
-    args = ap.parse_args()
+    ap.add_argument("--sets", default="learners,experts", help="comma-separated subset of learners,experts")
+    ap.add_argument("--no-edits", action="store_true", help="skip the controlled edits")
+    args = ap.parse_args(argv)
     out = H.RESULTS / args.name
     if out.exists():
         raise SystemExit(f"{out} exists -- results are never overwritten; pick a new name")
@@ -85,10 +87,11 @@ def main():
     diff = subprocess.run(["git", "diff", "HEAD", "--", "backend/app"], cwd=H.REPO, capture_output=True).stdout
     meta = {"name": args.name, "git_head": H.git_head(), "backend_uncommitted_changes": bool(diff),
             "backend_diff_sha1": hashlib.sha1(diff).hexdigest() if diff else None,
-            "started": time.strftime("%Y-%m-%d %H:%M:%S")}
+            "started": time.strftime("%Y-%m-%d %H:%M:%S"), "note": note}
     svc = H.PhonemeAnalysisService()
 
-    sets = {"learners": H.learner_items(), "experts": H.expert_items()}
+    wanted = args.sets.split(",")
+    sets = {k: f() for k, f in (("learners", H.learner_items), ("experts", H.expert_items)) if k in wanted}
     all_items = {}
     for name, items in sets.items():
         items = items[: args.limit] if args.limit else items
@@ -125,14 +128,15 @@ def main():
             (H.HERE / "edits_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1),
                                                           encoding="utf-8")
 
-    manifest = json.loads((H.HERE / "edits_manifest.json").read_text(encoding="utf-8"))
+    manifest = [] if args.no_edits else json.loads((H.HERE / "edits_manifest.json").read_text(encoding="utf-8"))
     if args.limit:
         manifest = manifest[: args.limit]
     edits = []
     for e in manifest:
         e2 = dict(e, path=str(H.REPO / e["path"]))
         edits.append(H.judge_edit(svc, e2))
-    H.jsonl_write(out / "edits.jsonl", edits)
+    if not args.no_edits:
+        H.jsonl_write(out / "edits.jsonl", edits)
     meta["finished"] = time.strftime("%Y-%m-%d %H:%M:%S")
     (out / "meta.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
     print("done", out)

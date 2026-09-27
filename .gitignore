@@ -191,3 +191,6 @@ backend/tests/live_stream_result.json
 ml/eval/tajweed_rules/results/*/words_*.jsonl
 ml/eval/tajweed_rules/results/*/opps_*.jsonl
 ml/eval/tajweed_rules/*.log
+# Padding-strategy experiments: regenerate with padding_experiment.py; the
+# summary is results/PADDING_STRATEGIES.md.
+ml/eval/tajweed_rules/results/pad_*/

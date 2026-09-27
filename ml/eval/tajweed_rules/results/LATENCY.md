@@ -15,3 +15,10 @@ machine load alone moves those numbers.
 
 Verdict step (tajweed_diff.classify + summarize, including the C2 ikhfa
 branch): 23.3 µs per word over 2,966 recited learner words.
+
+## Final (68f3926: -80 dBFS)
+
+Rotating benchmark over all padding strategies (padding_latency.py, 150 clips):
+-80 dBFS 44.76 s vs digital silence 45.44 s (-1.5%, within noise). Full runs:
+final learners decode 206.9 s / analysis 0.67 s for 3,000 s of audio (real-time
+factor 0.069); experts 348.3 s / 2.79 s for 5,686 s (0.062).
