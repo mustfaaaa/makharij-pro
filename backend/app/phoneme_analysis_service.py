@@ -41,18 +41,27 @@ MODEL_DIR = Path(__file__).resolve().parent.parent / "models_cache" / "quran-lab
 SAMPLE_RATE = 16000
 
 # What follows the last of a recording into the recognizer (see finish_stream):
-# 1.5 s of quiet noise at about -60 dBFS rather than digital silence. The same
-# samples every time -- a fixed seed, generated once -- so a recording always
-# decodes to the same tokens, and the live socket and the upload still agree.
+# 1.5 s of very quiet noise at about -80 dBFS rather than digital silence. The
+# same samples every time -- a fixed seed, generated once -- so a recording
+# always decodes to the same tokens, and the live socket and the upload agree.
 #
 # Digital silence (exact zeros) is a signal no microphone produces, and the
 # model never heard it in training. Ending on it cost the soft closing madd a
 # learner trails off on: ٱلرَّحِيمِ came out ررَحِ and was reported as a dropped
-# madd. Of the 35 labelled learner recordings where that happened, 21 keep the
-# madd with this padding. The before/after over all 773 learner and 865
-# professional recordings is in ml/eval/tajweed_rules/results.
+# madd.
+#
+# Why -80 and not louder: the padding must stay below the recording's own
+# background. The median learner recording's noise floor is -56 dBFS and 40%
+# sit within 5 dB of -60, and padding at that level puts a quiet held final
+# vowel right on the decoder's decision boundary -- at -60 dBFS a correctly
+# recited ٱلرَّحِيمِ lost its madd, and which recordings did so changed with
+# the noise sample alone. At -80 (below 95% of recordings' floors), measured
+# over the 773 labelled learner recordings: madd flags on correctly recited
+# clips 29 -> 21, no correct word newly flagged, the same with a second noise
+# sample, and no change on 865 professional recitations. See
+# ml/eval/tajweed_rules/results/PADDING_STRATEGIES.md.
 END_PADDING = (np.random.default_rng(0).standard_normal(int(1.5 * SAMPLE_RATE))
-               * 10 ** (-60 / 20)).astype(np.float32)
+               * 10 ** (-80 / 20)).astype(np.float32)
 
 # A word counts as actually heard when at least this fraction of its expected
 # phoneme characters matched, and at least this many characters matched

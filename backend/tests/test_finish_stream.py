@@ -2,7 +2,7 @@
 
 finish_stream follows the last real audio with 1.5 s of padding so the
 streaming recognizer emits the recording's closing tokens. That padding is
-quiet noise at about -60 dBFS, never digital silence: exact zeros are a
+very quiet noise at about -80 dBFS, never digital silence: exact zeros are a
 signal no microphone produces, and ending on them lost the soft closing madd a
 learner trails off on (ٱلرَّحِيمِ read back as ررَحِ, reported as a dropped
 madd). See END_PADDING for the measurement.
@@ -15,7 +15,9 @@ Pinned here:
   - the live socket's chunk-by-chunk stream and the uploaded recording still
     decode identically
   - real learner recordings whose closing madd digital silence used to lose
-    now keep it (needs the local evaluation set; skipped without it)
+    now keep it, and ones digital silence got right still do -- including the
+    two that louder (-60 / -70 dBFS) padding broke (needs the local
+    evaluation set; skipped without it)
 
 Only the recognizer's input is affected. The recording itself -- what is
 stored, uploaded or replayed -- is never touched.
@@ -41,11 +43,20 @@ QARI = "abdurrahmaan_as_sudais"
 SR = pas.SAMPLE_RATE
 
 # Correctly recited learner clips (all annotators agreed) whose closing madd
-# was read back as missing when the recording ended in digital silence.
+# was read back as missing when the recording ended in digital silence, and
+# which keep it with this padding whatever the noise sample.
 SOFT_ENDINGS = [
-    ("9f41f41c-b8d8-4ba4-87f3-2ad5b0570c31", 1, 1),   # ٱلرَّحِيمِ   came back ررَحِ
-    ("40ee8b37-69c8-4035-a227-e286124d52e0", 1, 2),   # ٱلْعَٰلَمِينَ came back لعَاالَمِ
+    ("d3731e93-8f1c-4d30-82e3-db2b1ef3aa5f", 1, 1),   # ٱلرَّحِيمِ   came back ررَحِۦۦ
+    ("d31b1317-bce7-4ce1-b368-fab1ea1922c9", 1, 2),   # ٱلْعَٰلَمِينَ came back لعَاالَمِ
     ("79ab4b58-115b-4ce1-9a99-a0257a36acc0", 1, 6),   # ٱلْمُسْتَقِيمَ came back لمُستَقِۦۦ
+]
+
+# Correctly recited learner clips digital silence already got right, whose
+# quiet held ī louder padding cost: at -60 dBFS the first lost its madd, at
+# -70 the second. Both are recorded close to those levels (floor about -61).
+QUIET_ENDINGS = [
+    ("b82ed2e6-f726-43fe-801a-a776bd5bb039", 1, 1),   # ٱلرَّحِيمِ
+    ("6c1a3c14-c1ab-404a-8889-702b71daccfc", 1, 1),   # ٱلرَّحِيمِ
 ]
 
 
@@ -91,14 +102,14 @@ def test_the_padding_is_quiet_noise_not_silence():
     assert pad.dtype == np.float32
     assert len(pad) == int(1.5 * SR)
     rms_db = 20 * np.log10(np.sqrt(np.mean(pad.astype(np.float64) ** 2)))
-    assert -61.0 < rms_db < -59.0
+    assert -81.0 < rms_db < -79.0
     assert np.count_nonzero(pad) == len(pad)
-    assert np.max(np.abs(pad)) < 0.01           # far below anything spoken
+    assert np.max(np.abs(pad)) < 0.001          # far below any recording's own background
 
 
 def test_the_padding_is_the_same_every_time():
     again = (np.random.default_rng(0).standard_normal(int(1.5 * SR))
-             * 10 ** (-60 / 20)).astype(np.float32)
+             * 10 ** (-80 / 20)).astype(np.float32)
     assert np.array_equal(pas.END_PADDING, again)
 
 
@@ -180,3 +191,18 @@ def test_a_soft_closing_madd_is_no_longer_lost(service, clip, surah, ayah):
     # ...and the production ending keeps it.
     after = _last_word(service, samples, surah, ayah)
     assert after.recited and after.correct, after.predicted_phonemes
+
+
+@pytest.mark.parametrize("clip,surah,ayah", QUIET_ENDINGS)
+def test_a_quiet_closing_madd_digital_silence_kept_is_still_kept(service, clip, surah, ayah):
+    """The regression the first version of this padding (-60 dBFS) caused: a
+    quiet recording's held final ī, emitted only as the stream is flushed, was
+    dropped once the padding sounded like the recording's own background."""
+    path = EVALSET / "clips" / f"{clip}.wav"
+    if not path.is_file():
+        pytest.skip("learner evaluation set not present (ml/eval/README.md)")
+    samples = librosa.load(str(path), sr=SR, mono=True)[0].astype(np.float32)
+    samples = librosa.load(io.BytesIO(_wav(samples)), sr=SR, mono=True)[0].astype(np.float32)
+    last = _last_word(service, samples, surah, ayah)
+    assert last.recited and last.correct, last.predicted_phonemes
+    assert "ۦۦ" in last.predicted_phonemes
