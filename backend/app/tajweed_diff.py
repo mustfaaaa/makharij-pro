@@ -34,12 +34,13 @@ NASAL_CHARS = frozenset("من")
 # Dedicated ikhfa markers (noon / meem hidden into the following letter).
 IKHFA_CHARS = frozenset("ں۾")
 # The plain letter an ikhfa becomes when it is not made: a hidden noon said as
-# a clear noon; a hidden meem (ikhfa shafawi, or iqlab -- a noon turned into a
-# hidden meem before ب) said as a clear meem or, for iqlab, a clear noon. A
+# a clear noon, a hidden meem said as a clear meem. Nothing else counts. A
 # hidden noon heard as a meem is a different letter, not an unmade ikhfa --
-# measured, that is what a garbled كُلٌّۭ فِي (كُللُهُم) aligns to -- so it
-# stays a makhraj finding.
-IKHFA_PLAIN_FORMS = {"ں": frozenset("ن"), "۾": frozenset("من")}
+# measured, that is what a garbled كُلٌّۭ فِي (كُللُهُم) aligns to. And ۾ stands
+# for both ikhfa shafawi (a meem) and iqlab (a noon turned into a hidden
+# meem), which the phoneme alphabet does not tell apart, so a clear noon in its
+# place is left as the makhraj finding it always was rather than guessed at.
+IKHFA_PLAIN_FORMS = {"ں": frozenset("ن"), "۾": frozenset("م")}
 # Marks that ride on a letter rather than being letters themselves. A diff in
 # these alone is below the recognizer's reliable resolution, so it never flags
 # a word on its own.

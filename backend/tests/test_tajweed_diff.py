@@ -7,6 +7,8 @@ mistakes, which is the failure mode that makes every other verdict on the
 results screen untrustworthy.
 """
 import sys
+
+import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -78,10 +80,11 @@ def test_ikhfa_said_as_a_plain_meem_is_flagged_as_ghunnah():
     assert _types(findings) == [tajweed_diff.GHUNNAH]
 
 
-def test_iqlab_said_as_a_plain_noon_is_flagged_as_ghunnah():
-    # The noon of نۢب was never turned into a hidden meem at all.
-    findings = classify("لَيُنۢبَذَنَّ", "لَيُ۾۾۾بَذَننننَ", "لَيُنبَذَننننَ")
-    assert _types(findings) == [tajweed_diff.GHUNNAH]
+def test_a_hidden_meem_heard_as_a_noon_stays_makhraj():
+    # ۾ is both ikhfa shafawi (a meem) and iqlab (a noon made a hidden meem);
+    # the alphabet cannot say which, so a clear noon there is not guessed to be
+    # an unmade ikhfa.
+    assert _types(classify("لَيُنۢبَذَنَّ", "لَيُ۾۾۾بَذَننننَ", "لَيُنبَذَننننَ")) == [tajweed_diff.MAKHRAJ]
 
 
 def test_a_hidden_noon_heard_as_a_meem_stays_makhraj():
@@ -93,6 +96,43 @@ def test_a_hidden_noon_heard_as_a_meem_stays_makhraj():
 
 def test_ikhfa_made_as_expected_is_not_flagged():
     assert classify("مِن", "مِںںں", "مِںںں") == []
+
+
+# The whole decision table, one row per case: which category a word with this
+# one difference is reported under.
+DECISION_TABLE = [
+    # (word, expected, heard, category or None for "not flagged")
+    ("مِن", "مِںںں", "مِں", None),                        # ikhfa made (length is not judged)
+    ("مِن", "مِںںں", "مِ", tajweed_diff.GHUNNAH),          # ikhfa noon heard nowhere
+    ("مِن", "مِںںں", "مِن", tajweed_diff.GHUNNAH),         # ikhfa noon -> plain noon
+    ("أَم بِ", "ءَ۾۾۾بِ", "ءَمبِ", tajweed_diff.GHUNNAH),   # ikhfa meem -> plain meem
+    ("أَم بِ", "ءَ۾۾۾بِ", "ءَبِ", tajweed_diff.GHUNNAH),    # ikhfa meem heard nowhere
+    ("مِن", "مِںںں", "مِم", tajweed_diff.MAKHRAJ),         # ikhfa noon -> meem: another letter
+    ("مِن", "مِںںں", "مِل", tajweed_diff.MAKHRAJ),         # ikhfa -> unrelated letter
+    ("أَم بِ", "ءَ۾۾۾بِ", "ءَنبِ", tajweed_diff.MAKHRAJ),   # ikhfa meem -> noon: not guessed
+    ("أَم بِ", "ءَ۾۾۾بِ", "ءَلبِ", tajweed_diff.MAKHRAJ),   # ikhfa meem -> unrelated letter
+    ("نَعْبُدُ", "نَعبُدُ", "مَعبُدُ", tajweed_diff.MAKHRAJ),  # normal noon -> meem
+    ("نَعْبُدُ", "نَعبُدُ", "لَعبُدُ", tajweed_diff.MAKHRAJ),  # normal noon -> other letter
+    ("مَلِكِ", "مَلِكِ", "نَلِكِ", tajweed_diff.MAKHRAJ),    # normal meem -> noon
+    ("مَلِكِ", "مَلِكِ", "بَلِكِ", tajweed_diff.MAKHRAJ),    # normal meem -> other letter
+]
+
+
+@pytest.mark.parametrize("word,expected,heard,category", DECISION_TABLE)
+def test_ikhfa_decision_table(word, expected, heard, category):
+    types = _types(classify(word, expected, heard))
+    assert types == ([category] if category else [])
+
+
+def test_a_garbled_word_with_an_unmade_ikhfa_is_still_reported_as_garbled():
+    # Four or more differences: the word did not match, whatever else is in it.
+    # ٱلْإِنسَٰنَ read back as رءِنكُتَ: the ikhfa said as a plain noon is one of
+    # four differences, so the word is reported as not matching, not as ghunnah.
+    findings = classify("ٱلْإِنسَٰنَ", "لءِںںںسَاانَ", "رءِنكُتَ")
+    summary = summarize("ٱلْإِنسَٰنَ", findings)
+    assert tajweed_diff.GHUNNAH in _types(findings)
+    assert len(findings) >= tajweed_diff.GARBLED_FINDING_COUNT
+    assert summary.error_type == tajweed_diff.MAKHRAJ and "didn’t match" in summary.explanation
 
 
 def test_other_letter_substitutions_are_still_makhraj():
