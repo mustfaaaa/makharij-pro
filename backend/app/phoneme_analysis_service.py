@@ -32,6 +32,7 @@ import numpy as np
 import sherpa_onnx
 
 from . import tajweed_diff
+from . import duration_verifier
 from .tajweed_diff import align as _align
 from .word_mapping import WordMapper
 
@@ -248,6 +249,12 @@ class WordPhonemeResult:
     # A recitation can run from one surah into the next, so an ayah number
     # alone no longer says where a word is.
     surah_number: int = 0
+    # Set by verdict_policy when audio quality requires a second opinion.
+    # None means the ordinary policy applies (not recited -> unjudged,
+    # correct -> correct, generic makhraj -> review, named rule -> confirmed).
+    review_status: str | None = None
+    duration_evidence: dict | None = None
+    evidence_count: int = 0
 
 
 @dataclass
@@ -911,10 +918,16 @@ class PhonemeAnalysisService:
             else:
                 start_sec = end_sec = 0.0
 
-            verdict = tajweed_diff.summarize(
-                display, tajweed_diff.classify(display, expected_word, predicted_word)
-            )
+            findings = tajweed_diff.classify(display, expected_word, predicted_word)
+            verdict = tajweed_diff.summarize(display, findings)
             confidence = max(0.0, 1.0 - word_errors[i] / max(len(expected_word), 1))
+            duration_evidence = duration_verifier.build(
+                verdict.error_type if verdict else None,
+                expected_word,
+                predicted_word,
+                [pred_char_token_idx[p] for p in pred_idxs],
+                list(pred_times),
+            )
 
             results.append(WordPhonemeResult(
                 ayah_number=ayah,
@@ -931,6 +944,8 @@ class PhonemeAnalysisService:
                 error_type=verdict.error_type if verdict else None,
                 explanation=verdict.explanation if verdict else None,
                 surah_number=surah,
+                duration_evidence=duration_evidence,
+                evidence_count=len(findings),
             ))
 
         opening = [self._unrecited(w, surah) for w in skipped_prefix]

@@ -11,6 +11,7 @@ from .phoneme_analysis_service import PhonemeAnalysisService
 from .reference_words import ReferenceWordAudio
 from .tajweed_reference import TajweedReference
 from . import config
+from .analysis_metadata import ANALYSIS_VERSION, AUDIO_QUALITY_VERSION, PHONEME_MODEL_ID
 from .rattil_assistant import AssistantUnavailable, FirestoreAssistantData, GeminiClient, RattilAssistant
 from .routers import assistant, live, rattil, sessions, tajweed
 
@@ -103,4 +104,9 @@ app.mount("/media", StaticFiles(directory=str(_static_dir)), name="media")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "model_id": PHONEME_MODEL_ID,
+        "analysis_version": ANALYSIS_VERSION,
+        "audio_quality_version": AUDIO_QUALITY_VERSION,
+    }

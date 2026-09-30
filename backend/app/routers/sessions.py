@@ -6,6 +6,9 @@ from starlette.concurrency import run_in_threadpool
 from .. import firestore_service
 from ..auth import get_current_uid
 from ..firebase_admin_setup import get_firestore_client
+from ..analysis_metadata import ANALYSIS_VERSION, PHONEME_MODEL_ID
+from .. import verdict_policy
+from .. import audio_quality
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -15,10 +18,6 @@ logger = logging.getLogger(__name__)
 # remaining word of a 286-ayah surah.
 UNRECITED_TAIL_WORDS = 120
 
-# Recorded on every session so history can say which analysis produced it.
-PHONEME_MODEL_ID = "quran-lab-zipformer-p-arabic-v3.1"
-
-
 def _analyze(service, audio_bytes, surah_number, from_ayah, to_ayah):
     """Run in a worker thread, so analysing a long recitation does not hold up
     the progress screen, the practice plan or Rattil. One recitation is
@@ -27,7 +26,29 @@ def _analyze(service, audio_bytes, surah_number, from_ayah, to_ayah):
     return service.analyze_range(audio_bytes, surah_number, from_ayah, to_ayah)
 
 
-def record_session(uid: str, results, *, surah_number: int, from_ayah: int, qari_id: str) -> dict:
+def _analyze_with_quality(service, audio_bytes, surah_number, from_ayah,
+                          end_surah, to_ayah):
+    """Quality-gated analysis, with consensus only where audio needs it."""
+    samples, quality = audio_quality.assess_audio(audio_bytes)
+    if not quality.usable:
+        raise audio_quality.UnusableAudioError(audio_quality.retry_message(quality))
+
+    results = service.analyze_span(
+        audio_bytes, surah_number, from_ayah, end_surah, to_ayah)
+    enhancement = {"used": False}
+    if quality.needs_second_pass:
+        comparison = service.analyze_span(
+            audio_quality.wav_bytes(audio_quality.enhance(samples)),
+            surah_number, from_ayah, end_surah, to_ayah,
+        )
+        verdict_policy.apply_second_pass_consensus(results, comparison)
+        enhancement = audio_quality.enhancement_metadata()
+    return results, quality.to_dict(), enhancement
+
+
+def record_session(uid: str, results, *, surah_number: int, from_ayah: int, qari_id: str,
+                   audio_quality: dict | None = None,
+                   enhancement: dict | None = None) -> dict:
     """Store an analysed recitation and build what the app is sent back.
 
     One shape whichever way the analysis ran -- on an uploaded recording, or on
@@ -49,6 +70,9 @@ def record_session(uid: str, results, *, surah_number: int, from_ayah: int, qari
         to_ayah=to_ayah,
         end_surah=end_surah,
         summary=summary,
+        analysis_version=ANALYSIS_VERSION,
+        audio_quality=audio_quality,
+        enhancement=enhancement,
     )
 
     recited = [r for r in results if r.recited]
@@ -82,12 +106,18 @@ def record_session(uid: str, results, *, surah_number: int, from_ayah: int, qari
         "reached_word_index": last.word_index if last else None,
         "total_words": summary["totalWords"],
         "words_recited": summary["wordsRecited"],
+        "words_judged": summary["wordsJudged"],
+        "words_needs_review": summary["wordsNeedsReview"],
         "words_correct": summary["wordsCorrect"],
         # Proportion of correctly recited words to words actually recited (BR-3),
         # measured per word rather than per whole-clip rule verdict.
         "accuracy_score": summary["accuracyScore"],
         "mistake_counts": summary["mistakeCounts"],
         "qari_id": qari_id,
+        "analysis_version": ANALYSIS_VERSION,
+        "model_id": PHONEME_MODEL_ID,
+        "audio_quality": audio_quality,
+        "enhancement": enhancement,
         "words": [
             {
                 "surah_number": r.surah_number or surah_number,
@@ -100,6 +130,10 @@ def record_session(uid: str, results, *, surah_number: int, from_ayah: int, qari
                 "confidence": r.confidence,
                 "recited": r.recited,
                 "flagged": r.recited and not r.correct,
+                "review_status": verdict_policy.status_of(r),
+                "counts_toward_score": verdict_policy.counts_toward_score(r),
+                "evidence_count": getattr(r, "evidence_count", 0),
+                "duration_evidence": getattr(r, "duration_evidence", None),
                 "error_type": r.error_type,
                 "explanation": r.explanation,
             }
@@ -163,8 +197,10 @@ async def analyze_word_level(
         end_surah = None
 
     try:
-        results = await run_in_threadpool(
-            service.analyze_span, audio_bytes, surah_number, from_ayah, end_surah, to_ayah)
+        results, quality, enhancement = await run_in_threadpool(
+            _analyze_with_quality, service, audio_bytes, surah_number, from_ayah, end_surah, to_ayah)
+    except audio_quality.UnusableAudioError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except ValueError as exc:
         # No phoneme reference for this surah/range -- helpful, not a bare 404.
         raise HTTPException(status_code=404, detail=str(exc))
@@ -173,7 +209,8 @@ async def analyze_word_level(
         raise HTTPException(status_code=422, detail=f"Could not analyze audio: {exc}")
 
     return await run_in_threadpool(
-        record_session, uid, results, surah_number=surah_number, from_ayah=from_ayah, qari_id=qari_id)
+        record_session, uid, results, surah_number=surah_number, from_ayah=from_ayah,
+        qari_id=qari_id, audio_quality=quality, enhancement=enhancement)
 
 
 @router.post("/sessions/{session_id}/word-feedback")
@@ -251,7 +288,11 @@ async def reattempt(
         )
 
     try:
-        results = await run_in_threadpool(_analyze, service, audio_bytes, surah_number, from_ayah, to_ayah)
+        results, quality, enhancement = await run_in_threadpool(
+            _analyze_with_quality, service, audio_bytes, surah_number, from_ayah,
+            surah_number, to_ayah)
+    except audio_quality.UnusableAudioError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
@@ -260,7 +301,8 @@ async def reattempt(
 
     try:
         return await run_in_threadpool(
-            firestore_service.apply_reattempt, uid, session_id, results, scope, surah_number)
+            firestore_service.apply_reattempt, uid, session_id, results, scope, surah_number,
+            quality, enhancement)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:

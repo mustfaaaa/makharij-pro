@@ -3,6 +3,7 @@ uvicorn[standard]==0.34.0
 python-multipart==0.0.20
 librosa==0.11.0
 numpy
+scipy
 pydantic==2.10.4
 firebase-admin==6.6.0
 # Runs the Quran-Lab streaming zipformer that powers word-level analysis

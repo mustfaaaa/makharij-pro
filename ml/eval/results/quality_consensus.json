@@ -1,0 +1,16 @@
+{
+  "clips": 773,
+  "degraded_dual_decode_clips": 67,
+  "displayed_review_flags": {
+    "correct_clips_flagged_pct": 42.5,
+    "incorrect_clips_caught_pct": 73.8,
+    "balanced_accuracy_pct": 65.7
+  },
+  "confirmed_errors_only": {
+    "correct_clips_flagged_pct": 24.9,
+    "incorrect_clips_caught_pct": 52.4,
+    "balanced_accuracy_pct": 63.7
+  },
+  "clips_with_review_status": 296,
+  "note": "Displayed flags preserve the existing review UI. Only confirmed errors affect scores and practice plans."
+}

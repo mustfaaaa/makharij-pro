@@ -1,0 +1,46 @@
+{
+  "clips": 773,
+  "missing": 0,
+  "status": {
+    "good": 706,
+    "degraded": 67
+  },
+  "by_clip_label": {
+    "1": {
+      "good": 324,
+      "degraded": 29
+    },
+    "0": {
+      "good": 382,
+      "degraded": 38
+    }
+  },
+  "reasons": {
+    "very_quiet": 67,
+    "little_clear_speech": 17,
+    "low_estimated_snr": 2
+  },
+  "rms_dbfs_percentiles": {
+    "1": -48.26,
+    "5": -43.66,
+    "10": -41.38,
+    "25": -38.11,
+    "50": -34.01,
+    "75": -30.47,
+    "90": -26.64,
+    "95": -24.76,
+    "99": -22.71
+  },
+  "snr_db_percentiles": {
+    "1": 9.32,
+    "5": 11.07,
+    "10": 12.35,
+    "25": 15.14,
+    "50": 18.9,
+    "75": 23.16,
+    "90": 27.62,
+    "95": 31.42,
+    "99": 44.72
+  },
+  "guard": "unusable should be rare; degraded is the dual-decode subset"
+}

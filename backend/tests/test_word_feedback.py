@@ -55,6 +55,8 @@ def test_records_a_disagreement(session_doc):
     entry = session_doc.updates[-1]["wordFeedback"][0]
     assert (entry["ayahNumber"], entry["wordIndex"], entry["agreed"]) == (2, 3, False)
     assert entry["at"] is not None
+    assert entry["source"] == "learner_self_report"
+    assert entry["verified"] is False
 
 
 def test_pressing_the_same_word_twice_replaces_rather_than_stacks(session_doc):

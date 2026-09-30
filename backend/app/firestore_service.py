@@ -27,6 +27,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 
 from .firebase_admin_setup import get_firestore_client
+from . import verdict_policy
 
 # Error type ids as produced by tajweed_diff.py, with the labels users see.
 RULE_LABELS = {
@@ -119,6 +120,11 @@ def word_verdicts_for_storage(results) -> list[dict]:
             # model called the word correct.
             "correct": r.correct,
             "errorType": r.error_type,
+            "reviewStatus": verdict_policy.status_of(r),
+            "countsTowardScore": verdict_policy.counts_toward_score(r),
+            "evidenceCount": getattr(r, "evidence_count", 0),
+            **({"durationEvidence": r.duration_evidence}
+               if getattr(r, "duration_evidence", None) else {}),
         }
         for r in recited
     ]
@@ -131,7 +137,10 @@ def summarize_word_results(results) -> dict:
     are excluded from scoring entirely -- they are not mistakes.
     """
     recited = [r for r in results if r.recited]
-    correct = [r for r in recited if r.correct]
+    correct = [r for r in recited if verdict_policy.status_of(r) == verdict_policy.CORRECT]
+    confirmed = [r for r in recited if verdict_policy.status_of(r) == verdict_policy.CONFIRMED_ERROR]
+    review = [r for r in recited if verdict_policy.status_of(r) == verdict_policy.NEEDS_REVIEW]
+    judged = correct + confirmed
     mistakes = [
         {
             **_surah_field(r),
@@ -140,16 +149,22 @@ def summarize_word_results(results) -> dict:
             "word": r.display_word,
             "errorType": r.error_type or "makhraj",
             "explanation": r.explanation or "",
+            "reviewStatus": verdict_policy.status_of(r),
         }
         for r in recited
         if not r.correct
     ]
-    counts = Counter(m["errorType"] for m in mistakes)
+    counts = Counter(r.error_type or "makhraj" for r in confirmed)
+    review_counts = Counter(r.error_type or "makhraj" for r in review)
 
     return {
-        "accuracyScore": round(len(correct) / len(recited), 4) if recited else 0.0,
+        # Uncertain findings are neither silently passed nor used to punish a
+        # learner.  They remain visible in `mistakes` as words to review.
+        "accuracyScore": round(len(correct) / len(judged), 4) if judged else 0.0,
         "totalWords": len(results),
         "wordsRecited": len(recited),
+        "wordsJudged": len(judged),
+        "wordsNeedsReview": len(review),
         "wordsCorrect": len(correct),
         "reachedAyah": recited[-1].ayah_number if recited else None,
         # Which surah that ayah is in: a recitation can run on past the one it
@@ -160,6 +175,7 @@ def summarize_word_results(results) -> dict:
         # Per-rule tallies, so the practice plan and mastery chart never have to
         # re-read the (much larger) mistake list.
         "mistakeCounts": {rule: counts.get(rule, 0) for rule in RULES},
+        "reviewCounts": {rule: review_counts.get(rule, 0) for rule in RULES},
         # The per-word verdict record the feedback loop turns into labels. Kept
         # separate from `mistakes` on purpose: `mistakes` drives the stats and
         # the practice plan and holds only flagged words, while this holds the
@@ -170,12 +186,18 @@ def summarize_word_results(results) -> dict:
 
 
 def save_session(uid: str, model_id: str, surah_number: int, from_ayah: int,
-                 to_ayah: int, summary: dict, end_surah: int | None = None) -> str:
+                 to_ayah: int, summary: dict, end_surah: int | None = None,
+                 analysis_version: str | None = None,
+                 audio_quality: dict | None = None,
+                 enhancement: dict | None = None) -> str:
     db = get_firestore_client()
     session_ref = db.collection("users").document(uid).collection("sessions").document()
     session_ref.set({
         "createdAt": datetime.now(timezone.utc),
         "modelId": model_id,
+        **({"analysisVersion": analysis_version} if analysis_version else {}),
+        **({"audioQuality": audio_quality} if audio_quality else {}),
+        **({"enhancement": enhancement} if enhancement else {}),
         "surahNumber": surah_number,
         "fromAyah": from_ayah,
         # `toAyah` is an ayah of `endSurah`: the surah the passage ends in,
@@ -230,6 +252,18 @@ def record_word_feedback(uid: str, session_id: str, ayah_number: int,
         "ayahNumber": ayah_number,
         "wordIndex": word_index,
         "agreed": agreed,
+        # Self-report is valuable signal, but never presented as teacher
+        # ground truth.  The snapshot makes an offline label usable even if a
+        # later pipeline version changes how the session's words are read.
+        "source": "learner_self_report",
+        "verified": False,
+        "analysisVersion": data.get("analysisVersion"),
+        "modelId": data.get("modelId"),
+        "audioQuality": data.get("audioQuality"),
+        "wordSnapshot": next((w for w in data.get("words", [])
+                              if w.get("ayahNumber") == ayah_number
+                              and w.get("wordIndex") == word_index
+                              and w.get("surahNumber", session_surah) == surah), None),
         "at": datetime.now(timezone.utc),
     })
     session_ref.update({"wordFeedback": feedback})
@@ -504,7 +538,9 @@ def generate_practice_plan(uid: str, sessions: list[dict] | None = None) -> dict
 
 def apply_reattempt(uid: str, session_id: str, results,
                     scope: tuple[int, int | None] | None = None,
-                    surah_number: int | None = None) -> dict:
+                    surah_number: int | None = None,
+                    audio_quality: dict | None = None,
+                    enhancement: dict | None = None) -> dict:
     """FR-8/BR-5 self-correction, at word granularity.
 
     What a re-attempt is allowed to change
@@ -608,11 +644,27 @@ def apply_reattempt(uid: str, session_id: str, results,
             if existing is not None:
                 existing["errorType"] = result.error_type or "makhraj"
                 existing["explanation"] = result.explanation or ""
-            still_wrong.append({**entry, "errorType": result.error_type})
+                existing["reviewStatus"] = verdict_policy.status_of(result)
+            still_wrong.append({
+                **entry,
+                "errorType": result.error_type,
+                "reviewStatus": verdict_policy.status_of(result),
+            })
 
     words_recited = data.get("wordsRecited", 0)
     words_correct = max(words_recited - len(mistakes), 0)
-    counts = Counter(m["errorType"] for m in mistakes)
+    # Old sessions predate uncertainty and treated every entry as confirmed.
+    # New ones preserve reviews without letting those reviews drive mastery.
+    confirmed_mistakes = [
+        m for m in mistakes if m.get("reviewStatus", verdict_policy.CONFIRMED_ERROR)
+        == verdict_policy.CONFIRMED_ERROR
+    ]
+    review_mistakes = [
+        m for m in mistakes if m.get("reviewStatus") == verdict_policy.NEEDS_REVIEW
+    ]
+    words_judged = max(words_recited - len(review_mistakes), 0)
+    counts = Counter(m["errorType"] for m in confirmed_mistakes)
+    review_counts = Counter(m["errorType"] for m in review_mistakes)
 
     reattempts = list(data.get("reattempts", []))
     reattempts.append({
@@ -621,14 +673,19 @@ def apply_reattempt(uid: str, session_id: str, results,
         "corrected": corrected,
         "stillWrong": still_wrong,
         "notReached": not_reached,
+        **({"audioQuality": audio_quality} if audio_quality else {}),
+        **({"enhancement": enhancement} if enhancement else {}),
     })
 
     update = {
         "mistakes": mistakes,
         "mistakeCounts": {rule: counts.get(rule, 0) for rule in RULES},
+        "reviewCounts": {rule: review_counts.get(rule, 0) for rule in RULES},
         "wordsCorrect": words_correct,
-        "accuracyScore": (round(words_correct / words_recited, 4)
-                          if words_recited else 0.0),
+        "wordsJudged": words_judged,
+        "wordsNeedsReview": len(review_mistakes),
+        "accuracyScore": (round(words_correct / words_judged, 4)
+                          if words_judged else 0.0),
         "attemptCounts": attempt_counts,
         "hadMultipleAttempts": sorted(had_multiple),
         "reattempts": reattempts,

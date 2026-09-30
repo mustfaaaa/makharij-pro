@@ -40,22 +40,25 @@ void main() {
       expect(verdict.confidence, greaterThan(verdict.distance));
     });
 
-    test('integer-valued JSON numbers (e.g. distance: 0) still parse as double', () {
-      // JSON doesn't distinguish 0 from 0.0 -- Dart's json.decode can hand
-      // back an int where a double is expected, which a naive `as double`
-      // cast would crash on.
-      final verdict = WordVerdict.fromJson({
-        'word': 'الله',
-        'start_sec': 0,
-        'end_sec': 1,
-        'distance': 0,
-        'confidence': 1,
-        'flagged': false,
-      });
+    test(
+      'integer-valued JSON numbers (e.g. distance: 0) still parse as double',
+      () {
+        // JSON doesn't distinguish 0 from 0.0 -- Dart's json.decode can hand
+        // back an int where a double is expected, which a naive `as double`
+        // cast would crash on.
+        final verdict = WordVerdict.fromJson({
+          'word': 'الله',
+          'start_sec': 0,
+          'end_sec': 1,
+          'distance': 0,
+          'confidence': 1,
+          'flagged': false,
+        });
 
-      expect(verdict.startSec, 0.0);
-      expect(verdict.confidence, 1.0);
-    });
+        expect(verdict.startSec, 0.0);
+        expect(verdict.confidence, 1.0);
+      },
+    );
 
     test('parses the ayah-range fields the whole-surah response adds', () {
       final verdict = WordVerdict.fromJson({
@@ -127,21 +130,57 @@ void main() {
       expect(verdict.recited, isTrue);
     });
 
-    test('a word says which surah it is in when the server does, and nothing otherwise', () {
-      final base = {
-        'ayah_number': 1,
-        'word_index': 0,
-        'word': 'قُلْ',
-        'start_sec': 0,
-        'end_sec': 1,
-        'distance': 0,
-        'confidence': 1,
-        'flagged': false,
-      };
-      // A server analysing one surah per recording never sends it: the word is
-      // in the session's own surah, which the reader fills in.
-      expect(WordVerdict.fromJson(base).surahNumber, isNull);
-      expect(WordVerdict.fromJson({...base, 'surah_number': 3}).surahNumber, 3);
-    });
+    test(
+      'a word says which surah it is in when the server does, and nothing otherwise',
+      () {
+        final base = {
+          'ayah_number': 1,
+          'word_index': 0,
+          'word': 'قُلْ',
+          'start_sec': 0,
+          'end_sec': 1,
+          'distance': 0,
+          'confidence': 1,
+          'flagged': false,
+        };
+        // A server analysing one surah per recording never sends it: the word is
+        // in the session's own surah, which the reader fills in.
+        expect(WordVerdict.fromJson(base).surahNumber, isNull);
+        expect(
+          WordVerdict.fromJson({...base, 'surah_number': 3}).surahNumber,
+          3,
+        );
+      },
+    );
+
+    test(
+      'parses review policy and duration evidence without changing flagged UI state',
+      () {
+        final verdict = WordVerdict.fromJson({
+          'word': 'الرحيم',
+          'start_sec': 0,
+          'end_sec': 1,
+          'distance': 2,
+          'confidence': 0.5,
+          'recited': true,
+          'flagged': true,
+          'error_type': 'madd',
+          'review_status': 'needs_review',
+          'counts_toward_score': false,
+          'evidence_count': 1,
+          'duration_evidence': {
+            'expectedCount': 4,
+            'heardCount': 1,
+            'verification': 'supports_short',
+          },
+        });
+
+        expect(verdict.flagged, isTrue);
+        expect(verdict.reviewStatus, 'needs_review');
+        expect(verdict.countsTowardScore, isFalse);
+        expect(verdict.durationEvidence?['expectedCount'], 4);
+        expect(verdict.evidenceCount, 1);
+      },
+    );
   });
 }

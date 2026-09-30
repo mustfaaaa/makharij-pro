@@ -64,6 +64,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..firebase_admin_setup import verify_id_token
 from ..phoneme_analysis_service import SpanWords
+from ..audio_quality import StreamingQualityTracker
 from .sessions import record_session
 
 router = APIRouter()
@@ -329,7 +330,8 @@ async def _finished_check(task) -> list[dict]:
         return []
 
 
-async def _finish(websocket, service, stream, uid: str, span: tuple, qari_id: str) -> None:
+async def _finish(websocket, service, stream, uid: str, span: tuple, qari_id: str,
+                  audio_quality: dict | None = None) -> None:
     """Judge the whole recitation from this socket's own stream, store it, and
     send it back -- the "finish" the client asks for when recording stops.
 
@@ -375,7 +377,8 @@ async def _finish(websocket, service, stream, uid: str, span: tuple, qari_id: st
         return
     try:
         response = await asyncio.to_thread(
-            record_session, uid, results, surah_number=span[0], from_ayah=span[1], qari_id=qari_id)
+            record_session, uid, results, surah_number=span[0], from_ayah=span[1],
+            qari_id=qari_id, audio_quality=audio_quality, enhancement={"used": False})
     except Exception as exc:
         logger.exception("Storing a live recitation failed")
         await websocket.send_text(json.dumps({"type": "error", "detail": f"Could not store the recitation: {exc}"}))
@@ -461,6 +464,7 @@ async def stream_recitation(websocket: WebSocket):
     # keeps going.
     checking: asyncio.Task | None = None
     next_check_at = 0            # in samples of audio received
+    quality_tracker = StreamingQualityTracker(SAMPLE_RATE)
 
     try:
         while True:
@@ -482,7 +486,20 @@ async def stream_recitation(websocket: WebSocket):
                     if checking is not None:
                         checking.cancel()
                         checking = None
-                    await _finish(websocket, service, stream, uid, span_args, qari_id)
+                    quality = quality_tracker.report()
+                    if quality.status != "good":
+                        # The client already retains the PCM. Returning an
+                        # error makes it use the upload endpoint, where the
+                        # degraded recording receives the enhanced second pass
+                        # (or a precise retry message if it is unusable).
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "detail": "Recording needs quality verification via upload.",
+                        }))
+                    else:
+                        await _finish(
+                            websocket, service, stream, uid, span_args, qari_id,
+                            audio_quality=quality.to_dict())
                 # "stop", or anything else: the recitation is discarded.
                 break
 
@@ -494,6 +511,7 @@ async def stream_recitation(websocket: WebSocket):
             if samples.size == 0:
                 continue
             samples_seen += samples.size
+            quality_tracker.add(samples)
             recent.append(samples)
             stream.accept_waveform(SAMPLE_RATE, samples)
             while service.recognizer.is_ready(stream):

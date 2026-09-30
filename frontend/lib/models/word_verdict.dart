@@ -26,6 +26,14 @@ class WordVerdict {
   final bool recited;
   final bool flagged;
 
+  /// Whether the backend considers this reliable enough to affect progress
+  /// statistics. A generic pronunciation mismatch can still be shown for the
+  /// learner to review without being counted as a confirmed mistake.
+  final String reviewStatus;
+  final bool countsTowardScore;
+  final Map<String, dynamic>? durationEvidence;
+  final int evidenceCount;
+
   /// Which Tajweed rule the mistake belongs to, and a sentence explaining it.
   /// Both null when the word was recited correctly or wasn't reached.
   final TajweedErrorType? errorType;
@@ -42,6 +50,10 @@ class WordVerdict {
     required this.confidence,
     required this.recited,
     required this.flagged,
+    this.reviewStatus = 'confirmed_error',
+    this.countsTowardScore = true,
+    this.durationEvidence,
+    this.evidenceCount = 0,
     this.errorType,
     this.explanation,
   });
@@ -60,6 +72,13 @@ class WordVerdict {
       // the response still renders rather than coming back entirely greyed out.
       recited: json['recited'] as bool? ?? true,
       flagged: json['flagged'] as bool,
+      reviewStatus:
+          json['review_status'] as String? ??
+          ((json['flagged'] as bool? ?? false) ? 'confirmed_error' : 'correct'),
+      countsTowardScore: json['counts_toward_score'] as bool? ?? true,
+      durationEvidence: (json['duration_evidence'] as Map?)
+          ?.cast<String, dynamic>(),
+      evidenceCount: json['evidence_count'] as int? ?? 0,
       errorType: tajweedErrorTypeFromId(json['error_type'] as String?),
       explanation: json['explanation'] as String?,
     );

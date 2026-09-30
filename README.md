@@ -146,4 +146,58 @@ Harnesses: [`measure_recited_spill.py`](ml/eval/crossmodel/measure_recited_spill
 
 ---
 
+## Reliability safeguards
+
+The app does not treat every recogniser difference as equally certain:
+
+- near-silent or severely clipped audio is rejected with an actionable retry;
+- the quiet/noisy tail of real learner recordings is decoded twice (original
+  plus conservative enhancement), and disagreement lowers certainty rather
+  than inventing a confirmed error;
+- a single generic Makhraj difference is `needs_review`; multiple independent
+  findings can be confirmed, while every flagged word remains available for
+  playback and re-attempt;
+- Madd/Ghunnah findings persist token-timestamp duration evidence for later
+  teacher-label calibration; that evidence is not presented as exact 2/4/6
+  count measurement before it is validated;
+- every session stores the acoustic model id, analysis-pipeline version, audio
+  quality metrics and enhancement version.
+
+The quality thresholds are measured against all 773 labelled learner clips,
+not chosen from professional Qari audio. Current policy sends 67/773 clips to
+the dual-decode path and hard-rejects none of that corpus. Reproduce it with
+[`measure_audio_quality.py`](ml/eval/measure_audio_quality.py); the
+review/confirmed trade-off is reported by
+[`measure_quality_consensus.py`](ml/eval/measure_quality_consensus.py).
+
+## Training MakharijPro's verifier
+
+`I said it right` feedback now snapshots the exact word features, analysis
+version and recording-quality context. [`ml/verifier/`](ml/verifier/) converts
+an owner-exported Firestore session dump into anonymous JSONL and trains a
+small, inspectable flag verifier with a learner-disjoint validation split.
+
+The trainer refuses to export from fewer than 200 verified word labels or 20
+learners and excludes unverified self-reports by default. No learned verifier
+is enabled in production yet: the data pipeline is ready, but a model should
+only replace the measured rule policy after teacher-reviewed labels exist and
+its held-out false-confirmation/recall trade-off is better.
+
+## Honest limitations
+
+- The base recogniser is Quran-Lab's zipformer; MakharijPro owns the alignment,
+  quality, verification and feedback layers around it, not those base weights.
+- The learner corpus has clip-level correctness labels, so it measures false
+  accusations and whether a bad clip was noticed, not whether the exact right
+  word/rule was found.
+- Timestamp duration evidence is collected for Madd/Ghunnah, but exact count
+  verification stays inactive until teacher-labelled word durations calibrate
+  it.
+- Denoising cannot recover overlapping speech or a clipped microphone. The app
+  asks for another recording instead of pretending those signals were repaired.
+- The bundled phoneme model uses NPL-1.2 (non-profit); commercial deployment
+  needs an appropriately licensed recogniser.
+
+---
+
 
